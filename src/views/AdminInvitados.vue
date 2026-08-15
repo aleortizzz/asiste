@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { nanoid } from 'nanoid'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
@@ -56,6 +56,8 @@ function toggleExpand(id) {
   expandedId.value = expandedId.value === id ? null : id
 }
 
+const totalAllowed = computed(() => groups.value.reduce((sum, g) => sum + g.allowed_guests, 0))
+
 function addNewName() {
   newNames.value.push('')
 }
@@ -71,6 +73,13 @@ async function addGroup() {
   const cleanedNames = useNames.value ? newNames.value.map((n) => n.trim()).filter(Boolean) : []
   if (useNames.value && cleanedNames.length === 0) {
     error.value = 'Cargá al menos un nombre.'
+    return
+  }
+
+  const requested = useNames.value ? cleanedNames.length : newGroup.value.allowed_guests
+  if (event.value.guest_limit != null && totalAllowed.value + requested > event.value.guest_limit) {
+    const remaining = event.value.guest_limit - totalAllowed.value
+    error.value = `Superás el tope de invitados del evento (${event.value.guest_limit}). Quedan ${Math.max(remaining, 0)} lugares disponibles.`
     return
   }
 
@@ -136,6 +145,12 @@ async function copyLink(group) {
       </p>
 
       <template v-else>
+        <p class="mt-2 text-sm text-gray-500">
+          Cupo:
+          <strong>{{ totalAllowed }}{{ event.guest_limit != null ? ` / ${event.guest_limit}` : '' }}</strong>
+          {{ event.guest_limit == null ? 'invitados (ilimitado)' : 'invitados' }}
+        </p>
+
         <form @submit.prevent="addGroup" class="mt-6 space-y-3 rounded border border-gray-200 p-4">
           <input
             v-model="newGroup.family_name"

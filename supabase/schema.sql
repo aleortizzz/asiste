@@ -7,6 +7,8 @@
 create extension if not exists pgcrypto;
 
 -- 1) Eventos: la fiesta. owner_user_id ata cada evento a un admin (auth.users).
+-- guest_limit: tope total de invitados que se pueden repartir entre todas
+-- las familias del evento. null = sin límite (ilimitado).
 create table events (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid references auth.users not null,
@@ -14,6 +16,7 @@ create table events (
   event_date date,
   venue_name text,
   venue_address text,
+  guest_limit int,
   created_at timestamptz not null default now()
 );
 

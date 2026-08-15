@@ -107,16 +107,23 @@ Hecho:
 - `npm run build` corrido, `dist/` generado con la versión que incluye todo lo de hoy (RSVP con nombres precargados, dashboard por invitado, asignación de mesas).
 - Zip armado a mano con `System.IO.Compression.ZipArchive` (evita el bug de `Compress-Archive`) en `c:\Users\aleor\OneDrive\Desktop\asiste-deploy.zip` — confirmado que las rutas internas usan `/` correctamente (`assets/index-....js`, no `assets\index-....js`).
 
-**Pendiente — quedó a mitad de camino, es lo primero para retomar:**
-- [ ] Subir `asiste-deploy.zip` al Administrador de Archivos de hPanel, en `public_html/asiste`.
-- [ ] Extraer el zip ahí.
-- [ ] Si queda en una subcarpeta, mover el contenido (`.htaccess`, `index.html`, `assets/`) para que quede directo en `public_html/asiste`.
-- [ ] Probar en `asiste.tizdigital.com`: login admin, y un link de invitado en incógnito, para confirmar que el dominio real funciona igual que local.
+## Estado actual — Deploy automático (CI/CD) funcionando ✅ (2026-08-15)
 
-Nota: si al retomar mañana se vuelve a tocar código antes de subir este zip, hay que rehacer el build + zip (el que está en el Escritorio corresponde al estado del código de hoy 2026-08-15).
+Se reemplazó el proceso manual de zip por un pipeline automático: **cada `git push` a `main` en GitHub dispara un workflow que compila (`npm run build`) y sube el resultado por FTPS a Hostinger**, sin intervención manual.
 
-## Próximos pasos (después del deploy)
+- Repo: `https://github.com/aleortizzz/asiste` (privado).
+- Workflow: `.github/workflows/deploy.yml` (usa `actions/checkout`, `actions/setup-node`, y `SamKirkland/FTP-Deploy-Action@v4.3.5`).
+- Secrets configurados en GitHub (Settings → Secrets and variables → Actions): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`.
 
+**Gotcha importante que costó varias corridas fallidas resolver**: la cuenta FTP "genérica" del hosting (usuario `u452496377`, la que aparece primero en hPanel) **no está conectada al sitio `tizdigital.com` en absoluto** — su raíz apunta a otro lugar del hosting, ajeno a `public_html` de ese dominio. Ningún valor de `server-dir` (se probaron `/public_html/asiste/`, `/asiste/`) lograba que los archivos aparecieran en el `public_html/asiste` real (verificado repetidas veces desde hPanel → Sitios web → tizdigital.com → Archivos).
+
+**Solución**: crear una **cuenta FTP dedicada** en hPanel (Archivos → Cuentas FTP → Crear una nueva cuenta FTP), con el campo Directorio apuntando exactamente a `.../domains/tizdigital.com/public_html/asiste`. Hostinger le puso de usuario `u452496377.asiste` (con prefijo del usuario principal + punto). Con esta cuenta, la raíz del FTP ya arranca directo en la carpeta correcta, así que `server-dir` en el workflow queda simplemente en `/`.
+
+**Nota para el futuro**: si Hostinger tira "Timeout (control socket)" al conectar, probar de nuevo — puede ser que una cuenta FTP recién creada tarde un minuto en activarse.
+
+## Próximos pasos
+
+- [ ] **(Opcional, cuando haya tiempo)** Limpiar las carpetas `asiste` sueltas que quedaron de los intentos fallidos con la cuenta FTP genérica (no afectan el sitio real, son solo basura en otra parte del hosting).
 - [ ] **Hito 7**: pulido — mobile-first (la mayoría va a abrir el link desde el celular), estados de carga/error, validaciones.
 - [ ] **Hito 5**: página pública de RSVP (`/i/:slug`) + función RPC `confirmar_asistencia` con políticas RLS públicas acotadas.
 - [ ] **Hito 6**: dashboard con totales (confirmados/pendientes, ocupación de mesas).
