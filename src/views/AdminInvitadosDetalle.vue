@@ -49,6 +49,17 @@ function buildRows(groups) {
           status: guest.rsvp_status,
         })
       }
+      // Flujo genérico: si confirmaron con menos nombres que allowed_guests,
+      // los lugares no usados ya son respuesta final — cuentan "no asiste".
+      const unclaimed = group.allowed_guests - group.guests.length
+      if (unclaimed > 0) {
+        result.push({
+          name: null,
+          family: group.family_name,
+          status: 'not_attending',
+          count: unclaimed,
+        })
+      }
     } else {
       result.push({
         name: null,

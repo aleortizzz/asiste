@@ -48,7 +48,12 @@ const confirmedGuests = computed(() =>
 const declinedGuests = computed(() =>
   groups.value.reduce((sum, g) => {
     if (g.guests.length > 0) {
-      return sum + g.guests.filter((x) => x.rsvp_status === 'not_attending').length
+      // El flujo genérico puede confirmar con menos nombres que allowed_guests
+      // (ej. tenían 10 invitaciones, mandaron 6 nombres) — como ya es su
+      // respuesta final, los lugares no usados cuentan como "no asisten".
+      const explicit = g.guests.filter((x) => x.rsvp_status === 'not_attending').length
+      const unclaimed = Math.max(g.allowed_guests - g.guests.length, 0)
+      return sum + explicit + unclaimed
     }
     return sum + (g.status === 'declined' ? g.allowed_guests : 0)
   }, 0),
