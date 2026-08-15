@@ -58,6 +58,24 @@ function toggleExpand(id) {
 
 const totalAllowed = computed(() => groups.value.reduce((sum, g) => sum + g.allowed_guests, 0))
 
+// Invitaciones que ya sabemos que no se van a usar (declinadas explícitamente,
+// o lugares que la familia dejó sin reclamar al confirmar con menos nombres
+// que su allowed_guests). Esto libera cupo para volver a repartir.
+const declinedCount = computed(() =>
+  groups.value.reduce((sum, g) => {
+    if (g.guests.length > 0) {
+      const explicit = g.guests.filter((x) => x.rsvp_status === 'not_attending').length
+      const unclaimed = Math.max(g.allowed_guests - g.guests.length, 0)
+      return sum + explicit + unclaimed
+    }
+    return sum + (g.status === 'declined' ? g.allowed_guests : 0)
+  }, 0),
+)
+
+// Lo que realmente cuenta contra el tope del evento: total repartido menos
+// lo que ya se liberó por cancelaciones.
+const activeAllowed = computed(() => totalAllowed.value - declinedCount.value)
+
 function addNewName() {
   newNames.value.push('')
 }
@@ -77,8 +95,8 @@ async function addGroup() {
   }
 
   const requested = useNames.value ? cleanedNames.length : newGroup.value.allowed_guests
-  if (event.value.guest_limit != null && totalAllowed.value + requested > event.value.guest_limit) {
-    const remaining = event.value.guest_limit - totalAllowed.value
+  if (event.value.guest_limit != null && activeAllowed.value + requested > event.value.guest_limit) {
+    const remaining = event.value.guest_limit - activeAllowed.value
     error.value = `Superás el tope de invitados del evento (${event.value.guest_limit}). Quedan ${Math.max(remaining, 0)} lugares disponibles.`
     return
   }
@@ -147,8 +165,11 @@ async function copyLink(group) {
       <template v-else>
         <p class="mt-2 text-sm text-gray-500">
           Cupo:
-          <strong>{{ totalAllowed }}{{ event.guest_limit != null ? ` / ${event.guest_limit}` : '' }}</strong>
+          <strong>{{ activeAllowed }}{{ event.guest_limit != null ? ` / ${event.guest_limit}` : '' }}</strong>
           {{ event.guest_limit == null ? 'invitados (ilimitado)' : 'invitados' }}
+          <span v-if="declinedCount > 0">
+            ({{ declinedCount }} liberados por cancelaciones)
+          </span>
         </p>
 
         <form @submit.prevent="addGroup" class="mt-6 space-y-3 rounded border border-gray-200 p-4">
