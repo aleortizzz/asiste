@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLogin from '../views/AdminLogin.vue'
+import AdminSignup from '../views/AdminSignup.vue'
 import AdminDashboard from '../views/AdminDashboard.vue'
 import AdminSalon from '../views/AdminSalon.vue'
 import AdminMesas from '../views/AdminMesas.vue'
@@ -13,6 +14,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/admin/login', name: 'admin-login', component: AdminLogin },
+    { path: '/admin/registro', name: 'admin-signup', component: AdminSignup },
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboard, meta: { requiresAuth: true } },
     { path: '/admin/salon', name: 'admin-salon', component: AdminSalon, meta: { requiresAuth: true } },
     { path: '/admin/mesas', name: 'admin-mesas', component: AdminMesas, meta: { requiresAuth: true } },
@@ -41,7 +43,7 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { name: 'admin-login' }
   }
-  if (to.name === 'admin-login' && isLoggedIn) {
+  if ((to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
     return { name: 'admin-dashboard' }
   }
 })

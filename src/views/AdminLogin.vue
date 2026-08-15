@@ -59,6 +59,11 @@ async function onSubmit() {
       >
         {{ loading ? 'Ingresando...' : 'Ingresar' }}
       </button>
+
+      <p class="text-center text-sm text-gray-500">
+        ¿No tenés cuenta?
+        <router-link :to="{ name: 'admin-signup' }" class="text-blue-600 underline">Registrate</router-link>
+      </p>
     </form>
   </div>
 </template>
