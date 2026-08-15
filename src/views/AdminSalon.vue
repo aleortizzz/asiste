@@ -44,12 +44,20 @@ onMounted(async () => {
   }
 })
 
+// Postgres no acepta '' para columnas date/time — hay que mandar null
+// cuando el campo quedó vacío.
+const emptyAsNull = (value) => (value === '' ? null : value)
+
 async function onSubmit() {
   saving.value = true
   message.value = ''
   try {
     await saveEvent({
       ...form.value,
+      event_date: emptyAsNull(form.value.event_date),
+      reception_time: emptyAsNull(form.value.reception_time),
+      end_time: emptyAsNull(form.value.end_time),
+      rsvp_deadline: emptyAsNull(form.value.rsvp_deadline),
       guest_limit: hasGuestLimit.value ? guestLimit.value : null,
     })
     message.value = 'Guardado ✅'
