@@ -56,6 +56,50 @@ function toggleExpand(id) {
   expandedId.value = expandedId.value === id ? null : id
 }
 
+const manualNames = ref({})
+
+// Recalcula el status del grupo con la misma regla que usan las funciones
+// RPC del RSVP público: si hay al menos un invitado "attending", el grupo
+// queda "confirmed"; si no, "declined". Así admin y familia quedan consistentes.
+async function recomputeGroupStatus(groupId) {
+  const { data } = await supabase.from('guests').select('rsvp_status').eq('group_id', groupId)
+  const attendingCount = data?.filter((g) => g.rsvp_status === 'attending').length ?? 0
+  const status = attendingCount > 0 ? 'confirmed' : 'declined'
+  await supabase.from('invitation_groups').update({ status }).eq('id', groupId)
+}
+
+// Para cargar a alguien que no puede confirmar por su cuenta (ej. un
+// abuelo/a) — el admin lo agrega directo con el estado que corresponda.
+async function addManualGuest(group, status) {
+  error.value = ''
+  const name = (manualNames.value[group.id] ?? '').trim()
+  if (!name) return
+
+  const { error: err } = await supabase
+    .from('guests')
+    .insert({ group_id: group.id, full_name: name, rsvp_status: status })
+  if (err) {
+    error.value = err.message
+    return
+  }
+
+  manualNames.value[group.id] = ''
+  await recomputeGroupStatus(group.id)
+  await fetchGroups()
+}
+
+// Para cuando alguien ya está precargado (named_by_host) pero no puede
+// responder por su cuenta — el admin marca la respuesta en su nombre.
+async function setGuestStatus(guest, group, status) {
+  const { error: err } = await supabase.from('guests').update({ rsvp_status: status }).eq('id', guest.id)
+  if (err) {
+    error.value = err.message
+    return
+  }
+  await recomputeGroupStatus(group.id)
+  await fetchGroups()
+}
+
 const totalAllowed = computed(() => groups.value.reduce((sum, g) => sum + g.allowed_guests, 0))
 
 // Invitaciones que ya sabemos que no se van a usar (declinadas explícitamente,
@@ -220,12 +264,7 @@ async function copyLink(group) {
                 <p class="font-medium">{{ group.family_name }}</p>
                 <p class="text-sm text-gray-500">
                   {{ statusText(group) }}
-                  <button
-                    v-if="group.guests?.length"
-                    type="button"
-                    @click="toggleExpand(group.id)"
-                    class="ml-1 text-blue-600 underline"
-                  >
+                  <button type="button" @click="toggleExpand(group.id)" class="ml-1 text-blue-600 underline">
                     {{ expandedId === group.id ? 'ocultar' : 'ver nombres' }}
                   </button>
                 </p>
@@ -238,11 +277,51 @@ async function copyLink(group) {
               </div>
             </div>
 
-            <ul v-if="expandedId === group.id" class="mt-2 ml-4 space-y-1">
-              <li v-for="guest in group.guests" :key="guest.id" class="text-sm text-gray-600">
-                {{ guest.full_name }} — {{ guestStatusLabel(guest.rsvp_status) }}
-              </li>
-            </ul>
+            <div v-if="expandedId === group.id" class="mt-2 ml-4 space-y-2">
+              <ul v-if="group.guests.length" class="space-y-1">
+                <li v-for="guest in group.guests" :key="guest.id" class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">{{ guest.full_name }} — {{ guestStatusLabel(guest.rsvp_status) }}</span>
+                  <span v-if="guest.rsvp_status === 'invited'" class="flex gap-1">
+                    <button
+                      type="button"
+                      @click="setGuestStatus(guest, group, 'attending')"
+                      class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-green-100"
+                    >
+                      Marcar asiste
+                    </button>
+                    <button
+                      type="button"
+                      @click="setGuestStatus(guest, group, 'not_attending')"
+                      class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-red-100"
+                    >
+                      Marcar no asiste
+                    </button>
+                  </span>
+                </li>
+              </ul>
+
+              <div class="flex gap-2 pt-1">
+                <input
+                  v-model="manualNames[group.id]"
+                  placeholder="Nombre (ej. Abuela Rosa)"
+                  class="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+                <button
+                  type="button"
+                  @click="addManualGuest(group, 'attending')"
+                  class="rounded bg-green-600 px-2 py-1 text-xs text-white"
+                >
+                  Agregar (asiste)
+                </button>
+                <button
+                  type="button"
+                  @click="addManualGuest(group, 'not_attending')"
+                  class="rounded bg-gray-500 px-2 py-1 text-xs text-white"
+                >
+                  Agregar (no asiste)
+                </button>
+              </div>
+            </div>
           </li>
         </ul>
       </template>
