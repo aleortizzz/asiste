@@ -46,6 +46,17 @@ function removeName(i) {
   names.value.splice(i, 1)
 }
 
+function formatDate(isoDate) {
+  if (!isoDate) return ''
+  const [year, month, day] = isoDate.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function formatTime(time) {
+  if (!time) return ''
+  return time.slice(0, 5)
+}
+
 async function confirmarGenerico() {
   const hasBlank = names.value.some((n) => n.trim() === '')
   if (hasBlank) {
@@ -97,6 +108,27 @@ async function enviarRespuestasNominales() {
         Están invitados a <strong>{{ invite.event_name }}</strong>
         <span v-if="invite.venue_name"> en {{ invite.venue_name }}</span>.
       </p>
+
+      <div class="mt-4 space-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+        <p v-if="invite.event_date">
+          📅 {{ formatDate(invite.event_date) }}
+          <span v-if="invite.reception_time">
+            — {{ formatTime(invite.reception_time) }}<span v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</span> hs
+          </span>
+        </p>
+        <p v-if="invite.venue_address">📍 {{ invite.venue_address }}</p>
+        <p v-if="invite.maps_url">
+          <a :href="invite.maps_url" target="_blank" rel="noopener" class="text-blue-600 underline">
+            Ver en Google Maps
+          </a>
+        </p>
+        <p v-if="invite.dress_code">👔 Código de vestimenta: {{ invite.dress_code }}</p>
+        <p v-if="invite.gift_alias">🎁 Alias para regalos: {{ invite.gift_alias }}</p>
+        <p v-if="invite.notes" class="italic">{{ invite.notes }}</p>
+        <p v-if="invite.rsvp_deadline" class="font-medium">
+          Por favor confirmá antes del {{ formatDate(invite.rsvp_deadline) }}
+        </p>
+      </div>
 
       <div v-if="submitted" class="mt-6 text-center text-green-700">
         ¡Gracias, registramos tu respuesta! ✅

@@ -173,8 +173,15 @@ begin
     'named_by_host', ig.named_by_host,
     'event_name', e.name,
     'event_date', e.event_date,
+    'reception_time', e.reception_time,
+    'end_time', e.end_time,
     'venue_name', e.venue_name,
     'venue_address', e.venue_address,
+    'maps_url', e.maps_url,
+    'dress_code', e.dress_code,
+    'rsvp_deadline', e.rsvp_deadline,
+    'notes', e.notes,
+    'gift_alias', e.gift_alias,
     'guests', coalesce((
       select json_agg(json_build_object(
         'id', g.id,
