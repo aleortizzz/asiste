@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 
@@ -10,6 +10,8 @@ const notFound = ref(false)
 const error = ref('')
 const submitting = ref(false)
 const submitted = ref(false)
+const now = ref(new Date())
+let clockTimer = null
 
 // Modo "genérico" (sin nombres precargados): la familia tipea los nombres.
 const names = ref([''])
@@ -34,6 +36,29 @@ onMounted(async () => {
     }
   }
   loading.value = false
+  clockTimer = setInterval(() => {
+    now.value = new Date()
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
+})
+
+// Cuenta regresiva hasta la fecha/hora del evento. Si no hay reception_time
+// cargado, usamos el arranque del día (00:00) como referencia.
+const countdown = computed(() => {
+  if (!invite.value?.event_date) return null
+  const time = invite.value.reception_time ?? '00:00:00'
+  const target = new Date(`${invite.value.event_date}T${time}`)
+  const diff = target.getTime() - now.value.getTime()
+  if (diff <= 0) return null
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+  }
 })
 
 function addName() {
@@ -108,6 +133,25 @@ async function enviarRespuestasNominales() {
         Están invitados a <strong>{{ invite.event_name }}</strong>
         <span v-if="invite.venue_name"> en {{ invite.venue_name }}</span>.
       </p>
+
+      <div v-if="countdown" class="mt-4 grid grid-cols-4 gap-2 text-center">
+        <div class="rounded bg-gray-900 py-2 text-white">
+          <p class="text-xl font-bold">{{ countdown.days }}</p>
+          <p class="text-xs">días</p>
+        </div>
+        <div class="rounded bg-gray-900 py-2 text-white">
+          <p class="text-xl font-bold">{{ countdown.hours }}</p>
+          <p class="text-xs">hs</p>
+        </div>
+        <div class="rounded bg-gray-900 py-2 text-white">
+          <p class="text-xl font-bold">{{ countdown.minutes }}</p>
+          <p class="text-xs">min</p>
+        </div>
+        <div class="rounded bg-gray-900 py-2 text-white">
+          <p class="text-xl font-bold">{{ countdown.seconds }}</p>
+          <p class="text-xs">seg</p>
+        </div>
+      </div>
 
       <div class="mt-4 space-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
         <p v-if="invite.event_date">
