@@ -81,7 +81,9 @@ function tableOccupancy(table) {
       <template v-else-if="!loading">
         <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div class="rounded-lg border border-gray-200 p-4">
-            <p class="text-2xl font-semibold">{{ totalGuests }}</p>
+            <p class="text-2xl font-semibold">
+              {{ totalGuests }}<span v-if="event.guest_limit != null" class="text-gray-400"> / {{ event.guest_limit }}</span>
+            </p>
             <p class="text-sm text-gray-500">Invitados totales</p>
           </div>
           <div class="rounded-lg border border-gray-200 p-4">
