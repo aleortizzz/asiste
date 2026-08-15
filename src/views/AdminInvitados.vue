@@ -159,7 +159,7 @@ async function copyLink(group) {
       <h1 class="text-2xl font-semibold">Grupos de invitados</h1>
 
       <p v-if="!loading && !event" class="mt-4 text-sm text-red-600">
-        Primero cargá los datos del salón en la sección "Salón".
+        Primero cargá los datos del salón en la sección "Creá tu invitación".
       </p>
 
       <template v-else>

@@ -14,8 +14,15 @@ create table events (
   owner_user_id uuid references auth.users not null,
   name text not null,
   event_date date,
+  reception_time time,
+  end_time time,
   venue_name text,
   venue_address text,
+  maps_url text,
+  dress_code text,
+  rsvp_deadline date,
+  notes text,
+  gift_alias text,
   guest_limit int,
   created_at timestamptz not null default now()
 );
