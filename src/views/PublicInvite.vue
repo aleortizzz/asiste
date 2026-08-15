@@ -122,151 +122,191 @@ async function enviarRespuestasNominales() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-    <p v-if="loading" class="text-gray-500">Cargando...</p>
+  <div
+    class="flex min-h-screen items-center justify-center p-4"
+    style="background: radial-gradient(circle at top, #fdf2f8 0%, #fbe8d3 55%, #f7dcc0 100%)"
+  >
+    <p v-if="loading" class="text-rose-900/60">Cargando...</p>
 
-    <p v-else-if="notFound" class="text-lg text-gray-700">No encontramos esta invitación.</p>
+    <p v-else-if="notFound" class="text-lg text-rose-900/70">No encontramos esta invitación.</p>
 
-    <div v-else class="w-full max-w-md rounded-lg bg-white p-8 shadow">
-      <h1 class="text-2xl font-semibold">¡Hola, {{ invite.family_name }}!</h1>
-      <p class="mt-2 text-gray-600">
-        Están invitados a <strong>{{ invite.event_name }}</strong>
-        <span v-if="invite.venue_name"> en {{ invite.venue_name }}</span>.
-      </p>
+    <div
+      v-else
+      class="w-full max-w-md overflow-hidden rounded-3xl bg-[#fffaf3] shadow-2xl ring-1 ring-amber-200/60"
+    >
+      <div class="h-2 bg-linear-to-r from-rose-300 via-amber-300 to-rose-300"></div>
 
-      <div v-if="countdown" class="mt-4 grid grid-cols-4 gap-2 text-center">
-        <div class="rounded bg-gray-900 py-2 text-white">
-          <p class="text-xl font-bold">{{ countdown.days }}</p>
-          <p class="text-xs">días</p>
-        </div>
-        <div class="rounded bg-gray-900 py-2 text-white">
-          <p class="text-xl font-bold">{{ countdown.hours }}</p>
-          <p class="text-xs">hs</p>
-        </div>
-        <div class="rounded bg-gray-900 py-2 text-white">
-          <p class="text-xl font-bold">{{ countdown.minutes }}</p>
-          <p class="text-xs">min</p>
-        </div>
-        <div class="rounded bg-gray-900 py-2 text-white">
-          <p class="text-xl font-bold">{{ countdown.seconds }}</p>
-          <p class="text-xs">seg</p>
-        </div>
-      </div>
+      <div class="p-8">
+        <p class="text-center text-amber-600 tracking-[0.3em] text-xs uppercase">✦ Están invitados ✦</p>
 
-      <div class="mt-4 space-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-        <p v-if="invite.event_date">
-          📅 {{ formatDate(invite.event_date) }}
-          <span v-if="invite.reception_time">
-            — {{ formatTime(invite.reception_time) }}<span v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</span> hs
-          </span>
-        </p>
-        <p v-if="invite.venue_address">📍 {{ invite.venue_address }}</p>
-        <p v-if="invite.maps_url">
-          <a :href="invite.maps_url" target="_blank" rel="noopener" class="text-blue-600 underline">
-            Ver en Google Maps
-          </a>
-        </p>
-        <p v-if="invite.dress_code">👔 Código de vestimenta: {{ invite.dress_code }}</p>
-        <p v-if="invite.gift_alias">🎁 Alias para regalos: {{ invite.gift_alias }}</p>
-        <p v-if="invite.notes" class="italic">{{ invite.notes }}</p>
-        <p v-if="invite.rsvp_deadline" class="font-medium">
-          Por favor confirmá antes del {{ formatDate(invite.rsvp_deadline) }}
-        </p>
-      </div>
-
-      <div v-if="submitted" class="mt-6 text-center text-green-700">
-        ¡Gracias, registramos tu respuesta! ✅
-      </div>
-
-      <!-- Modo con nombres precargados por el anfitrión -->
-      <template v-else-if="invite.named_by_host">
-        <p class="mt-1 text-sm text-gray-500">Invitaciones para:</p>
-        <ul class="mt-4 space-y-3">
-          <li
-            v-for="guest in namedGuests"
-            :key="guest.id"
-            class="flex items-center justify-between rounded border border-gray-200 px-3 py-2"
-          >
-            <span>{{ guest.full_name }}</span>
-            <div class="flex gap-2">
-              <button
-                type="button"
-                @click="guest.attending = true"
-                :class="guest.attending ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'"
-                class="rounded px-3 py-1 text-sm"
-              >
-                Asiste
-              </button>
-              <button
-                type="button"
-                @click="guest.attending = false"
-                :class="!guest.attending ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600'"
-                class="rounded px-3 py-1 text-sm"
-              >
-                No asiste
-              </button>
-            </div>
-          </li>
-        </ul>
-
-        <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
-
-        <button
-          type="button"
-          :disabled="submitting"
-          @click="enviarRespuestasNominales"
-          class="mt-6 w-full rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
+        <h1
+          class="mt-2 text-center text-4xl text-rose-800"
+          style="font-family: 'Dancing Script', cursive"
         >
-          Confirmar respuestas
-        </button>
-      </template>
+          {{ invite.family_name }}
+        </h1>
 
-      <!-- Modo genérico: la familia escribe los nombres -->
-      <template v-else>
-        <p class="mt-1 text-sm text-gray-500">Tienen {{ invite.allowed_guests }} invitaciones.</p>
+        <h2
+          class="mt-3 text-center text-2xl text-stone-800"
+          style="font-family: 'Playfair Display', serif"
+        >
+          {{ invite.event_name }}
+        </h2>
+        <p v-if="invite.venue_name" class="mt-1 text-center text-sm text-stone-500">
+          en {{ invite.venue_name }}
+        </p>
 
-        <form @submit.prevent="confirmarGenerico" class="mt-6 space-y-3">
-          <div v-for="(name, i) in names" :key="i" class="flex gap-2">
-            <input
-              v-model="names[i]"
-              placeholder="Nombre y apellido"
-              class="flex-1 rounded border border-gray-300 px-3 py-2"
-            />
-            <button v-if="names.length > 1" type="button" @click="removeName(i)" class="text-red-600">
-              ✕
-            </button>
+        <div v-if="countdown" class="mt-6">
+          <p class="text-center text-xs tracking-widest text-amber-700 uppercase">Faltan</p>
+          <div class="mt-2 grid grid-cols-4 gap-2 text-center">
+            <div class="rounded-xl bg-linear-to-b from-rose-700 to-rose-800 py-3 text-white shadow">
+              <p class="text-2xl font-bold">{{ countdown.days }}</p>
+              <p class="text-[10px] tracking-wide uppercase opacity-80">días</p>
+            </div>
+            <div class="rounded-xl bg-linear-to-b from-rose-700 to-rose-800 py-3 text-white shadow">
+              <p class="text-2xl font-bold">{{ countdown.hours }}</p>
+              <p class="text-[10px] tracking-wide uppercase opacity-80">hs</p>
+            </div>
+            <div class="rounded-xl bg-linear-to-b from-rose-700 to-rose-800 py-3 text-white shadow">
+              <p class="text-2xl font-bold">{{ countdown.minutes }}</p>
+              <p class="text-[10px] tracking-wide uppercase opacity-80">min</p>
+            </div>
+            <div class="rounded-xl bg-linear-to-b from-rose-700 to-rose-800 py-3 text-white shadow">
+              <p class="text-2xl font-bold">{{ countdown.seconds }}</p>
+              <p class="text-[10px] tracking-wide uppercase opacity-80">seg</p>
+            </div>
           </div>
+        </div>
+
+        <div class="mt-6 space-y-2 rounded-2xl border border-amber-200/70 bg-white/60 p-4 text-sm text-stone-700">
+          <p v-if="invite.event_date" class="flex items-center gap-2">
+            <span>📅</span>
+            <span>
+              {{ formatDate(invite.event_date) }}
+              <span v-if="invite.reception_time">
+                — {{ formatTime(invite.reception_time) }}<span v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</span> hs
+              </span>
+            </span>
+          </p>
+          <p v-if="invite.venue_address" class="flex items-center gap-2">
+            <span>📍</span> <span>{{ invite.venue_address }}</span>
+          </p>
+          <p v-if="invite.maps_url">
+            <a
+              :href="invite.maps_url"
+              target="_blank"
+              rel="noopener"
+              class="ml-6 font-medium text-rose-700 underline decoration-rose-300"
+            >
+              Ver en Google Maps
+            </a>
+          </p>
+          <p v-if="invite.dress_code" class="flex items-center gap-2">
+            <span>👔</span> <span>Código de vestimenta: {{ invite.dress_code }}</span>
+          </p>
+          <p v-if="invite.gift_alias" class="flex items-center gap-2">
+            <span>🎁</span> <span>Alias para regalos: {{ invite.gift_alias }}</span>
+          </p>
+          <p v-if="invite.notes" class="italic text-stone-500">{{ invite.notes }}</p>
+          <p v-if="invite.rsvp_deadline" class="font-medium text-rose-700">
+            Por favor confirmá antes del {{ formatDate(invite.rsvp_deadline) }}
+          </p>
+        </div>
+
+        <div v-if="submitted" class="mt-6 rounded-2xl bg-rose-50 p-4 text-center text-rose-800">
+          ¡Gracias, registramos tu respuesta! ✨
+        </div>
+
+        <!-- Modo con nombres precargados por el anfitrión -->
+        <template v-else-if="invite.named_by_host">
+          <p class="mt-6 text-center text-sm text-stone-500">Invitaciones para:</p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="guest in namedGuests"
+              :key="guest.id"
+              class="flex items-center justify-between rounded-xl border border-amber-200/70 bg-white/60 px-3 py-2"
+            >
+              <span class="text-stone-800">{{ guest.full_name }}</span>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="guest.attending = true"
+                  :class="guest.attending ? 'bg-rose-700 text-white' : 'bg-stone-100 text-stone-500'"
+                  class="rounded-full px-3 py-1 text-sm transition"
+                >
+                  Asiste
+                </button>
+                <button
+                  type="button"
+                  @click="guest.attending = false"
+                  :class="!guest.attending ? 'bg-stone-700 text-white' : 'bg-stone-100 text-stone-500'"
+                  class="rounded-full px-3 py-1 text-sm transition"
+                >
+                  No asiste
+                </button>
+              </div>
+            </li>
+          </ul>
+
+          <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
 
           <button
-            v-if="names.length < invite.allowed_guests"
             type="button"
-            @click="addName"
-            class="text-sm text-blue-600 underline"
+            :disabled="submitting"
+            @click="enviarRespuestasNominales"
+            class="mt-6 w-full rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-4 py-3 font-medium text-white shadow-md transition hover:brightness-105 disabled:opacity-50"
           >
-            + Agregar invitado
+            Confirmar respuestas
           </button>
+        </template>
 
-          <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+        <!-- Modo genérico: la familia escribe los nombres -->
+        <template v-else>
+          <p class="mt-6 text-center text-sm text-stone-500">Tienen {{ invite.allowed_guests }} invitaciones.</p>
 
-          <div class="flex gap-2 pt-2">
+          <form @submit.prevent="confirmarGenerico" class="mt-4 space-y-3">
+            <div v-for="(name, i) in names" :key="i" class="flex gap-2">
+              <input
+                v-model="names[i]"
+                placeholder="Nombre y apellido"
+                class="flex-1 rounded-xl border border-amber-200 bg-white/70 px-3 py-2 focus:border-rose-400 focus:outline-none"
+              />
+              <button v-if="names.length > 1" type="button" @click="removeName(i)" class="text-rose-500">
+                ✕
+              </button>
+            </div>
+
             <button
-              type="submit"
-              :disabled="submitting"
-              class="flex-1 rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-            >
-              Confirmar asistencia
-            </button>
-            <button
+              v-if="names.length < invite.allowed_guests"
               type="button"
-              :disabled="submitting"
-              @click="declinarGenerico"
-              class="rounded border border-gray-300 px-4 py-2 disabled:opacity-50"
+              @click="addName"
+              class="text-sm font-medium text-rose-700 underline decoration-rose-300"
             >
-              No podemos ir
+              + Agregar invitado
             </button>
-          </div>
-        </form>
-      </template>
+
+            <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+
+            <div class="flex gap-2 pt-2">
+              <button
+                type="submit"
+                :disabled="submitting"
+                class="flex-1 rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-4 py-3 font-medium text-white shadow-md transition hover:brightness-105 disabled:opacity-50"
+              >
+                Confirmar asistencia
+              </button>
+              <button
+                type="button"
+                :disabled="submitting"
+                @click="declinarGenerico"
+                class="rounded-full border border-stone-300 px-4 py-3 text-stone-600 disabled:opacity-50"
+              >
+                No podemos ir
+              </button>
+            </div>
+          </form>
+        </template>
+      </div>
     </div>
   </div>
 </template>
