@@ -149,6 +149,17 @@ async function addManualGuest(status) {
       return
     }
     groupId = newGroup.id
+  } else {
+    // Se agrega a una familia existente: hay que sumarle 1 a allowed_guests,
+    // si no queda con más invitados reales que su tope original y los
+    // totales del dashboard dejan de cerrar (guests.length > allowed_guests).
+    const group = groups.value.find((g) => g.id === groupId)
+    if (group) {
+      await supabase
+        .from('invitation_groups')
+        .update({ allowed_guests: group.allowed_guests + 1 })
+        .eq('id', groupId)
+    }
   }
 
   const { error: err } = await supabase.from('guests').insert({ group_id: groupId, full_name: name, rsvp_status: status })
