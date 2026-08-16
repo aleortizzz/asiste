@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { nanoid } from 'nanoid'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
 import { supabase } from '../lib/supabase'
@@ -121,21 +122,43 @@ async function recomputeGroupStatus(groupId) {
 
 // Para cargar a alguien que no puede confirmar por su cuenta (ej. un
 // abuelo/a) — el admin lo agrega directo con el estado que corresponda.
+// Si no se elige familia, se crea un grupo individual (de 1 invitación)
+// con el nombre de la persona — no todo invitado tiene que pertenecer
+// a una familia armada de antemano.
 async function addManualGuest(status) {
   error.value = ''
   const name = manualName.value.trim()
-  if (!manualGroupId.value || !name) return
+  if (!name) return
 
-  const { error: err } = await supabase
-    .from('guests')
-    .insert({ group_id: manualGroupId.value, full_name: name, rsvp_status: status })
+  let groupId = manualGroupId.value
+
+  if (!groupId) {
+    const { data: newGroup, error: groupErr } = await supabase
+      .from('invitation_groups')
+      .insert({
+        event_id: event.value.id,
+        family_name: name,
+        allowed_guests: 1,
+        named_by_host: true,
+        slug: nanoid(10),
+      })
+      .select()
+      .single()
+    if (groupErr) {
+      error.value = groupErr.message
+      return
+    }
+    groupId = newGroup.id
+  }
+
+  const { error: err } = await supabase.from('guests').insert({ group_id: groupId, full_name: name, rsvp_status: status })
   if (err) {
     error.value = err.message
     return
   }
 
   manualName.value = ''
-  await recomputeGroupStatus(manualGroupId.value)
+  await recomputeGroupStatus(groupId)
   await fetchData()
 }
 
@@ -172,7 +195,7 @@ async function setGuestStatus(row, status) {
           <p class="text-xs text-gray-500">Para alguien que no puede confirmar por su cuenta (ej. un abuelo/a).</p>
           <div class="mt-2 flex flex-wrap gap-2">
             <select v-model="manualGroupId" class="rounded border border-gray-300 px-2 py-1 text-sm">
-              <option value="" disabled>Elegí la familia</option>
+              <option value="">Invitado individual (sin familia)</option>
               <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.family_name }}</option>
             </select>
             <input
