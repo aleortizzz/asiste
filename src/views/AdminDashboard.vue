@@ -89,6 +89,16 @@ function tableOccupancyPct(table) {
   return Math.min((tableOccupancy(table) / table.capacity) * 100, 100)
 }
 
+// Espacios disponibles: cupo del evento menos lo que sigue "activo"
+// (confirmados + pendientes). A diferencia de totalGuests, esto SÍ baja
+// cuando alguien cancela y sube el cupo disponible para volver a invitar
+// — mismo criterio que "Cupo" en la pantalla de Invitados.
+const availableSpace = computed(() => {
+  if (event.value.guest_limit == null) return null
+  const active = totalGuests.value - declinedGuests.value
+  return event.value.guest_limit - active
+})
+
 // Familias que todavía no respondieron, ordenadas por cuántas invitaciones
 // tienen (a las que más gente involucran conviene recordarles primero).
 const pendingReminders = computed(() =>
@@ -123,9 +133,7 @@ async function copyLink(group) {
       <template v-else-if="!loading">
         <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div class="rounded-lg border border-gray-200 p-4">
-            <p class="text-2xl font-semibold">
-              {{ totalGuests }}<span v-if="event.guest_limit != null" class="text-gray-400"> / {{ event.guest_limit }}</span>
-            </p>
+            <p class="text-2xl font-semibold">{{ totalGuests }}</p>
             <p class="text-sm text-gray-500">Invitados totales</p>
           </div>
           <div class="rounded-lg border border-gray-200 p-4">
@@ -149,9 +157,14 @@ async function copyLink(group) {
           <div class="bg-red-500" :style="{ width: rsvpBar.declined + '%' }"></div>
         </div>
 
-        <router-link :to="{ name: 'admin-invitados-detalle' }" class="mt-4 inline-block text-sm text-blue-600 underline">
-          ver detalle
-        </router-link>
+        <div class="mt-3 flex items-center justify-between">
+          <router-link :to="{ name: 'admin-invitados-detalle' }" class="text-sm text-blue-600 underline">
+            ver detalle
+          </router-link>
+          <p v-if="availableSpace != null" class="text-sm text-gray-500">
+            Espacios disponibles: <strong class="text-gray-800">{{ Math.max(availableSpace, 0) }}</strong> / {{ event.guest_limit }}
+          </p>
+        </div>
 
         <!-- Recordatorios: familias sin responder -->
         <div class="mt-8">
