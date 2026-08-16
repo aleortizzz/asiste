@@ -195,8 +195,10 @@ async function setGuestStatus(row, status) {
           <p class="text-xs text-gray-500">Para alguien que no puede confirmar por su cuenta (ej. un abuelo/a).</p>
           <div class="mt-2 flex flex-wrap gap-2">
             <select v-model="manualGroupId" class="rounded border border-gray-300 px-2 py-1 text-sm">
-              <option value="">Invitado individual (sin familia)</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.family_name }}</option>
+              <option value="">Invitado individual</option>
+              <optgroup label="Asignar a una familia">
+                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.family_name }}</option>
+              </optgroup>
             </select>
             <input
               v-model="manualName"
