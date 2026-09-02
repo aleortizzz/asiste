@@ -13,11 +13,6 @@ dist-ssr
 *.local
 .env
 
-# Imagenes de prueba para el diseno de invitaciones (dev only)
-public/invitaciones-demo/*
-!public/invitaciones-demo/.gitkeep
-!public/invitaciones-demo/README.md
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

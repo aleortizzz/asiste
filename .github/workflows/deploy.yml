@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Instalar dependencias
         run: npm ci
@@ -26,6 +26,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      # El FTP de Hostinger corta la conexion de control seguido
+      # ("Timeout (control socket)"), sobre todo en transferencias mas largas.
+      # Subimos el timeout por operacion y reintentamos el paso hasta 3 veces.
       - name: Deploy por FTP a Hostinger
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -33,5 +36,30 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
+          timeout: 120000
+          local-dir: ./dist/
+          server-dir: /
+
+      - name: Reintento 1 del deploy FTP
+        if: failure()
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          timeout: 120000
+          local-dir: ./dist/
+          server-dir: /
+
+      - name: Reintento 2 del deploy FTP
+        if: failure()
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          timeout: 120000
           local-dir: ./dist/
           server-dir: /
