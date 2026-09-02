@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLogin from '../views/AdminLogin.vue'
 import AdminSignup from '../views/AdminSignup.vue'
+import AdminNuevaContrasena from '../views/AdminNuevaContrasena.vue'
 import AdminDashboard from '../views/AdminDashboard.vue'
 import AdminSalon from '../views/AdminSalon.vue'
 import AdminMesas from '../views/AdminMesas.vue'
@@ -15,6 +16,7 @@ const router = createRouter({
   routes: [
     { path: '/admin/login', name: 'admin-login', component: AdminLogin },
     { path: '/admin/registro', name: 'admin-signup', component: AdminSignup },
+    { path: '/admin/nueva-contrasena', name: 'admin-nueva-contrasena', component: AdminNuevaContrasena },
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboard, meta: { requiresAuth: true } },
     { path: '/admin/salon', name: 'admin-salon', component: AdminSalon, meta: { requiresAuth: true } },
     { path: '/admin/mesas', name: 'admin-mesas', component: AdminMesas, meta: { requiresAuth: true } },
@@ -36,7 +38,17 @@ const router = createRouter({
   ],
 })
 
+// Si venimos del link de recuperar contraseña, el token llega en el hash de la
+// URL. Forzamos la pantalla de nueva contraseña sin importar a dónde apunte el
+// link (Supabase puede redirigir al Site URL en vez de a redirectTo).
+const isRecovery = () =>
+  typeof window !== 'undefined' && window.location.hash.includes('type=recovery')
+
 router.beforeEach(async (to) => {
+  if (isRecovery() && to.name !== 'admin-nueva-contrasena') {
+    return { name: 'admin-nueva-contrasena' }
+  }
+
   const { data } = await supabase.auth.getSession()
   const isLoggedIn = !!data.session
 

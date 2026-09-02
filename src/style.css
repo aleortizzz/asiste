@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* Tailwind v4 sacó el `cursor: pointer` por defecto de los botones (usa el
+   default del navegador, que es la flecha). Lo reponemos para todo lo
+   clickeable para que no se vea "muerto". */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
