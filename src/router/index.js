@@ -8,6 +8,7 @@ import AdminMesas from '../views/AdminMesas.vue'
 import AdminAsignarMesas from '../views/AdminAsignarMesas.vue'
 import AdminInvitados from '../views/AdminInvitados.vue'
 import AdminInvitadosDetalle from '../views/AdminInvitadosDetalle.vue'
+import PreviewInvite from '../views/PreviewInvite.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { supabase } from '../lib/supabase'
 
@@ -19,6 +20,12 @@ const router = createRouter({
     { path: '/admin/nueva-contrasena', name: 'admin-nueva-contrasena', component: AdminNuevaContrasena },
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboard, meta: { requiresAuth: true } },
     { path: '/admin/salon', name: 'admin-salon', component: AdminSalon, meta: { requiresAuth: true } },
+    {
+      path: '/admin/salon/preview',
+      name: 'admin-salon-preview',
+      component: PreviewInvite,
+      meta: { requiresAuth: true },
+    },
     { path: '/admin/mesas', name: 'admin-mesas', component: AdminMesas, meta: { requiresAuth: true } },
     {
       path: '/admin/mesas/asignar',
