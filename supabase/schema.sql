@@ -13,6 +13,9 @@ create table events (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid references auth.users not null,
   name text not null,
+  -- Tipo de evento — solo lo usa el panel para precargar textos genéricos.
+  event_type text not null default 'cumpleanos'
+    check (event_type in ('cumpleanos', 'casamiento')),
   -- Textos editables del hero/saludo/cierre de la invitación pública.
   -- Opcionales: si quedan en null, la landing usa un default genérico.
   hero_kicker text,
@@ -20,6 +23,7 @@ create table events (
   hero_subtitle text,
   intro_text text,
   closing_text text,
+  bg_color text not null default '#fdf7f1',
   event_date date,
   reception_time time,
   end_time time,
@@ -184,6 +188,7 @@ begin
     'hero_subtitle', e.hero_subtitle,
     'intro_text', e.intro_text,
     'closing_text', e.closing_text,
+    'bg_color', e.bg_color,
     'event_date', e.event_date,
     'reception_time', e.reception_time,
     'end_time', e.end_time,

@@ -111,7 +111,7 @@ async function copyLink(group) {
 </script>
 
 <template>
-  <div>
+  <div class="pl-16">
     <AdminNav />
     <div class="mx-auto max-w-3xl p-8">
       <h1 class="text-2xl font-semibold">Panel admin</h1>

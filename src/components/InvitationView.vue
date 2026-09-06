@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { CalendarHeart, MapPin, Shirt, Gift, ArrowUpRight } from '@lucide/vue'
 
 // Componente 100% presentacional de la invitación. No sabe de Supabase ni de
 // rutas: recibe `invite` como prop y emite eventos de RSVP hacia arriba.
@@ -74,6 +75,7 @@ const defaultIntro =
 const heroTitle = computed(
   () => props.invite?.hero_title || props.invite?.event_name || 'Nuestro festejo',
 )
+const bgColor = computed(() => props.invite?.bg_color || '#fdf7f1')
 
 // --- Carrusel --------------------------------------------------------------
 const slide = ref(0)
@@ -255,7 +257,7 @@ function enviarRespuestasNominales() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#fdf7f1] text-stone-700">
+  <div class="min-h-screen text-stone-700" :style="{ backgroundColor: bgColor }">
     <!-- ============ HERO / BANNER ============ -->
     <header
       data-anchor="hero"
@@ -269,7 +271,7 @@ function enviarRespuestasNominales() {
       />
       <div class="absolute inset-0 bg-linear-to-b from-black/45 via-black/25 to-black/75"></div>
 
-      <div class="hero-in relative z-10 px-6 text-center text-white">
+      <div class="hero-in relative z-10 w-full min-w-0 px-6 text-center text-white">
         <p v-if="invite.hero_kicker" class="text-[0.7rem] uppercase tracking-[0.4em] text-white/80">
           {{ invite.hero_kicker }}
         </p>
@@ -279,13 +281,12 @@ function enviarRespuestasNominales() {
         >
           {{ heroTitle }}
         </p>
-        <h1
+        <p
           v-if="invite.hero_subtitle"
-          class="mt-1 text-2xl font-medium tracking-wide sm:text-3xl"
-          style="font-family: 'Playfair Display', serif"
+          class="mt-3 text-[0.7rem] uppercase tracking-[0.4em] text-white/80"
         >
           {{ invite.hero_subtitle }}
-        </h1>
+        </p>
         <div class="mx-auto mt-5 h-px w-20 bg-white/50"></div>
         <p
           v-if="invite.event_date"
@@ -339,7 +340,7 @@ function enviarRespuestasNominales() {
         loading="lazy"
         class="absolute inset-0 h-full w-full object-cover opacity-25"
       />
-      <div class="absolute inset-0 bg-[#fdf7f1]/85"></div>
+      <div class="absolute inset-0 opacity-90" :style="{ backgroundColor: bgColor }"></div>
       <div class="relative mx-auto max-w-xl px-6 text-center">
         <p class="text-xs uppercase tracking-[0.3em] text-amber-700">Falta poco</p>
         <div class="mt-6 grid grid-cols-4 gap-2 sm:gap-3">
@@ -358,55 +359,127 @@ function enviarRespuestasNominales() {
     </section>
 
     <!-- ============ DETALLES DE LA FIESTA ============ -->
-    <section v-reveal data-anchor="fiesta" class="mx-auto max-w-xl px-6 py-20">
-      <h2 class="text-center text-3xl text-rose-800" style="font-family: 'Dancing Script', cursive">
-        La fiesta
+    <section v-reveal data-anchor="fiesta" class="mx-auto max-w-xl px-6 py-24">
+      <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">
+        Los detalles
+      </p>
+      <h2
+        class="mt-2 text-center text-4xl text-rose-800"
+        style="font-family: 'Dancing Script', cursive"
+      >
+        La celebración
       </h2>
       <div class="divider">✦</div>
 
-      <div class="mt-6 space-y-4 rounded-[2rem] bg-white p-6 text-sm shadow-lg ring-1 ring-amber-100">
-        <p v-if="invite.event_date" class="flex items-start gap-3">
-          <span class="text-lg">📅</span>
-          <span>
-            {{ formatDateLong(invite.event_date) }}
-            <span v-if="invite.reception_time" class="block text-stone-500">
-              {{ formatTime(invite.reception_time) }}<span v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</span> hs
-            </span>
-          </span>
-        </p>
-        <p v-if="invite.venue_name" class="flex items-start gap-3">
-          <span class="text-lg">💒</span>
-          <span>{{ invite.venue_name }}</span>
-        </p>
-        <p v-if="invite.venue_address" class="flex items-start gap-3">
-          <span class="text-lg">📍</span>
-          <span>
-            {{ invite.venue_address }}
-            <a
-              v-if="invite.maps_url"
-              :href="invite.maps_url"
-              target="_blank"
-              rel="noopener"
-              class="mt-1 block font-medium text-rose-700 underline decoration-rose-300"
+      <!-- Tarjeta con doble marco -->
+      <div
+        class="relative mt-8 rounded-[1.9rem] bg-white/90 p-2.5 shadow-[0_28px_60px_-28px_rgba(120,72,40,0.35)] ring-1 ring-amber-200/70 backdrop-blur-sm"
+      >
+        <div class="rounded-[1.5rem] border border-amber-200/70 px-6 sm:px-8">
+          <div class="divide-y divide-amber-100">
+            <!-- Cuándo -->
+            <div v-if="invite.event_date" class="flex items-center gap-4 py-5">
+              <span
+                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+              >
+                <CalendarHeart :size="18" :stroke-width="1.5" />
+              </span>
+              <div class="min-w-0">
+                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Cuándo</p>
+                <p
+                  class="mt-1 text-[17px] leading-tight text-stone-700"
+                  style="font-family: 'Playfair Display', serif"
+                >
+                  {{ formatDateLong(invite.event_date) }}
+                </p>
+                <p v-if="invite.reception_time" class="mt-0.5 text-xs tracking-wide text-stone-400">
+                  {{ formatTime(invite.reception_time)
+                  }}<span v-if="invite.end_time"> — {{ formatTime(invite.end_time) }}</span> h
+                </p>
+              </div>
+            </div>
+
+            <!-- Dónde -->
+            <div
+              v-if="invite.venue_name || invite.venue_address"
+              class="flex items-center gap-4 py-5"
             >
-              Ver en Google Maps
-            </a>
-          </span>
-        </p>
-        <p v-if="invite.dress_code" class="flex items-start gap-3">
-          <span class="text-lg">👗</span>
-          <span>Código de vestimenta: {{ invite.dress_code }}</span>
-        </p>
-        <p v-if="invite.gift_alias" class="flex items-start gap-3">
-          <span class="text-lg">🎁</span>
-          <span>Alias para regalos: <span class="font-medium">{{ invite.gift_alias }}</span></span>
-        </p>
-        <p v-if="invite.notes" class="border-t border-amber-100 pt-3 italic text-stone-500">
-          {{ invite.notes }}
-        </p>
+              <span
+                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+              >
+                <MapPin :size="18" :stroke-width="1.5" />
+              </span>
+              <div class="min-w-0">
+                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Dónde</p>
+                <p
+                  v-if="invite.venue_name"
+                  class="mt-1 text-[17px] leading-tight text-stone-700"
+                  style="font-family: 'Playfair Display', serif"
+                >
+                  {{ invite.venue_name }}
+                </p>
+                <p v-if="invite.venue_address" class="mt-0.5 text-xs text-stone-400">
+                  {{ invite.venue_address }}
+                </p>
+                <a
+                  v-if="invite.maps_url"
+                  :href="invite.maps_url"
+                  target="_blank"
+                  rel="noopener"
+                  class="mt-2 inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-wider text-rose-700 transition hover:bg-rose-50"
+                >
+                  Cómo llegar <ArrowUpRight :size="13" :stroke-width="2" />
+                </a>
+              </div>
+            </div>
+
+            <!-- Vestimenta -->
+            <div v-if="invite.dress_code" class="flex items-center gap-4 py-5">
+              <span
+                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+              >
+                <Shirt :size="18" :stroke-width="1.5" />
+              </span>
+              <div class="min-w-0">
+                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Vestimenta</p>
+                <p
+                  class="mt-1 text-[17px] leading-tight text-stone-700"
+                  style="font-family: 'Playfair Display', serif"
+                >
+                  {{ invite.dress_code }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Regalos -->
+            <div v-if="invite.gift_alias" class="flex items-center gap-4 py-5">
+              <span
+                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+              >
+                <Gift :size="18" :stroke-width="1.5" />
+              </span>
+              <div class="min-w-0">
+                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">
+                  Mesa de regalos
+                </p>
+                <p class="mt-1 font-mono text-[15px] tracking-wide text-stone-700">
+                  {{ invite.gift_alias }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="mt-10 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-amber-200">
+      <p
+        v-if="invite.notes"
+        class="mt-6 text-center text-sm italic leading-relaxed text-stone-500"
+        style="font-family: 'Playfair Display', serif"
+      >
+        {{ invite.notes }}
+      </p>
+
+      <div class="mt-12 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-amber-200">
         <img
           :src="detalleFoto"
           alt=""
@@ -508,7 +581,7 @@ function enviarRespuestasNominales() {
             <li
               v-for="guest in namedGuests"
               :key="guest.id"
-              class="flex items-center justify-between gap-2 rounded-xl border border-amber-200/70 bg-[#fdf7f1] px-3 py-2"
+              class="flex items-center justify-between gap-2 rounded-xl border border-amber-200/70 bg-black/5 px-3 py-2"
             >
               <span class="text-stone-800">{{ guest.full_name }}</span>
               <div class="flex shrink-0 gap-2">
@@ -556,7 +629,7 @@ function enviarRespuestasNominales() {
               <input
                 v-model="names[i]"
                 placeholder="Nombre y apellido"
-                class="flex-1 rounded-xl border border-amber-200 bg-[#fdf7f1] px-3 py-2 focus:border-rose-400 focus:outline-none"
+                class="flex-1 rounded-xl border border-amber-200 bg-black/5 px-3 py-2 focus:border-rose-400 focus:outline-none"
               />
               <button
                 v-if="names.length > 1"

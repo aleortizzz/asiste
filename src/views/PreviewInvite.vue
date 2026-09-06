@@ -22,12 +22,13 @@ const prefersReducedMotion =
 
 function scrollToAnchor(anchor) {
   const el = document.querySelector(`[data-anchor="${anchor}"]`)
-  if (el) {
-    el.scrollIntoView({
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      block: anchor === 'rsvp' ? 'center' : 'start',
-    })
-  }
+  if (!el) return
+  // scrollIntoView() también desplaza los contenedores ancestros —incluida la
+  // página que contiene el iframe— y hace saltar el formulario de la izquierda.
+  // Movemos solo el scroll de este documento (el del iframe).
+  const offset = anchor === 'rsvp' ? window.innerHeight * 0.2 : 0
+  const top = el.getBoundingClientRect().top + window.scrollY - offset
+  window.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion ? 'auto' : 'smooth' })
 }
 
 function onMessage(e) {

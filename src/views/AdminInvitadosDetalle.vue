@@ -187,7 +187,7 @@ async function setGuestStatus(row, status) {
 </script>
 
 <template>
-  <div>
+  <div class="pl-16">
     <AdminNav />
     <div class="mx-auto max-w-2xl p-8">
       <button type="button" @click="router.push({ name: 'admin-dashboard' })" class="text-sm text-blue-600 underline">
