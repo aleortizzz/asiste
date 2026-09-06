@@ -26,40 +26,32 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      # El FTP de Hostinger corta la conexion de control seguido
-      # ("Timeout (control socket)"), sobre todo en transferencias mas largas.
-      # Subimos el timeout por operacion y reintentamos el paso hasta 3 veces.
-      - name: Deploy por FTP a Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          timeout: 120000
-          local-dir: ./dist/
-          server-dir: /
+      - name: Instalar lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
 
-      - name: Reintento 1 del deploy FTP
-        if: failure()
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # El FTPS de Hostinger corta la conexion de control seguido con el action
+      # de FTP ("Timeout (control socket)"). lftp aguanta mucho mejor las
+      # conexiones inestables: reconecta solo y reintenta cada archivo.
+      - name: Deploy por FTP a Hostinger (lftp)
+        uses: nick-fields/retry@v3
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          timeout: 120000
-          local-dir: ./dist/
-          server-dir: /
-
-      - name: Reintento 2 del deploy FTP
-        if: failure()
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          timeout: 120000
-          local-dir: ./dist/
-          server-dir: /
+          timeout_minutes: 12
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: >-
+            lftp -e "
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:timeout 30;
+            set net:max-retries 3;
+            set net:reconnect-interval-base 5;
+            set net:persist-retries 5;
+            set ftp:use-mdtm false;
+            mirror -R --verbose --parallel=2 --exclude-glob .git/ ./dist/ / ;
+            quit
+            " -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER"
