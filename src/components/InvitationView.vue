@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { CalendarHeart, MapPin, Shirt, Gift, ArrowUpRight } from '@lucide/vue'
+import { CalendarHeart, MapPin, Shirt, Gift, ArrowUpRight, Music, Pause } from '@lucide/vue'
 
 // Componente 100% presentacional de la invitación. No sabe de Supabase ni de
 // rutas: recibe `invite` como prop y emite eventos de RSVP hacia arriba.
@@ -76,6 +76,69 @@ const heroTitle = computed(
   () => props.invite?.hero_title || props.invite?.event_name || 'Nuestro festejo',
 )
 const bgColor = computed(() => props.invite?.bg_color || '#fdf7f1')
+
+// --- Portada + música ----------------------------------------------------
+// `entered` = ya se tocó "Abrir invitación". En preview arranca abierto para
+// no tapar la edición.
+const entered = ref(props.preview)
+const musicPlaying = ref(false)
+const ytFrame = ref(null)
+
+// Saca el id del video de cualquier forma de link de YouTube.
+const musicId = computed(() => {
+  const url = props.invite?.music_url?.trim()
+  if (!url) return ''
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/,
+  )
+  return m ? m[1] : /^[\w-]{11}$/.test(url) ? url : ''
+})
+
+const ytSrc = computed(() =>
+  musicId.value
+    ? `https://www.youtube.com/embed/${musicId.value}?enablejsapi=1&playsinline=1&controls=0&loop=1&playlist=${musicId.value}&modestbranding=1`
+    : '',
+)
+
+function ytCommand(func) {
+  ytFrame.value?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'command', func, args: [] }),
+    '*',
+  )
+}
+
+function toggleMusic() {
+  if (musicPlaying.value) {
+    ytCommand('pauseVideo')
+    musicPlaying.value = false
+  } else {
+    ytCommand('playVideo')
+    musicPlaying.value = true
+  }
+}
+
+// Mientras la portada está arriba, bloqueamos el scroll de la página para que
+// no se pueda "scrollear a ciegas" y aparecer abajo de todo al abrir.
+watch(
+  entered,
+  (v) => {
+    if (typeof document === 'undefined') return
+    document.body.style.overflow = v ? '' : 'hidden'
+    if (v) window.scrollTo(0, 0)
+  },
+  { immediate: true },
+)
+
+function enter() {
+  entered.value = true
+  if (musicId.value) {
+    // Reintento por si el iframe todavía no terminó de cargar cuando se toca.
+    ytCommand('playVideo')
+    setTimeout(() => ytCommand('playVideo'), 400)
+    setTimeout(() => ytCommand('playVideo'), 1200)
+    musicPlaying.value = true
+  }
+}
 
 // --- Carrusel --------------------------------------------------------------
 const slide = ref(0)
@@ -164,6 +227,7 @@ onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
   stopAutoplay()
   window.removeEventListener('scroll', onScroll)
+  if (typeof document !== 'undefined') document.body.style.overflow = ''
 })
 
 // Cuenta regresiva hasta la fecha/hora del evento.
@@ -258,6 +322,67 @@ function enviarRespuestasNominales() {
 
 <template>
   <div class="min-h-screen text-stone-700" :style="{ backgroundColor: bgColor }">
+    <!-- iframe de YouTube oculto: se carga desde el inicio para poder controlarlo -->
+    <iframe
+      v-if="ytSrc && !preview"
+      ref="ytFrame"
+      :src="ytSrc"
+      title="Música"
+      allow="autoplay"
+      class="pointer-events-none fixed bottom-0 left-0 -z-10 h-px w-px opacity-[0.01]"
+    ></iframe>
+
+    <!-- ============ PORTADA / BIENVENIDA ============ -->
+    <transition
+      enter-active-class="transition-opacity duration-700"
+      leave-active-class="transition-opacity duration-700"
+      enter-from-class="opacity-0"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="!entered"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden px-6 text-center text-white"
+      >
+        <img :src="bannerFoto" alt="" class="absolute inset-0 h-full w-full object-cover" />
+        <div class="absolute inset-0 bg-linear-to-b from-black/55 via-black/40 to-black/75"></div>
+
+        <div class="relative z-10 flex flex-col items-center">
+          <p
+            v-if="invite.hero_kicker"
+            class="text-[0.7rem] uppercase tracking-[0.4em] text-white/80"
+          >
+            {{ invite.hero_kicker }}
+          </p>
+          <p
+            class="mt-2 leading-[1.05] break-words drop-shadow-lg"
+            style="font-family: 'Dancing Script', cursive; font-size: clamp(3.5rem, 17vw, 6.5rem)"
+          >
+            {{ heroTitle }}
+          </p>
+          <p
+            v-if="invite.hero_subtitle"
+            class="mt-2 text-[0.7rem] uppercase tracking-[0.4em] text-white/80"
+          >
+            {{ invite.hero_subtitle }}
+          </p>
+
+          <button
+            type="button"
+            @click="enter"
+            class="mt-10 rounded-full border border-white/70 px-8 py-3 text-xs font-medium uppercase tracking-[0.3em] text-white backdrop-blur-sm transition hover:bg-white hover:text-stone-800"
+          >
+            Abrir invitación
+          </button>
+          <p
+            v-if="musicId"
+            class="mt-4 flex items-center gap-1.5 text-[0.65rem] uppercase tracking-widest text-white/60"
+          >
+            <Music :size="12" /> con música
+          </p>
+        </div>
+      </div>
+    </transition>
+
     <!-- ============ HERO / BANNER ============ -->
     <header
       data-anchor="hero"
@@ -690,7 +815,7 @@ function enviarRespuestasNominales() {
       </p>
     </footer>
 
-    <!-- Botón flotante -->
+    <!-- Botón flotante: confirmar -->
     <transition name="fab">
       <button
         v-if="showFab && !submitted && !preview"
@@ -701,6 +826,18 @@ function enviarRespuestasNominales() {
         Confirmar
       </button>
     </transition>
+
+    <!-- Botón flotante: música -->
+    <button
+      v-if="entered && musicId && !preview"
+      type="button"
+      @click="toggleMusic"
+      :aria-label="musicPlaying ? 'Pausar música' : 'Reproducir música'"
+      class="fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-rose-800 text-white shadow-lg ring-1 ring-white/20 transition hover:brightness-110"
+    >
+      <Pause v-if="musicPlaying" :size="18" />
+      <Music v-else :size="18" />
+    </button>
   </div>
 </template>
 

@@ -24,6 +24,7 @@ create table events (
   intro_text text,
   closing_text text,
   bg_color text not null default '#fdf7f1',
+  music_url text, -- link de YouTube para la canción de la portada
   event_date date,
   reception_time time,
   end_time time,
@@ -189,6 +190,7 @@ begin
     'intro_text', e.intro_text,
     'closing_text', e.closing_text,
     'bg_color', e.bg_color,
+    'music_url', e.music_url,
     'event_date', e.event_date,
     'reception_time', e.reception_time,
     'end_time', e.end_time,

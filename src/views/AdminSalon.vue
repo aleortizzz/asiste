@@ -22,6 +22,7 @@ const EMPTY = {
   intro_text: '',
   closing_text: '',
   bg_color: '#fdf7f1',
+  music_url: '',
   event_date: '',
   reception_time: '',
   end_time: '',
@@ -100,6 +101,7 @@ onMounted(async () => {
       intro_text: event.value.intro_text ?? '',
       closing_text: event.value.closing_text ?? '',
       bg_color: event.value.bg_color ?? '#fdf7f1',
+      music_url: event.value.music_url ?? '',
       event_date: event.value.event_date ?? '',
       reception_time: event.value.reception_time ?? '',
       end_time: event.value.end_time ?? '',
@@ -134,6 +136,7 @@ async function onSubmit() {
       hero_subtitle: emptyAsNull(form.value.hero_subtitle),
       intro_text: emptyAsNull(form.value.intro_text),
       closing_text: emptyAsNull(form.value.closing_text),
+      music_url: emptyAsNull(form.value.music_url?.trim()),
       event_date: emptyAsNull(form.value.event_date),
       reception_time: emptyAsNull(form.value.reception_time),
       end_time: emptyAsNull(form.value.end_time),
@@ -293,6 +296,19 @@ onUnmounted(() => {
             <div>
               <label class="block text-sm font-medium text-gray-700">Fecha</label>
               <input v-model="form.event_date" type="date" data-preview="hero" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Canción (link de YouTube)</label>
+              <p class="text-xs text-gray-500">
+                Suena al tocar «Abrir invitación». Dejalo vacío para no poner música.
+              </p>
+              <input
+                v-model="form.music_url"
+                type="url"
+                data-preview="hero"
+                placeholder="https://www.youtube.com/watch?v=..."
+                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              />
             </div>
           </div>
 
