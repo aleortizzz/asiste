@@ -2,8 +2,90 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
+import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
 
 const { event, loadEvent, saveEvent } = useEvent()
+const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
+
+// Panel de la izquierda: datos del evento o gestión de fotos.
+const panel = ref('info')
+const photoSections = [
+  { slot: 'banner', label: 'Portada', help: 'Foto de fondo de la portada y el hero.', single: true },
+  { slot: 'retrato', label: 'Saludo', help: 'Carrusel de fotos del saludo.', single: false },
+  { slot: 'detalle', label: 'La celebración', help: 'Foto de la sección de detalles.', single: true },
+  { slot: 'momentos', label: 'Momentos', help: 'Carrusel principal de fotos.', single: false },
+  { slot: 'galeria', label: 'Galería', help: `Grid de hasta ${MAX_GALERIA} fotos.`, single: false },
+]
+
+const uploading = ref(false)
+const photoError = ref('')
+const fileInput = ref(null)
+let pendingSlot = null
+
+function pickPhoto(slot) {
+  if (!event.value) {
+    photoError.value = 'Guardá primero los datos en «Información» para poder subir fotos.'
+    return
+  }
+  photoError.value = ''
+  pendingSlot = slot
+  if (fileInput.value) {
+    fileInput.value.value = ''
+    fileInput.value.click()
+  }
+}
+
+async function onFilePicked(e) {
+  const file = e.target.files?.[0]
+  if (!file || !pendingSlot) return
+  const slot = pendingSlot
+  const single = photoSections.find((s) => s.slot === slot)?.single
+  uploading.value = true
+  photoError.value = ''
+  try {
+    if (single && form.value[slot][0]) await removeFile(form.value[slot][0].path)
+    const item = await uploadFile(slot, file)
+    if (single) form.value[slot] = [item]
+    else form.value[slot] = [...form.value[slot], item]
+    await persistPhotos()
+  } catch (err) {
+    photoError.value = err.message || 'No se pudo subir la foto.'
+  } finally {
+    uploading.value = false
+  }
+}
+
+async function removePhoto(slot, i) {
+  const item = form.value[slot][i]
+  uploading.value = true
+  try {
+    await removeFile(item?.path)
+    form.value[slot] = form.value[slot].filter((_, idx) => idx !== i)
+    await persistPhotos()
+  } catch (err) {
+    photoError.value = err.message || 'No se pudo eliminar la foto.'
+  } finally {
+    uploading.value = false
+  }
+}
+
+async function persistPhotos() {
+  if (!event.value) return
+  await savePhotoColumns(event.value.id, {
+    banner: form.value.banner,
+    retrato: form.value.retrato,
+    detalle: form.value.detalle,
+    momentos: form.value.momentos,
+    galeria: form.value.galeria,
+  })
+}
+
+function canAdd(section) {
+  const arr = form.value[section.slot]
+  if (section.single) return arr.length === 0
+  if (section.slot === 'galeria') return arr.length < MAX_GALERIA
+  return true
+}
 
 // Los datos concretos (fecha, salón, dirección…) quedan vacíos a propósito:
 // un valor falso ahí sería peor que uno vacío.
@@ -23,6 +105,11 @@ const EMPTY = {
   closing_text: '',
   bg_color: '#fdf7f1',
   music_url: '',
+  banner: [],
+  retrato: [],
+  detalle: [],
+  momentos: [],
+  galeria: [],
   event_date: '',
   reception_time: '',
   end_time: '',
@@ -102,6 +189,11 @@ onMounted(async () => {
       closing_text: event.value.closing_text ?? '',
       bg_color: event.value.bg_color ?? '#fdf7f1',
       music_url: event.value.music_url ?? '',
+      banner: event.value.banner ?? [],
+      retrato: event.value.retrato ?? [],
+      detalle: event.value.detalle ?? [],
+      momentos: event.value.momentos ?? [],
+      galeria: event.value.galeria ?? [],
       event_date: event.value.event_date ?? '',
       reception_time: event.value.reception_time ?? '',
       end_time: event.value.end_time ?? '',
@@ -174,13 +266,15 @@ const previewInvite = computed(() => ({
 }))
 
 function pushPreview() {
+  // JSON round-trip: saca los Proxy reactivos de Vue (postMessage no los puede
+  // clonar) y deja un objeto plano.
   const payload = JSON.stringify(previewInvite.value)
   try {
     sessionStorage.setItem(STORAGE_KEY, payload)
   } catch {
     /* modo privado */
   }
-  const msg = { type: 'invite-preview', invite: previewInvite.value }
+  const msg = { type: 'invite-preview', invite: JSON.parse(payload) }
   frameDesktop.value?.contentWindow?.postMessage(msg, window.location.origin)
   frameMobile.value?.contentWindow?.postMessage(msg, window.location.origin)
 }
@@ -236,7 +330,10 @@ onUnmounted(() => {
       <div class="w-full max-w-lg">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h1 class="text-2xl font-semibold">Creá tu invitación</h1>
-          <div class="inline-flex rounded-full border border-gray-300 p-0.5 text-sm">
+          <div
+            v-show="panel === 'info'"
+            class="inline-flex rounded-full border border-gray-300 p-0.5 text-sm"
+          >
             <button
               type="button"
               @click="applyTemplate('cumpleanos')"
@@ -256,7 +353,90 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <form @submit.prevent="onSubmit" @focusin="onFieldFocus" class="mt-6 space-y-6">
+        <!-- Switch Información / Fotos -->
+        <div class="mt-4 grid grid-cols-2 rounded-lg border border-gray-300 p-0.5 text-sm">
+          <button
+            type="button"
+            @click="panel = 'info'"
+            :class="panel === 'info' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
+            class="rounded-md py-1.5 font-medium transition-colors"
+          >
+            Información
+          </button>
+          <button
+            type="button"
+            @click="panel = 'fotos'"
+            :class="panel === 'fotos' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
+            class="rounded-md py-1.5 font-medium transition-colors"
+          >
+            Fotos
+          </button>
+        </div>
+
+        <!-- ================= FOTOS ================= -->
+        <div v-if="panel === 'fotos'" class="mt-6 space-y-6">
+          <p v-if="!event" class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Guardá primero los datos en «Información» para poder subir fotos.
+          </p>
+          <p class="text-xs text-gray-500">
+            Las fotos se guardan solas al subirlas. Tocá el ✕ para eliminar una.
+          </p>
+
+          <div
+            v-for="s in photoSections"
+            :key="s.slot"
+            class="space-y-2 border-t border-gray-200 pt-4"
+          >
+            <h2 class="text-sm font-semibold text-gray-500 uppercase">{{ s.label }}</h2>
+            <p class="text-xs text-gray-500">{{ s.help }}</p>
+            <div class="grid grid-cols-4 gap-2">
+              <div
+                v-for="(ph, i) in form[s.slot]"
+                :key="ph.path"
+                class="group relative aspect-square overflow-hidden rounded-lg ring-1 ring-gray-200"
+              >
+                <img :src="ph.url" alt="" class="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  @click="removePhoto(s.slot, i)"
+                  :disabled="uploading"
+                  aria-label="Eliminar foto"
+                  class="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-sm text-white opacity-0 transition group-hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </div>
+              <button
+                v-if="canAdd(s)"
+                type="button"
+                @click="pickPhoto(s.slot)"
+                :disabled="uploading"
+                class="grid aspect-square place-items-center rounded-lg border-2 border-dashed border-gray-300 text-2xl text-gray-400 transition hover:border-gray-400 hover:text-gray-600 disabled:opacity-50"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <p v-if="uploading" class="text-sm text-gray-500">Subiendo…</p>
+          <p v-if="photoError" class="text-sm text-red-600">{{ photoError }}</p>
+        </div>
+
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="hidden"
+          @change="onFilePicked"
+        />
+
+        <!-- ================= INFORMACIÓN ================= -->
+        <form
+          v-if="panel === 'info'"
+          @submit.prevent="onSubmit"
+          @focusin="onFieldFocus"
+          class="mt-6 space-y-6"
+        >
           <p class="text-xs text-gray-500">
             Los campos vienen precargados con textos genéricos según el tipo de evento: cambiá
             solo lo que quieras. Siguen el orden de la invitación, y al tocar uno la vista previa

@@ -60,38 +60,56 @@ watch(
 )
 
 // ---------------------------------------------------------------------------
-// FOTOS — por ahora hardcodeadas desde /public/invitaciones-demo. Cuando cada
-// evento tenga sus propias imágenes (Supabase Storage), reemplazar estas
-// constantes por datos que vengan en `props.invite`.
+// FOTOS — vienen de `props.invite.{banner,retrato,detalle,momentos,galeria}`
+// (arrays de { url, path } desde Supabase Storage). Si un slot está vacío se
+// usan las fotos de demo, así la invitación nunca se ve rota.
 // ---------------------------------------------------------------------------
-const bannerFoto = '/invitaciones-demo/demo-02.jpeg'
-const detalleFoto = '/invitaciones-demo/demo-07.jpeg'
-// Carrusel centrado del saludo.
-const saludoFotos = [
-  '/invitaciones-demo/demo-05.jpeg',
-  '/invitaciones-demo/demo-01.jpeg',
-  '/invitaciones-demo/demo-04.jpeg',
-  '/invitaciones-demo/demo-06.jpeg',
-  '/invitaciones-demo/demo-08.jpeg',
-]
-const galeria = [
-  '/invitaciones-demo/demo-01.jpeg',
-  '/invitaciones-demo/demo-03.jpeg',
-  '/invitaciones-demo/demo-04.jpeg',
-  '/invitaciones-demo/demo-06.jpeg',
-  '/invitaciones-demo/demo-08.jpeg',
-]
-// Grid de 8 fotos (2 col en mobile, 4 col en desktop).
-const galeriaGrid = [
-  '/invitaciones-demo/demo-01.jpeg',
-  '/invitaciones-demo/demo-02.jpeg',
-  '/invitaciones-demo/demo-03.jpeg',
-  '/invitaciones-demo/demo-04.jpeg',
-  '/invitaciones-demo/demo-05.jpeg',
-  '/invitaciones-demo/demo-06.jpeg',
-  '/invitaciones-demo/demo-07.jpeg',
-  '/invitaciones-demo/demo-08.jpeg',
-]
+const DEMO = {
+  banner: '/invitaciones-demo/demo-02.jpeg',
+  detalle: '/invitaciones-demo/demo-07.jpeg',
+  retrato: [
+    '/invitaciones-demo/demo-05.jpeg',
+    '/invitaciones-demo/demo-01.jpeg',
+    '/invitaciones-demo/demo-04.jpeg',
+    '/invitaciones-demo/demo-06.jpeg',
+    '/invitaciones-demo/demo-08.jpeg',
+  ],
+  momentos: [
+    '/invitaciones-demo/demo-01.jpeg',
+    '/invitaciones-demo/demo-03.jpeg',
+    '/invitaciones-demo/demo-04.jpeg',
+    '/invitaciones-demo/demo-06.jpeg',
+    '/invitaciones-demo/demo-08.jpeg',
+  ],
+  galeria: [
+    '/invitaciones-demo/demo-01.jpeg',
+    '/invitaciones-demo/demo-02.jpeg',
+    '/invitaciones-demo/demo-03.jpeg',
+    '/invitaciones-demo/demo-04.jpeg',
+    '/invitaciones-demo/demo-05.jpeg',
+    '/invitaciones-demo/demo-06.jpeg',
+    '/invitaciones-demo/demo-07.jpeg',
+    '/invitaciones-demo/demo-08.jpeg',
+  ],
+}
+function slotUrls(slot) {
+  const a = props.invite?.[slot]
+  return Array.isArray(a) ? a.map((p) => p?.url).filter(Boolean) : []
+}
+const bannerFoto = computed(() => slotUrls('banner')[0] || DEMO.banner)
+const detalleFoto = computed(() => slotUrls('detalle')[0] || DEMO.detalle)
+const saludoFotos = computed(() => {
+  const u = slotUrls('retrato')
+  return u.length ? u : DEMO.retrato
+})
+const momentosFotos = computed(() => {
+  const u = slotUrls('momentos')
+  return u.length ? u : DEMO.momentos
+})
+const galeriaGrid = computed(() => {
+  const u = slotUrls('galeria')
+  return u.length ? u : DEMO.galeria
+})
 
 const reducedMotion =
   typeof window !== 'undefined' &&
@@ -184,7 +202,8 @@ const slide = ref(0)
 let slideTimer = null
 
 function goTo(i) {
-  slide.value = (i + galeria.length) % galeria.length
+  const n = momentosFotos.value.length
+  slide.value = ((i % n) + n) % n
 }
 function nextSlide() {
   goTo(slide.value + 1)
@@ -220,25 +239,31 @@ function onTouchEnd(e) {
 // Repetimos las fotos 3 veces y arrancamos en la copia del medio: así siempre
 // hay fotos asomando a ambos lados. Al llegar a una copia del borde, saltamos
 // sin transición a la posición equivalente del medio.
-const SALUDO_LEN = saludoFotos.length
-const saludoLoop = Array.from({ length: 3 }, () => saludoFotos).flat()
-const saludoSlide = ref(SALUDO_LEN)
+const saludoLen = computed(() => saludoFotos.value.length)
+const saludoLoop = computed(() => [
+  ...saludoFotos.value,
+  ...saludoFotos.value,
+  ...saludoFotos.value,
+])
+const saludoSlide = ref(saludoLen.value)
 const saludoNoTransition = ref(false)
-const saludoActive = computed(
-  () => ((saludoSlide.value % SALUDO_LEN) + SALUDO_LEN) % SALUDO_LEN,
-)
+const saludoActive = computed(() => {
+  const n = saludoLen.value
+  return n ? ((saludoSlide.value % n) + n) % n : 0
+})
 
 function saludoStep(delta) {
   saludoSlide.value += delta
 }
 function saludoSet(realIndex) {
-  saludoSlide.value = SALUDO_LEN + realIndex
+  saludoSlide.value = saludoLen.value + realIndex
 }
 function onSaludoTransitionEnd(e) {
   if (e.propertyName !== 'transform' || e.target !== e.currentTarget) return
-  if (saludoSlide.value < SALUDO_LEN || saludoSlide.value >= SALUDO_LEN * 2) {
+  const n = saludoLen.value
+  if (saludoSlide.value < n || saludoSlide.value >= n * 2) {
     saludoNoTransition.value = true
-    saludoSlide.value = SALUDO_LEN + saludoActive.value
+    saludoSlide.value = n + saludoActive.value
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         saludoNoTransition.value = false
@@ -246,6 +271,10 @@ function onSaludoTransitionEnd(e) {
     )
   }
 }
+// Si cambia la cantidad de fotos (se agregan/quitan en el editor), reencuadrar.
+watch(saludoLen, (n) => {
+  saludoSlide.value = n + Math.min(saludoActive.value, Math.max(0, n - 1))
+})
 
 let saludoTouchX = 0
 function onSaludoTouchStart(e) {
@@ -626,7 +655,7 @@ function enviarRespuestasNominales() {
     <!-- ============ COUNTDOWN ============ -->
     <section v-if="countdown" v-reveal class="relative overflow-hidden py-20">
       <img
-        :src="galeria[0]"
+        :src="momentosFotos[0]"
         alt=""
         loading="lazy"
         class="absolute inset-0 h-full w-full object-cover opacity-25"
@@ -814,7 +843,7 @@ function enviarRespuestasNominales() {
           class="flex transition-transform duration-700 ease-out"
           :style="{ transform: `translateX(-${slide * 100}%)` }"
         >
-          <div v-for="(src, i) in galeria" :key="i" class="min-w-full">
+          <div v-for="(src, i) in momentosFotos" :key="i" class="min-w-full">
             <img
               :src="src"
               :alt="`Foto ${i + 1}`"
@@ -844,7 +873,7 @@ function enviarRespuestasNominales() {
 
         <div class="absolute inset-x-0 bottom-4 flex justify-center gap-2">
           <button
-            v-for="(s, i) in galeria"
+            v-for="(s, i) in momentosFotos"
             :key="i"
             type="button"
             :aria-label="`Ir a la foto ${i + 1}`"
