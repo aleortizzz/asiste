@@ -415,7 +415,7 @@ onUnmounted(() => {
               <label class="block text-sm font-medium text-gray-700">Alias para regalos</label>
               <input
                 v-model="form.gift_alias"
-                data-preview="fiesta"
+                data-preview="regalos"
                 placeholder="Ej. antonella.15"
                 class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
               />

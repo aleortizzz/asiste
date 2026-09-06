@@ -1,6 +1,16 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { CalendarHeart, MapPin, Shirt, Gift, ArrowUpRight, Music, Pause } from '@lucide/vue'
+import {
+  CalendarHeart,
+  MapPin,
+  Gem,
+  Gift,
+  ArrowUpRight,
+  Music,
+  Pause,
+  Copy,
+  Check,
+} from '@lucide/vue'
 
 // Componente 100% presentacional de la invitación. No sabe de Supabase ni de
 // rutas: recibe `invite` como prop y emite eventos de RSVP hacia arriba.
@@ -55,13 +65,31 @@ watch(
 // constantes por datos que vengan en `props.invite`.
 // ---------------------------------------------------------------------------
 const bannerFoto = '/invitaciones-demo/demo-02.jpeg'
-const retratoFoto = '/invitaciones-demo/demo-05.jpeg'
 const detalleFoto = '/invitaciones-demo/demo-07.jpeg'
+// Carrusel centrado del saludo.
+const saludoFotos = [
+  '/invitaciones-demo/demo-05.jpeg',
+  '/invitaciones-demo/demo-01.jpeg',
+  '/invitaciones-demo/demo-04.jpeg',
+  '/invitaciones-demo/demo-06.jpeg',
+  '/invitaciones-demo/demo-08.jpeg',
+]
 const galeria = [
   '/invitaciones-demo/demo-01.jpeg',
   '/invitaciones-demo/demo-03.jpeg',
   '/invitaciones-demo/demo-04.jpeg',
   '/invitaciones-demo/demo-06.jpeg',
+  '/invitaciones-demo/demo-08.jpeg',
+]
+// Grid de 8 fotos (2 col en mobile, 4 col en desktop).
+const galeriaGrid = [
+  '/invitaciones-demo/demo-01.jpeg',
+  '/invitaciones-demo/demo-02.jpeg',
+  '/invitaciones-demo/demo-03.jpeg',
+  '/invitaciones-demo/demo-04.jpeg',
+  '/invitaciones-demo/demo-05.jpeg',
+  '/invitaciones-demo/demo-06.jpeg',
+  '/invitaciones-demo/demo-07.jpeg',
   '/invitaciones-demo/demo-08.jpeg',
 ]
 
@@ -129,6 +157,17 @@ watch(
   { immediate: true },
 )
 
+const aliasCopied = ref(false)
+async function copyAlias() {
+  try {
+    await navigator.clipboard.writeText(props.invite.gift_alias)
+    aliasCopied.value = true
+    setTimeout(() => (aliasCopied.value = false), 1800)
+  } catch {
+    /* portapapeles bloqueado */
+  }
+}
+
 function enter() {
   entered.value = true
   if (musicId.value) {
@@ -177,6 +216,47 @@ function onTouchEnd(e) {
   startAutoplay()
 }
 
+// --- Carrusel centrado del saludo (infinito) ------------------------------
+// Repetimos las fotos 3 veces y arrancamos en la copia del medio: así siempre
+// hay fotos asomando a ambos lados. Al llegar a una copia del borde, saltamos
+// sin transición a la posición equivalente del medio.
+const SALUDO_LEN = saludoFotos.length
+const saludoLoop = Array.from({ length: 3 }, () => saludoFotos).flat()
+const saludoSlide = ref(SALUDO_LEN)
+const saludoNoTransition = ref(false)
+const saludoActive = computed(
+  () => ((saludoSlide.value % SALUDO_LEN) + SALUDO_LEN) % SALUDO_LEN,
+)
+
+function saludoStep(delta) {
+  saludoSlide.value += delta
+}
+function saludoSet(realIndex) {
+  saludoSlide.value = SALUDO_LEN + realIndex
+}
+function onSaludoTransitionEnd(e) {
+  if (e.propertyName !== 'transform' || e.target !== e.currentTarget) return
+  if (saludoSlide.value < SALUDO_LEN || saludoSlide.value >= SALUDO_LEN * 2) {
+    saludoNoTransition.value = true
+    saludoSlide.value = SALUDO_LEN + saludoActive.value
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        saludoNoTransition.value = false
+      }),
+    )
+  }
+}
+
+let saludoTouchX = 0
+function onSaludoTouchStart(e) {
+  saludoTouchX = e.changedTouches[0].clientX
+}
+function onSaludoTouchEnd(e) {
+  const dx = e.changedTouches[0].clientX - saludoTouchX
+  if (dx > 40) saludoStep(-1)
+  else if (dx < -40) saludoStep(1)
+}
+
 // --- Reveal al hacer scroll (directiva local v-reveal) -------------------
 const vReveal = {
   mounted(el) {
@@ -215,20 +295,58 @@ function scrollToRsvp() {
     ?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
 }
 
+// --- Galería: las fotos convergen al centro a medida que se scrollea --------
+const gridItems = ref([])
+let gridRaf = null
+
+function updateGridParallax() {
+  if (reducedMotion) return
+  const vh = window.innerHeight
+  const vw = window.innerWidth
+  for (const el of gridItems.value) {
+    if (!el) continue
+    const r = el.getBoundingClientRect()
+    // p: 0 cuando la foto está en el centro vertical de la pantalla, ±1 lejos.
+    let p = ((r.top + r.height / 2 - vh / 2) / vh) * 1.7
+    p = Math.max(-1, Math.min(1, p))
+    const k = Math.abs(p)
+    const side = r.left + r.width / 2 < vw / 2 ? -1 : 1
+    el.style.transform = `translateX(${(side * k * 44).toFixed(1)}px) scale(${(1 - k * 0.05).toFixed(3)})`
+    el.style.opacity = (1 - k * 0.3).toFixed(2)
+  }
+}
+
+function onGridScroll() {
+  if (gridRaf) return
+  gridRaf = requestAnimationFrame(() => {
+    gridRaf = null
+    updateGridParallax()
+  })
+}
+
 onMounted(() => {
   clockTimer = setInterval(() => {
     now.value = new Date()
   }, 1000)
   startAutoplay()
   window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('scroll', onGridScroll, { passive: true })
+  window.addEventListener('resize', onGridScroll)
+  setTimeout(updateGridParallax, 60)
 })
 
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
   stopAutoplay()
   window.removeEventListener('scroll', onScroll)
+  window.removeEventListener('scroll', onGridScroll)
+  window.removeEventListener('resize', onGridScroll)
+  if (gridRaf) cancelAnimationFrame(gridRaf)
   if (typeof document !== 'undefined') document.body.style.overflow = ''
 })
+
+// Al cerrar la portada cambia el layout: recalcular posiciones.
+watch(entered, () => setTimeout(updateGridParallax, 60))
 
 // Cuenta regresiva hasta la fecha/hora del evento.
 const countdown = computed(() => {
@@ -433,27 +551,79 @@ function enviarRespuestasNominales() {
     </header>
 
     <!-- ============ SALUDO ============ -->
-    <section v-reveal data-anchor="saludo" class="mx-auto max-w-xl px-6 py-20 text-center">
-      <div class="divider">✦</div>
-      <p v-if="invite.family_name" class="text-xs uppercase tracking-[0.3em] text-amber-700">
-        Familia {{ invite.family_name }}
-      </p>
-      <p
-        class="mt-6 text-lg leading-relaxed whitespace-pre-line text-stone-600"
-        style="font-family: 'Playfair Display', serif"
-      >
-        {{ invite.intro_text || defaultIntro }}
-      </p>
+    <section v-reveal data-anchor="saludo" class="py-20 text-center">
+      <div class="mx-auto max-w-xl px-6">
+        <div class="divider">✦</div>
+        <p v-if="invite.family_name" class="text-xs uppercase tracking-[0.3em] text-amber-700">
+          Familia {{ invite.family_name }}
+        </p>
+        <p
+          class="mt-6 text-lg leading-relaxed whitespace-pre-line text-stone-600"
+          style="font-family: 'Playfair Display', serif"
+        >
+          {{ invite.intro_text || defaultIntro }}
+        </p>
+      </div>
+
+      <!-- Carrusel centrado infinito: la foto del medio se ve más grande -->
       <div
-        class="mx-auto mt-10 max-w-[16rem] overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-amber-200"
+        class="relative mt-10 overflow-hidden"
+        @touchstart.passive="onSaludoTouchStart"
+        @touchend.passive="onSaludoTouchEnd"
       >
-        <img
-          :src="retratoFoto"
-          alt=""
-          loading="lazy"
-          decoding="async"
-          class="block aspect-3/4 w-full object-cover"
-        />
+        <div
+          class="flex ease-out"
+          :class="saludoNoTransition ? '' : 'transition-transform duration-500'"
+          :style="{ transform: `translateX(calc(14% - ${saludoSlide * 72}%))` }"
+          @transitionend="onSaludoTransitionEnd"
+        >
+          <div
+            v-for="(src, i) in saludoLoop"
+            :key="i"
+            class="w-[72%] shrink-0 px-2 ease-out"
+            :class="[
+              saludoNoTransition ? '' : 'transition-all duration-500',
+              i === saludoSlide ? 'scale-100 opacity-100' : 'scale-[0.84] opacity-40',
+            ]"
+          >
+            <img
+              :src="src"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              class="block aspect-3/4 w-full rounded-[2rem] object-cover shadow-xl ring-1 ring-amber-200"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Foto anterior"
+          @click="saludoStep(-1)"
+          class="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-lg text-stone-700 shadow backdrop-blur-sm transition hover:bg-white"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          aria-label="Foto siguiente"
+          @click="saludoStep(1)"
+          class="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-lg text-stone-700 shadow backdrop-blur-sm transition hover:bg-white"
+        >
+          ›
+        </button>
+      </div>
+
+      <div class="mt-5 flex justify-center gap-2">
+        <button
+          v-for="(s, i) in saludoFotos"
+          :key="i"
+          type="button"
+          :aria-label="`Ir a la foto ${i + 1}`"
+          @click="saludoSet(i)"
+          class="h-1.5 rounded-full bg-rose-800 transition-all"
+          :class="i === saludoActive ? 'w-5 opacity-100' : 'w-1.5 opacity-30'"
+        ></button>
       </div>
     </section>
 
@@ -558,37 +728,20 @@ function enviarRespuestasNominales() {
               </div>
             </div>
 
-            <!-- Vestimenta -->
+            <!-- Dress code -->
             <div v-if="invite.dress_code" class="flex items-center gap-4 py-5">
               <span
                 class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
               >
-                <Shirt :size="18" :stroke-width="1.5" />
+                <Gem :size="18" :stroke-width="1.5" />
               </span>
               <div class="min-w-0">
-                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Vestimenta</p>
+                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Dress code</p>
                 <p
                   class="mt-1 text-[17px] leading-tight text-stone-700"
                   style="font-family: 'Playfair Display', serif"
                 >
                   {{ invite.dress_code }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Regalos -->
-            <div v-if="invite.gift_alias" class="flex items-center gap-4 py-5">
-              <span
-                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
-              >
-                <Gift :size="18" :stroke-width="1.5" />
-              </span>
-              <div class="min-w-0">
-                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">
-                  Mesa de regalos
-                </p>
-                <p class="mt-1 font-mono text-[15px] tracking-wide text-stone-700">
-                  {{ invite.gift_alias }}
                 </p>
               </div>
             </div>
@@ -613,6 +766,38 @@ function enviarRespuestasNominales() {
           class="block aspect-4/3 w-full object-cover"
         />
       </div>
+    </section>
+
+    <!-- ============ REGALOS ============ -->
+    <section
+      v-if="invite.gift_alias"
+      v-reveal
+      data-anchor="regalos"
+      class="mx-auto max-w-md px-6 pb-8 text-center"
+    >
+      <span
+        class="mx-auto grid h-12 w-12 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+      >
+        <Gift :size="20" :stroke-width="1.5" />
+      </span>
+      <p
+        class="mt-4 text-lg italic leading-relaxed text-stone-600"
+        style="font-family: 'Playfair Display', serif"
+      >
+        El mejor regalo que podés hacerme es tu presencia.
+      </p>
+      <p class="mt-3 text-sm text-stone-400">
+        Pero si querés acercarme un presente, te dejo mi alias:
+      </p>
+      <button
+        type="button"
+        @click="copyAlias"
+        class="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-mono text-sm text-stone-700 shadow ring-1 ring-amber-200 transition hover:bg-amber-50"
+      >
+        {{ aliasCopied ? '¡Copiado!' : invite.gift_alias }}
+        <Check v-if="aliasCopied" :size="14" />
+        <Copy v-else :size="14" />
+      </button>
     </section>
 
     <!-- ============ CARRUSEL ============ -->
@@ -671,6 +856,35 @@ function enviarRespuestasNominales() {
             class="h-2 rounded-full bg-white transition-all"
             :class="i === slide ? 'w-6 opacity-100' : 'w-2 opacity-50'"
           ></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GALERÍA (grid) ============ -->
+    <section v-reveal data-anchor="galeria" class="py-20">
+      <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">Recuerdos</p>
+      <h2
+        class="mt-2 text-center text-4xl text-rose-800"
+        style="font-family: 'Dancing Script', cursive"
+      >
+        Galería
+      </h2>
+      <div class="divider">✦</div>
+
+      <div class="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-3 px-4 sm:grid-cols-4 sm:gap-4">
+        <div
+          v-for="(src, i) in galeriaGrid"
+          :key="i"
+          ref="gridItems"
+          class="overflow-hidden rounded-2xl shadow-lg ring-1 ring-amber-200/60 will-change-transform"
+        >
+          <img
+            :src="src"
+            :alt="`Recuerdo ${i + 1}`"
+            loading="lazy"
+            decoding="async"
+            class="block aspect-square w-full object-cover"
+          />
         </div>
       </div>
     </section>
