@@ -284,11 +284,6 @@ const vReveal = {
   },
 }
 
-// --- Botón flotante "Confirmar" -----------------------------------------
-const showFab = ref(false)
-function onScroll() {
-  showFab.value = window.scrollY > 520
-}
 function scrollToRsvp() {
   document
     .getElementById('rsvp')
@@ -329,7 +324,6 @@ onMounted(() => {
     now.value = new Date()
   }, 1000)
   startAutoplay()
-  window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('scroll', onGridScroll, { passive: true })
   window.addEventListener('resize', onGridScroll)
   setTimeout(updateGridParallax, 60)
@@ -338,7 +332,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
   stopAutoplay()
-  window.removeEventListener('scroll', onScroll)
   window.removeEventListener('scroll', onGridScroll)
   window.removeEventListener('resize', onGridScroll)
   if (gridRaf) cancelAnimationFrame(gridRaf)
@@ -439,7 +432,10 @@ function enviarRespuestasNominales() {
 </script>
 
 <template>
-  <div class="min-h-screen text-stone-700" :style="{ backgroundColor: bgColor }">
+  <div
+    class="min-h-screen overflow-x-clip text-stone-700"
+    :style="{ backgroundColor: bgColor }"
+  >
     <!-- iframe de YouTube oculto: se carga desde el inicio para poder controlarlo -->
     <iframe
       v-if="ytSrc && !preview"
@@ -861,7 +857,7 @@ function enviarRespuestasNominales() {
     </section>
 
     <!-- ============ GALERÍA (grid) ============ -->
-    <section v-reveal data-anchor="galeria" class="py-20">
+    <section v-reveal data-anchor="galeria" class="overflow-hidden py-20">
       <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">Recuerdos</p>
       <h2
         class="mt-2 text-center text-4xl text-rose-800"
@@ -1029,18 +1025,6 @@ function enviarRespuestasNominales() {
       </p>
     </footer>
 
-    <!-- Botón flotante: confirmar -->
-    <transition name="fab">
-      <button
-        v-if="showFab && !submitted && !preview"
-        type="button"
-        @click="scrollToRsvp"
-        class="fixed bottom-5 right-5 z-30 rounded-full bg-rose-800 px-5 py-3 text-sm font-medium text-white shadow-lg ring-1 ring-white/20 transition hover:brightness-110"
-      >
-        Confirmar
-      </button>
-    </transition>
-
     <!-- Botón flotante: música -->
     <button
       v-if="entered && musicId && !preview"
@@ -1124,18 +1108,6 @@ function enviarRespuestasNominales() {
     opacity: 1;
     transform: none;
   }
-}
-
-.fab-enter-active,
-.fab-leave-active {
-  transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
-}
-.fab-enter-from,
-.fab-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
 }
 
 @media (prefers-reduced-motion: reduce) {
