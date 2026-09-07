@@ -271,7 +271,7 @@ const showMobilePreview = ref(false)
 const previewInvite = computed(() => ({
   ...form.value,
   event_name: form.value.hero_title,
-  family_name: 'García',
+  family_name: 'Familia García',
   named_by_host: false,
   allowed_guests: 2,
   status: 'pending',

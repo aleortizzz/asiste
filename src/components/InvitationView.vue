@@ -586,7 +586,7 @@ function enviarRespuestasNominales() {
       <div class="mx-auto max-w-xl px-6">
         <div class="divider">✦</div>
         <p v-if="invite.family_name" class="text-xs uppercase tracking-[0.3em] text-amber-700">
-          Familia {{ invite.family_name }}
+          {{ invite.family_name }}
         </p>
         <p
           class="mt-6 text-lg leading-relaxed whitespace-pre-line text-stone-600"

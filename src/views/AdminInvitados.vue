@@ -175,7 +175,7 @@ async function copyLink(group) {
         <form @submit.prevent="addGroup" class="mt-6 space-y-3 rounded border border-gray-200 p-4">
           <input
             v-model="newGroup.family_name"
-            placeholder="Familia (ej. Familia Pérez)"
+            placeholder="Nombre del invitado — ej. Familia Pérez, Juan y Ana, o un solo nombre"
             class="w-full rounded border border-gray-300 px-3 py-2"
           />
 
