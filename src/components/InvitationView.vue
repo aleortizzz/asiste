@@ -123,6 +123,12 @@ const heroTitle = computed(
 )
 const bgColor = computed(() => props.invite?.bg_color || '#fdf7f1')
 
+// Secciones de fotos que el cliente ocultó desde el editor.
+const hiddenSections = computed(() =>
+  Array.isArray(props.invite?.hidden_sections) ? props.invite.hidden_sections : [],
+)
+const shows = (slot) => !hiddenSections.value.includes(slot)
+
 // --- Portada + música ----------------------------------------------------
 // `entered` = ya se tocó "Abrir invitación". En preview arranca abierto para
 // no tapar la edición.
@@ -592,6 +598,7 @@ function enviarRespuestasNominales() {
 
       <!-- Carrusel centrado infinito: la foto del medio se ve más grande -->
       <div
+        v-if="shows('retrato')"
         class="relative mt-10 overflow-hidden"
         @touchstart.passive="onSaludoTouchStart"
         @touchend.passive="onSaludoTouchEnd"
@@ -639,7 +646,7 @@ function enviarRespuestasNominales() {
         </button>
       </div>
 
-      <div class="mt-5 flex justify-center gap-2">
+      <div v-if="shows('retrato')" class="mt-5 flex justify-center gap-2">
         <button
           v-for="(s, i) in saludoFotos"
           :key="i"
@@ -655,7 +662,7 @@ function enviarRespuestasNominales() {
     <!-- ============ COUNTDOWN ============ -->
     <section v-if="countdown" v-reveal class="relative overflow-hidden py-20">
       <img
-        :src="momentosFotos[0]"
+        :src="bannerFoto"
         alt=""
         loading="lazy"
         class="absolute inset-0 h-full w-full object-cover opacity-25"
@@ -782,7 +789,10 @@ function enviarRespuestasNominales() {
         {{ invite.notes }}
       </p>
 
-      <div class="mt-12 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-amber-200">
+      <div
+        v-if="shows('detalle')"
+        class="mt-12 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-amber-200"
+      >
         <img
           :src="detalleFoto"
           alt=""
@@ -826,7 +836,7 @@ function enviarRespuestasNominales() {
     </section>
 
     <!-- ============ CARRUSEL ============ -->
-    <section v-reveal data-anchor="momentos" class="py-20">
+    <section v-if="shows('momentos')" v-reveal data-anchor="momentos" class="py-20">
       <h2 class="text-center text-3xl text-rose-800" style="font-family: 'Dancing Script', cursive">
         Momentos
       </h2>
@@ -886,7 +896,7 @@ function enviarRespuestasNominales() {
     </section>
 
     <!-- ============ GALERÍA (grid) ============ -->
-    <section v-reveal data-anchor="galeria" class="overflow-hidden py-20">
+    <section v-if="shows('galeria')" v-reveal data-anchor="galeria" class="overflow-hidden py-20">
       <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">Recuerdos</p>
       <h2
         class="mt-2 text-center text-4xl text-rose-800"

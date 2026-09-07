@@ -9,13 +9,23 @@ const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
 
 // Panel de la izquierda: datos del evento o gestión de fotos.
 const panel = ref('info')
+// `optional`: se puede ocultar toda la sección en la invitación (la portada no).
 const photoSections = [
-  { slot: 'banner', label: 'Portada', help: 'Foto de fondo de la portada y el hero.', single: true },
-  { slot: 'retrato', label: 'Saludo', help: 'Carrusel de fotos del saludo.', single: false },
-  { slot: 'detalle', label: 'La celebración', help: 'Foto de la sección de detalles.', single: true },
-  { slot: 'momentos', label: 'Momentos', help: 'Carrusel principal de fotos.', single: false },
-  { slot: 'galeria', label: 'Galería', help: `Grid de hasta ${MAX_GALERIA} fotos.`, single: false },
+  { slot: 'banner', label: 'Portada', help: 'Foto de fondo de la portada y el hero.', single: true, optional: false },
+  { slot: 'retrato', label: 'Saludo', help: 'Carrusel de fotos del saludo.', single: false, optional: true },
+  { slot: 'detalle', label: 'La celebración', help: 'Foto de la sección de detalles.', single: true, optional: true },
+  { slot: 'momentos', label: 'Momentos', help: 'Carrusel principal de fotos.', single: false, optional: true },
+  { slot: 'galeria', label: 'Galería', help: `Grid de hasta ${MAX_GALERIA} fotos.`, single: false, optional: true },
 ]
+
+function isHidden(slot) {
+  return form.value.hidden_sections.includes(slot)
+}
+async function toggleSection(slot) {
+  const h = form.value.hidden_sections
+  form.value.hidden_sections = h.includes(slot) ? h.filter((s) => s !== slot) : [...h, slot]
+  await persistPhotos()
+}
 
 const uploading = ref(false)
 const photoError = ref('')
@@ -77,6 +87,7 @@ async function persistPhotos() {
     detalle: form.value.detalle,
     momentos: form.value.momentos,
     galeria: form.value.galeria,
+    hidden_sections: form.value.hidden_sections,
   })
 }
 
@@ -110,6 +121,7 @@ const EMPTY = {
   detalle: [],
   momentos: [],
   galeria: [],
+  hidden_sections: [],
   event_date: '',
   reception_time: '',
   end_time: '',
@@ -194,6 +206,7 @@ onMounted(async () => {
       detalle: event.value.detalle ?? [],
       momentos: event.value.momentos ?? [],
       galeria: event.value.galeria ?? [],
+      hidden_sections: event.value.hidden_sections ?? [],
       event_date: event.value.event_date ?? '',
       reception_time: event.value.reception_time ?? '',
       end_time: event.value.end_time ?? '',
@@ -387,9 +400,33 @@ onUnmounted(() => {
             :key="s.slot"
             class="space-y-2 border-t border-gray-200 pt-4"
           >
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">{{ s.label }}</h2>
-            <p class="text-xs text-gray-500">{{ s.help }}</p>
-            <div class="grid grid-cols-4 gap-2">
+            <div class="flex items-center justify-between gap-3">
+              <h2 class="text-sm font-semibold text-gray-500 uppercase">{{ s.label }}</h2>
+              <button
+                v-if="s.optional"
+                type="button"
+                role="switch"
+                :aria-checked="!isHidden(s.slot)"
+                @click="toggleSection(s.slot)"
+                :class="isHidden(s.slot) ? 'bg-gray-300' : 'bg-gray-900'"
+                class="relative h-5 w-9 shrink-0 rounded-full transition-colors"
+              >
+                <span
+                  class="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all"
+                  :class="isHidden(s.slot) ? 'left-0.5' : 'left-4'"
+                ></span>
+              </button>
+            </div>
+            <p class="text-xs text-gray-500">
+              <template v-if="s.optional && isHidden(s.slot)">
+                Esta sección no se muestra en la invitación.
+              </template>
+              <template v-else>{{ s.help }}</template>
+            </p>
+            <div
+              class="grid grid-cols-4 gap-2 transition-opacity"
+              :class="{ 'pointer-events-none opacity-40': s.optional && isHidden(s.slot) }"
+            >
               <div
                 v-for="(ph, i) in form[s.slot]"
                 :key="ph.path"

@@ -31,6 +31,8 @@ create table events (
   detalle jsonb not null default '[]'::jsonb,
   momentos jsonb not null default '[]'::jsonb,
   galeria jsonb not null default '[]'::jsonb,
+  -- slots de fotos que NO se muestran en la invitación (la portada nunca).
+  hidden_sections jsonb not null default '[]'::jsonb,
   event_date date,
   reception_time time,
   end_time time,
@@ -202,6 +204,7 @@ begin
     'detalle', e.detalle,
     'momentos', e.momentos,
     'galeria', e.galeria,
+    'hidden_sections', e.hidden_sections,
     'event_date', e.event_date,
     'reception_time', e.reception_time,
     'end_time', e.end_time,
