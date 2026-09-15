@@ -26,13 +26,30 @@ async function fetchGroups() {
   if (!event.value) return
   // Traemos los guests completos (no solo el count) para poder mostrar
   // los nombres, tanto si los cargó el anfitrión como si los tipeó el
-  // invitado al confirmar.
+  // invitado al confirmar. invitation_views: para saber cuándo entró cada
+  // uno al link por última vez (se registra solo, desde obtener_invitacion).
   const { data, error: err } = await supabase
     .from('invitation_groups')
-    .select('*, guests(id, full_name, rsvp_status)')
+    .select('*, guests(id, full_name, rsvp_status), invitation_views(viewed_at)')
     .eq('event_id', event.value.id)
     .order('created_at')
   if (!err) groups.value = data
+}
+
+// Última vez que alguien abrió el link de este grupo, o null si nunca.
+function lastOpened(group) {
+  const views = group.invitation_views ?? []
+  if (!views.length) return null
+  return views.reduce((max, v) => (v.viewed_at > max ? v.viewed_at : max), views[0].viewed_at)
+}
+
+function formatOpenedAt(iso) {
+  const d = new Date(iso)
+  const time = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  const sameDay = d.toDateString() === new Date().toDateString()
+  if (sameDay) return `hoy a las ${time}`
+  const day = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+  return `el ${day} a las ${time}`
 }
 
 function confirmedCount(group) {
@@ -228,6 +245,12 @@ async function copyLink(group) {
                   >
                     {{ expandedId === group.id ? 'ocultar' : 'ver nombres' }}
                   </button>
+                </p>
+                <p v-if="group.status === 'pending'" class="text-xs text-gray-400">
+                  <template v-if="lastOpened(group)">
+                    Entró por última vez {{ formatOpenedAt(lastOpened(group)) }}, pero no respondió.
+                  </template>
+                  <template v-else> Todavía no abrió el link. </template>
                 </p>
               </div>
               <div class="flex items-center gap-3">

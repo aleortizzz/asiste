@@ -54,7 +54,7 @@ async function onFilePicked(e) {
   photoError.value = ''
   try {
     if (single && form.value[slot][0]) await removeFile(form.value[slot][0].path)
-    const item = await uploadFile(slot, file)
+    const item = await uploadFile(slot, file, event.value.owner_user_id)
     if (single) form.value[slot] = [item]
     else form.value[slot] = [...form.value[slot], item]
     await persistPhotos()

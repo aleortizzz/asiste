@@ -481,58 +481,11 @@ function enviarRespuestasNominales() {
       class="pointer-events-none fixed bottom-0 left-0 -z-10 h-px w-px opacity-[0.01]"
     ></iframe>
 
-    <!-- ============ PORTADA / BIENVENIDA ============ -->
-    <transition
-      enter-active-class="transition-opacity duration-700"
-      leave-active-class="transition-opacity duration-700"
-      enter-from-class="opacity-0"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="!entered"
-        class="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden px-6 text-center text-white"
-      >
-        <img :src="bannerFoto" alt="" class="absolute inset-0 h-full w-full object-cover" />
-        <div class="absolute inset-0 bg-linear-to-b from-black/55 via-black/40 to-black/75"></div>
-
-        <div class="relative z-10 flex flex-col items-center">
-          <p
-            v-if="invite.hero_kicker"
-            class="text-[0.7rem] uppercase tracking-[0.4em] text-white/80"
-          >
-            {{ invite.hero_kicker }}
-          </p>
-          <p
-            class="mt-2 leading-[1.05] break-words drop-shadow-lg"
-            style="font-family: 'Dancing Script', cursive; font-size: clamp(3.5rem, 17vw, 6.5rem)"
-          >
-            {{ heroTitle }}
-          </p>
-          <p
-            v-if="invite.hero_subtitle"
-            class="mt-2 text-[0.7rem] uppercase tracking-[0.4em] text-white/80"
-          >
-            {{ invite.hero_subtitle }}
-          </p>
-
-          <button
-            type="button"
-            @click="enter"
-            class="mt-10 rounded-full border border-white/70 px-8 py-3 text-xs font-medium uppercase tracking-[0.3em] text-white backdrop-blur-sm transition hover:bg-white hover:text-stone-800"
-          >
-            Abrir invitación
-          </button>
-          <p
-            v-if="musicId"
-            class="mt-4 flex items-center gap-1.5 text-[0.65rem] uppercase tracking-widest text-white/60"
-          >
-            <Music :size="12" /> con música
-          </p>
-        </div>
-      </div>
-    </transition>
-
-    <!-- ============ HERO / BANNER ============ -->
+    <!-- ============ HERO / PORTADA ============ -->
+    <!-- Una sola pantalla: antes de "entrar" muestra el botón de abrir (y
+         bloquea el scroll); una vez abierta, el mismo header se queda de
+         hero normal con el link para saltar al RSVP. Antes eran 2 pantallas
+         casi idénticas (portada + hero) que se veían "duplicadas". -->
     <header
       data-anchor="hero"
       class="relative flex h-svh min-h-[560px] items-center justify-center overflow-hidden"
@@ -568,10 +521,26 @@ function enviarRespuestasNominales() {
         >
           {{ formatDateLong(invite.event_date) }}
         </p>
+
+        <template v-if="!entered">
+          <button
+            type="button"
+            @click="enter"
+            class="mt-8 rounded-full border border-white/70 px-8 py-3 text-xs font-medium uppercase tracking-[0.3em] text-white backdrop-blur-sm transition hover:bg-white hover:text-stone-800"
+          >
+            Abrir invitación
+          </button>
+          <p
+            v-if="musicId"
+            class="mt-4 flex items-center justify-center gap-1.5 text-[0.65rem] uppercase tracking-widest text-white/60"
+          >
+            <Music :size="12" /> con música
+          </p>
+        </template>
       </div>
 
       <button
-        v-if="!submitted"
+        v-if="entered && !submitted"
         type="button"
         @click="scrollToRsvp"
         class="absolute bottom-7 z-10 flex flex-col items-center gap-1 text-[0.65rem] uppercase tracking-[0.3em] text-white/80 transition hover:text-white"

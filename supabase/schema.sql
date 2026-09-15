@@ -86,6 +86,16 @@ create table guests (
   created_at timestamptz not null default now()
 );
 
+-- 5) Log de aperturas de la invitación pública: cada fila es una vez que
+-- alguien abrió /i/:slug. Lo escribe obtener_invitacion() (ver más abajo).
+create table invitation_views (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid references invitation_groups(id) on delete cascade not null,
+  viewed_at timestamptz not null default now()
+);
+
+create index invitation_views_group_id_idx on invitation_views (group_id);
+
 -- ============================================================
 -- GRANTS — sin esto, "authenticated" no puede tocar la tabla en
 -- absoluto, sin importar lo que digan las policies de RLS. RLS
@@ -99,6 +109,7 @@ grant select, insert, update, delete on public.events to authenticated;
 grant select, insert, update, delete on public.tables to authenticated;
 grant select, insert, update, delete on public.invitation_groups to authenticated;
 grant select, insert, update, delete on public.guests to authenticated;
+grant select on public.invitation_views to authenticated;
 
 -- ============================================================
 -- RLS — solo reglas del admin autenticado por ahora.
@@ -109,6 +120,7 @@ alter table events enable row level security;
 alter table tables enable row level security;
 alter table invitation_groups enable row level security;
 alter table guests enable row level security;
+alter table invitation_views enable row level security;
 
 -- events: el admin solo ve/edita sus propios eventos.
 create policy "admin gestiona sus eventos"
@@ -160,6 +172,17 @@ create policy "admin gestiona invitados de sus eventos"
     and events.owner_user_id = auth.uid()
   ));
 
+-- invitation_views: mismo patrón vía group_id -> event_id. Solo SELECT — se
+-- escribe únicamente desde obtener_invitacion() (security definer).
+create policy "admin ve las vistas de sus invitados"
+  on invitation_views for select
+  using (exists (
+    select 1 from invitation_groups
+    join events on events.id = invitation_groups.event_id
+    where invitation_groups.id = invitation_views.group_id
+    and events.owner_user_id = auth.uid()
+  ));
+
 -- ============================================================
 -- HITO 5 — acceso público (RSVP) vía funciones RPC.
 -- Nada de esto se expone como policy directa sobre las tablas:
@@ -185,8 +208,9 @@ set search_path = public
 as $$
 declare
   result json;
+  v_group_id uuid;
 begin
-  select json_build_object(
+  select ig.id, json_build_object(
     'family_name', ig.family_name,
     'allowed_guests', ig.allowed_guests,
     'status', ig.status,
@@ -225,7 +249,7 @@ begin
       where g.group_id = ig.id
     ), '[]'::json)
   )
-  into result
+  into v_group_id, result
   from invitation_groups ig
   join events e on e.id = ig.event_id
   where ig.slug = p_slug;
@@ -233,6 +257,8 @@ begin
   if result is null then
     raise exception 'Invitación no encontrada';
   end if;
+
+  insert into invitation_views (group_id) values (v_group_id);
 
   return result;
 end;
@@ -331,3 +357,200 @@ end;
 $$;
 
 grant execute on function public.responder_invitados(text, jsonb) to anon, authenticated;
+
+-- ============================================================
+-- SUPERADMIN — panel de soporte para ver/gestionar el evento de
+-- cualquier cliente. Ver supabase/migrations/20260915_superadmin.sql
+-- para el detalle y el comentario de por qué vive en RLS.
+-- ============================================================
+
+create table superadmins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+-- El GRANT hace falta (security definer acá no alcanza a saltearlo solo).
+-- Lo que hay que evitar es una policy que se consulte A SÍ MISMA — eso es
+-- recursión infinita (error 42P17). Esta compara auth.uid() contra la
+-- columna directo, sin subconsulta a la tabla: cada cuenta ve su propia
+-- fila, que es lo único que necesitan soy_superadmin()/listar_eventos_superadmin().
+grant select on public.superadmins to authenticated;
+alter table superadmins enable row level security;
+
+create policy "cada uno ve su propia fila de superadmins"
+  on superadmins for select
+  using (auth.uid() = user_id);
+
+create policy "superadmin gestiona eventos"
+  on events for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+create policy "superadmin gestiona mesas"
+  on tables for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+create policy "superadmin gestiona grupos"
+  on invitation_groups for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+create policy "superadmin gestiona invitados"
+  on guests for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+create policy "superadmin gestiona vistas"
+  on invitation_views for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+create or replace function public.soy_superadmin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from superadmins where user_id = auth.uid());
+$$;
+
+grant execute on function public.soy_superadmin() to authenticated;
+
+create or replace function public.listar_eventos_superadmin()
+returns table (
+  event_id uuid,
+  event_name text,
+  owner_email text,
+  event_date date,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (select 1 from superadmins where user_id = auth.uid()) then
+    raise exception 'No autorizado';
+  end if;
+
+  return query
+    select e.id, e.name, u.email::text, e.event_date, e.created_at
+    from events e
+    join auth.users u on u.id = e.owner_user_id
+    order by e.created_at desc;
+end;
+$$;
+
+grant execute on function public.listar_eventos_superadmin() to authenticated;
+
+-- ============================================================
+-- FOTOS DE INVITADOS — subidas desde un QR en las mesas, sin login.
+-- Ver supabase/migrations/20260915_fotos_invitados.sql para el detalle.
+-- ============================================================
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'guest-uploads', 'guest-uploads', true, 8388608,
+  array['image/jpeg', 'image/png', 'image/webp']
+);
+
+create policy "guest-uploads anyone insert" on storage.objects
+  for insert to anon, authenticated
+  with check (bucket_id = 'guest-uploads');
+
+create policy "guest-uploads owner delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'guest-uploads'
+    and exists (
+      select 1 from events
+      where events.id::text = (storage.foldername(name))[1]
+      and events.owner_user_id = auth.uid()
+    )
+  );
+
+create policy "guest-uploads superadmin delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'guest-uploads'
+    and exists (select 1 from superadmins s where s.user_id = auth.uid())
+  );
+
+create table event_photos (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid references events(id) on delete cascade not null,
+  url text not null,
+  path text not null,
+  created_at timestamptz not null default now()
+);
+
+create index event_photos_event_id_idx on event_photos (event_id);
+
+grant select, delete on public.event_photos to authenticated;
+alter table event_photos enable row level security;
+
+-- Sin INSERT para authenticated/anon: las filas se crean solo vía
+-- agregar_foto_invitados() (security definer), donde vive el tope.
+create policy "admin ve y borra fotos de su evento"
+  on event_photos for all
+  using (exists (
+    select 1 from events
+    where events.id = event_photos.event_id
+    and events.owner_user_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from events
+    where events.id = event_photos.event_id
+    and events.owner_user_id = auth.uid()
+  ));
+
+create policy "superadmin gestiona fotos de invitados"
+  on event_photos for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+create or replace function public.agregar_foto_invitados(
+  p_event_id uuid,
+  p_url text,
+  p_path text
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+  v_limit int := 500; -- tope duro por evento, ajustable acá si hace falta.
+begin
+  if not exists (select 1 from events where id = p_event_id) then
+    raise exception 'Evento no encontrado';
+  end if;
+
+  select count(*) into v_count from event_photos where event_id = p_event_id;
+  if v_count >= v_limit then
+    raise exception 'Se llegó al máximo de % fotos para este evento.', v_limit;
+  end if;
+
+  insert into event_photos (event_id, url, path) values (p_event_id, p_url, p_path);
+
+  return json_build_object('ok', true, 'count', v_count + 1, 'limit', v_limit);
+end;
+$$;
+
+grant execute on function public.agregar_foto_invitados(uuid, text, text) to anon, authenticated;
+
+create or replace function public.listar_fotos_invitados(p_event_id uuid)
+returns table (id uuid, url text, created_at timestamptz)
+language sql
+security definer
+set search_path = public
+as $$
+  select id, url, created_at
+  from event_photos
+  where event_id = p_event_id
+  order by created_at desc;
+$$;
+
+grant execute on function public.listar_fotos_invitados(uuid) to anon, authenticated;

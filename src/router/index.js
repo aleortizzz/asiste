@@ -9,6 +9,9 @@ import AdminAsignarMesas from '../views/AdminAsignarMesas.vue'
 import AdminInvitados from '../views/AdminInvitados.vue'
 import AdminInvitadosDetalle from '../views/AdminInvitadosDetalle.vue'
 import PreviewInvite from '../views/PreviewInvite.vue'
+import AdminSuperadmin from '../views/AdminSuperadmin.vue'
+import AdminFotosEvento from '../views/AdminFotosEvento.vue'
+import GuestPhotos from '../views/GuestPhotos.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { supabase } from '../lib/supabase'
 
@@ -40,7 +43,20 @@ const router = createRouter({
       component: AdminInvitadosDetalle,
       meta: { requiresAuth: true },
     },
+    {
+      path: '/admin/superadmin',
+      name: 'admin-superadmin',
+      component: AdminSuperadmin,
+      meta: { requiresAuth: true, requiresSuperadmin: true },
+    },
+    {
+      path: '/admin/fotos-evento',
+      name: 'admin-fotos-evento',
+      component: AdminFotosEvento,
+      meta: { requiresAuth: true },
+    },
     { path: '/i/:slug', name: 'public-invite', component: PublicInvite },
+    { path: '/fotos/:eventId', name: 'guest-photos', component: GuestPhotos },
     { path: '/', redirect: '/admin/login' },
   ],
 })
@@ -64,6 +80,10 @@ router.beforeEach(async (to) => {
   }
   if ((to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
     return { name: 'admin-dashboard' }
+  }
+  if (to.meta.requiresSuperadmin) {
+    const { data: isSuper } = await supabase.rpc('soy_superadmin')
+    if (!isSuper) return { name: 'admin-dashboard' }
   }
 })
 

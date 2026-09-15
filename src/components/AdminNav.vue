@@ -1,11 +1,27 @@
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
-import { LayoutDashboard, PenSquare, Table2, Users, UserCircle, LogOut } from '@lucide/vue'
+import { useEvent } from '../composables/useEvent'
+import {
+  LayoutDashboard,
+  PenSquare,
+  Table2,
+  Users,
+  UserCircle,
+  LogOut,
+  ShieldCheck,
+  Camera,
+} from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user, logout, isSuperadmin } = useAuth()
+const { viewing, setViewingEvent } = useEvent()
+
+function salirDeVista() {
+  setViewingEvent(null)
+  router.push({ name: 'admin-superadmin' })
+}
 
 // `match` incluye las rutas "hijas" que tienen que resaltar el mismo item
 // (ej. asignar mesas cuelga de Mesas, el detalle de un grupo cuelga de Invitados).
@@ -29,6 +45,19 @@ const items = [
     to: { name: 'admin-invitados' },
     match: ['admin-invitados', 'admin-invitados-detalle'],
   },
+  {
+    label: 'Fotos del evento',
+    icon: Camera,
+    to: { name: 'admin-fotos-evento' },
+    match: ['admin-fotos-evento'],
+  },
+  {
+    label: 'Superadmin',
+    icon: ShieldCheck,
+    to: { name: 'admin-superadmin' },
+    match: ['admin-superadmin'],
+    superadminOnly: true,
+  },
 ]
 
 function isActive(item) {
@@ -42,7 +71,26 @@ async function onLogout() {
 </script>
 
 <template>
+  <!-- Aviso: el superadmin está viendo/editando el panel de otro cliente. -->
+  <div
+    v-if="viewing"
+    class="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-white"
+  >
+    <ShieldCheck :size="16" class="shrink-0" />
+    <span class="truncate">
+      Estás viendo el panel de <strong>{{ viewing.owner_email }}</strong> ({{ viewing.name }})
+    </span>
+    <button
+      type="button"
+      @click="salirDeVista"
+      class="shrink-0 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold hover:bg-white/30"
+    >
+      Salir
+    </button>
+  </div>
+
   <nav
+    :style="viewing ? { top: '2.25rem' } : {}"
     class="group fixed inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r border-gray-200 bg-white shadow-sm transition-[width] duration-200 ease-out hover:w-60"
   >
     <div class="flex h-14 shrink-0 items-center gap-3 px-4">
@@ -57,7 +105,7 @@ async function onLogout() {
     </div>
 
     <ul class="mt-2 flex-1 space-y-1 px-2">
-      <li v-for="item in items" :key="item.label">
+      <li v-for="item in items" v-show="!item.superadminOnly || isSuperadmin" :key="item.label">
         <router-link
           :to="item.to"
           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
@@ -92,4 +140,9 @@ async function onLogout() {
       </button>
     </div>
   </nav>
+
+  <!-- Ocupa espacio en el flujo normal (a diferencia del nav/banner, que son
+       fixed) para empujar hacia abajo el contenido de la página cuando el
+       banner está arriba — sin tener que tocar cada vista una por una. -->
+  <div v-if="viewing" class="h-9"></div>
 </template>

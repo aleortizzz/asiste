@@ -6,11 +6,13 @@ export const PHOTO_SLOTS = ['banner', 'retrato', 'detalle', 'momentos', 'galeria
 export const SINGLE_SLOTS = ['banner', 'detalle']
 export const MAX_GALERIA = 8
 
-// Sube un archivo al bucket y devuelve { url, path }.
-async function uploadFile(slot, file) {
+// Sube un archivo al bucket y devuelve { url, path }. `ownerId` es el dueño
+// del evento (no siempre quien está logueado: un superadmin ayudando a un
+// cliente sube a la carpeta DE ESE CLIENTE, no a la propia).
+async function uploadFile(slot, file, ownerId) {
   const { user } = useAuth()
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-  const path = `${user.value.id}/${slot}/${crypto.randomUUID()}.${ext}`
+  const path = `${ownerId || user.value.id}/${slot}/${crypto.randomUUID()}.${ext}`
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: '3600',
     upsert: false,

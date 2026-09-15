@@ -10,10 +10,23 @@ const loading = ref(true)
 // App.vue lo observa y lo manda a la pantalla de nueva contraseña, sin importar
 // a qué ruta lo haya redirigido Supabase.
 const recovering = ref(false)
+// Si la cuenta está en la tabla `superadmins`, puede entrar al panel de
+// soporte y ver/gestionar el evento de cualquier cliente.
+const isSuperadmin = ref(false)
+
+async function refreshSuperadmin() {
+  if (!user.value) {
+    isSuperadmin.value = false
+    return
+  }
+  const { data } = await supabase.rpc('soy_superadmin')
+  isSuperadmin.value = !!data
+}
 
 supabase.auth.getSession().then(({ data }) => {
   user.value = data.session?.user ?? null
   loading.value = false
+  refreshSuperadmin()
 })
 
 // El token de recuperación llega en el hash de la URL (#type=recovery&...).
@@ -26,6 +39,9 @@ supabase.auth.onAuthStateChange((event, session) => {
   user.value = session?.user ?? null
   if (event === 'PASSWORD_RECOVERY') {
     recovering.value = true
+  }
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+    refreshSuperadmin()
   }
 })
 
@@ -56,5 +72,14 @@ async function updatePassword(newPassword) {
 }
 
 export function useAuth() {
-  return { user, loading, recovering, login, logout, sendPasswordReset, updatePassword }
+  return {
+    user,
+    loading,
+    recovering,
+    isSuperadmin,
+    login,
+    logout,
+    sendPasswordReset,
+    updatePassword,
+  }
 }
