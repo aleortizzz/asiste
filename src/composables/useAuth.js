@@ -23,10 +23,21 @@ async function refreshSuperadmin() {
   isSuperadmin.value = !!data
 }
 
-supabase.auth.getSession().then(({ data }) => {
+// El router espera esto en vez de llamar a supabase.auth.getSession() por su
+// cuenta en cada navegación: dos llamadas casi simultáneas en una carga en
+// frío (entrar directo por URL) hacían que el cliente de Supabase se colgara
+// a veces, dejando la página en blanco. Con un solo chequeo inicial acá, el
+// router solo espera a que termine y lee el estado ya resuelto.
+let resolveReady
+const ready = new Promise((resolve) => {
+  resolveReady = resolve
+})
+
+supabase.auth.getSession().then(async ({ data }) => {
   user.value = data.session?.user ?? null
   loading.value = false
-  refreshSuperadmin()
+  await refreshSuperadmin()
+  resolveReady()
 })
 
 // El token de recuperación llega en el hash de la URL (#type=recovery&...).
@@ -77,6 +88,7 @@ export function useAuth() {
     loading,
     recovering,
     isSuperadmin,
+    ready,
     login,
     logout,
     sendPasswordReset,

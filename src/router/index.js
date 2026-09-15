@@ -13,7 +13,7 @@ import AdminSuperadmin from '../views/AdminSuperadmin.vue'
 import AdminFotosEvento from '../views/AdminFotosEvento.vue'
 import GuestPhotos from '../views/GuestPhotos.vue'
 import PublicInvite from '../views/PublicInvite.vue'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../composables/useAuth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -72,8 +72,12 @@ router.beforeEach(async (to) => {
     return { name: 'admin-nueva-contrasena' }
   }
 
-  const { data } = await supabase.auth.getSession()
-  const isLoggedIn = !!data.session
+  // Un solo chequeo de sesión para toda la app (ver el comentario en
+  // useAuth.js): el router espera a que termine y lee el estado ya resuelto,
+  // en vez de volver a pedirle la sesión a Supabase en cada navegación.
+  const { user, isSuperadmin, ready } = useAuth()
+  await ready
+  const isLoggedIn = !!user.value
 
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { name: 'admin-login' }
@@ -81,9 +85,8 @@ router.beforeEach(async (to) => {
   if ((to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
     return { name: 'admin-dashboard' }
   }
-  if (to.meta.requiresSuperadmin) {
-    const { data: isSuper } = await supabase.rpc('soy_superadmin')
-    if (!isSuper) return { name: 'admin-dashboard' }
+  if (to.meta.requiresSuperadmin && !isSuperadmin.value) {
+    return { name: 'admin-dashboard' }
   }
 })
 

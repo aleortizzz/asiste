@@ -29,7 +29,7 @@ const qrUrl = computed(() =>
 async function fetchPhotos() {
   const { data, error } = await supabase
     .from('event_photos')
-    .select('id, url, path, created_at')
+    .select('id, url, path, uploader_name, likes_count, created_at')
     .eq('event_id', event.value.id)
     .order('created_at', { ascending: false })
   if (!error) photos.value = data
@@ -103,6 +103,12 @@ async function removePhoto(photo) {
             >
               <Trash2 :size="14" />
             </button>
+            <div
+              class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-linear-to-t from-black/65 to-transparent px-1.5 py-1 text-[10px] text-white/90"
+            >
+              <span class="truncate">{{ photo.uploader_name || 'Anónimo' }}</span>
+              <span v-if="photo.likes_count" class="shrink-0">♥ {{ photo.likes_count }}</span>
+            </div>
           </div>
         </div>
       </template>

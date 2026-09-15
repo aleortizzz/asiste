@@ -482,6 +482,8 @@ create table event_photos (
   event_id uuid references events(id) on delete cascade not null,
   url text not null,
   path text not null,
+  uploader_name text,
+  likes_count int not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -513,7 +515,8 @@ create policy "superadmin gestiona fotos de invitados"
 create or replace function public.agregar_foto_invitados(
   p_event_id uuid,
   p_url text,
-  p_path text
+  p_path text,
+  p_uploader_name text default null
 )
 returns json
 language plpgsql
@@ -533,24 +536,56 @@ begin
     raise exception 'Se llegó al máximo de % fotos para este evento.', v_limit;
   end if;
 
-  insert into event_photos (event_id, url, path) values (p_event_id, p_url, p_path);
+  insert into event_photos (event_id, url, path, uploader_name)
+  values (p_event_id, p_url, p_path, nullif(trim(p_uploader_name), ''));
 
   return json_build_object('ok', true, 'count', v_count + 1, 'limit', v_limit);
 end;
 $$;
 
-grant execute on function public.agregar_foto_invitados(uuid, text, text) to anon, authenticated;
+grant execute on function public.agregar_foto_invitados(uuid, text, text, text) to anon, authenticated;
+
+-- Like público y anónimo: el límite de "uno por persona" lo hace el
+-- navegador (localStorage), no el servidor.
+create or replace function public.dar_like_foto(p_photo_id uuid)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+begin
+  update event_photos set likes_count = likes_count + 1
+  where id = p_photo_id
+  returning likes_count into v_count;
+
+  if v_count is null then
+    raise exception 'Foto no encontrada';
+  end if;
+
+  return v_count;
+end;
+$$;
+
+grant execute on function public.dar_like_foto(uuid) to anon, authenticated;
 
 create or replace function public.listar_fotos_invitados(p_event_id uuid)
-returns table (id uuid, url text, created_at timestamptz)
+returns table (
+  id uuid,
+  url text,
+  uploader_name text,
+  likes_count int,
+  created_at timestamptz
+)
 language sql
 security definer
 set search_path = public
 as $$
-  select id, url, created_at
+  select id, url, uploader_name, likes_count, created_at
   from event_photos
   where event_id = p_event_id
-  order by created_at desc;
+  order by likes_count desc, created_at desc;
 $$;
 
 grant execute on function public.listar_fotos_invitados(uuid) to anon, authenticated;
