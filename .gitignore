@@ -25,3 +25,4 @@ dist-ssr
 *.sw?
 run-sql.mjs
 query.mjs
+set-secret.mjs

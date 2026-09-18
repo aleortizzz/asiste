@@ -1,0 +1,42 @@
+name: Backup base de datos
+
+on:
+  schedule:
+    - cron: "30 5 * * *" # todos los dias, despues del keep-alive
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      PGSSLMODE: require
+    steps:
+      - name: Instalar cliente de Postgres
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      # Solo el schema "public" (nuestras tablas/funciones): ni auth (emails,
+      # hashes de contraseña) ni storage (metadata interna) — ni hace falta
+      # para restaurar, ni conviene tenerlo en un dump.
+      - name: Dump de la base
+        env:
+          SUPA_DB_URL: ${{ secrets.SUPA_DB_URL }}
+        run: pg_dump "$SUPA_DB_URL" --schema=public --no-owner --no-privileges | gzip > backup.sql.gz
+
+      - name: Clonar el repo privado de backups
+        run: git clone --depth 1 "https://x-access-token:${{ secrets.BACKUP_TOKEN }}@github.com/aleortizzz/asiste-backups.git" backups-repo
+
+      # Guarda el dump de hoy y se queda solo con los últimos 7 (borra el
+      # resto) para que la carpeta nunca crezca sin límite.
+      - name: Guardar y rotar
+        run: |
+          mkdir -p backups-repo/asiste/db
+          cp backup.sql.gz "backups-repo/asiste/db/$(date +%F).sql.gz"
+          cd backups-repo/asiste/db
+          ls -1t *.sql.gz | tail -n +8 | xargs -r rm --
+          cd ../../..
+          cd backups-repo
+          git config user.email "backup-bot@asiste.local"
+          git config user.name "Asiste Backup Bot"
+          git add -A
+          git diff --cached --quiet || git commit -m "Backup asiste $(date +%F)"
+          git push
