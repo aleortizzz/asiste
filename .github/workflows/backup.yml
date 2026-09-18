@@ -18,8 +18,15 @@ jobs:
       PGPASSWORD: ${{ secrets.SUPA_PASSWORD }}
       PGSSLMODE: require
     steps:
-      - name: Instalar cliente de Postgres
-        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      # El pg_dump que trae Ubuntu por defecto es de una version vieja de
+      # Postgres y se niega a dumpear un server mas nuevo (Supabase corre
+      # Postgres 17). Instalamos el cliente 17 desde el repo oficial de PGDG.
+      - name: Instalar cliente de Postgres 17
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-common
+          yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo apt-get install -y postgresql-client-17
 
       # set -o pipefail: si pg_dump falla, que falle el paso entero en vez de
       # quedar tapado por el "éxito" de gzip con un input vacío.
