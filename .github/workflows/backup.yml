@@ -41,7 +41,7 @@ jobs:
           ls -la backup.sql.gz
 
       - name: Clonar el repo privado de backups
-        run: git clone --depth 1 "https://x-access-token:${{ secrets.BACKUP_TOKEN }}@github.com/aleortizzz/asiste-backups.git" backups-repo
+        run: git clone --depth 1 "https://x-access-token:${{ secrets.BACKUP_TOKEN }}@github.com/aleortizzz/tizdigital-backups.git" backups-repo
 
       # Guarda el dump de hoy y se queda solo con los últimos 7 (borra el
       # resto) para que la carpeta nunca crezca sin límite.
