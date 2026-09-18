@@ -8,19 +8,30 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # Variables PG* estandar que pg_dump lee solo, sin parsear ninguna URL
+    # (evita líos con caracteres especiales en la contraseña, como "$").
     env:
+      PGHOST: ${{ secrets.SUPA_HOST }}
+      PGPORT: ${{ secrets.SUPA_PORT }}
+      PGDATABASE: postgres
+      PGUSER: ${{ secrets.SUPA_USER }}
+      PGPASSWORD: ${{ secrets.SUPA_PASSWORD }}
       PGSSLMODE: require
     steps:
       - name: Instalar cliente de Postgres
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
 
+      # set -o pipefail: si pg_dump falla, que falle el paso entero en vez de
+      # quedar tapado por el "éxito" de gzip con un input vacío.
       # Solo el schema "public" (nuestras tablas/funciones): ni auth (emails,
       # hashes de contraseña) ni storage (metadata interna) — ni hace falta
       # para restaurar, ni conviene tenerlo en un dump.
       - name: Dump de la base
-        env:
-          SUPA_DB_URL: ${{ secrets.SUPA_DB_URL }}
-        run: pg_dump "$SUPA_DB_URL" --schema=public --no-owner --no-privileges | gzip > backup.sql.gz
+        shell: bash
+        run: |
+          set -o pipefail
+          pg_dump --schema=public --no-owner --no-privileges | gzip > backup.sql.gz
+          ls -la backup.sql.gz
 
       - name: Clonar el repo privado de backups
         run: git clone --depth 1 "https://x-access-token:${{ secrets.BACKUP_TOKEN }}@github.com/aleortizzz/asiste-backups.git" backups-repo
