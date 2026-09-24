@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldCheck,
   Camera,
+  Music2,
 } from '@lucide/vue'
 
 const route = useRoute()
@@ -50,6 +51,12 @@ const items = [
     icon: Camera,
     to: { name: 'admin-fotos-evento' },
     match: ['admin-fotos-evento'],
+  },
+  {
+    label: 'Canciones',
+    icon: Music2,
+    to: { name: 'admin-canciones' },
+    match: ['admin-canciones'],
   },
   {
     label: 'Superadmin',

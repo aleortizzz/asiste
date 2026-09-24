@@ -11,6 +11,8 @@ const notFound = ref(false)
 const error = ref('')
 const submitting = ref(false)
 const submitted = ref(false)
+const songSubmitting = ref(false)
+const songError = ref('')
 
 onMounted(async () => {
   const { data, error: err } = await supabase.rpc('obtener_invitacion', { p_slug: route.params.slug })
@@ -45,6 +47,20 @@ async function enviarNominales(respuestas) {
   else submitted.value = true
   submitting.value = false
 }
+
+async function enviarCancion(payload) {
+  songSubmitting.value = true
+  songError.value = ''
+  const { error: err } = await supabase.rpc('agregar_cancion_solicitada', {
+    p_slug: route.params.slug,
+    p_song_title: payload.songTitle,
+    p_artist: payload.artist,
+    p_youtube_video_id: payload.youtubeVideoId,
+    p_requested_by: payload.requestedBy,
+  })
+  if (err) songError.value = err.message
+  songSubmitting.value = false
+}
 </script>
 
 <template>
@@ -68,7 +84,10 @@ async function enviarNominales(respuestas) {
     :submitting="submitting"
     :submitted="submitted"
     :error="error"
+    :song-submitting="songSubmitting"
+    :song-error="songError"
     @submit-generic="enviarGenerico"
     @submit-named="enviarNominales"
+    @submit-song="enviarCancion"
   />
 </template>

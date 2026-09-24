@@ -32,6 +32,14 @@ function entrar(row) {
   router.push({ name: 'admin-dashboard' })
 }
 
+// El plan lo activa TizDigital a mano acá (todavía no hay billing
+// automático) — el host no puede subirse de plan solo.
+async function cambiarPlan(row) {
+  const nuevoPlan = row.plan === 'plus' ? 'basico' : 'plus'
+  const { error: err } = await supabase.from('events').update({ plan: nuevoPlan }).eq('id', row.event_id)
+  if (!err) row.plan = nuevoPlan
+}
+
 const filtered = () =>
   rows.value.filter((r) => {
     const q = search.value.trim().toLowerCase()
@@ -78,13 +86,27 @@ const filtered = () =>
               Evento: {{ formatDate(row.event_date) }} · Creado: {{ formatDate(row.created_at?.slice(0, 10)) }}
             </p>
           </div>
-          <button
-            type="button"
-            @click="entrar(row)"
-            class="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:brightness-110"
-          >
-            Entrar
-          </button>
+          <div class="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              @click="cambiarPlan(row)"
+              :class="
+                row.plan === 'plus'
+                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              "
+              class="rounded-full px-3 py-2 text-xs font-medium"
+            >
+              {{ row.plan === 'plus' ? 'Plan Plus' : 'Plan Básico' }}
+            </button>
+            <button
+              type="button"
+              @click="entrar(row)"
+              class="rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:brightness-110"
+            >
+              Entrar
+            </button>
+          </div>
         </li>
       </ul>
     </div>

@@ -11,6 +11,7 @@ import AdminInvitadosDetalle from '../views/AdminInvitadosDetalle.vue'
 import PreviewInvite from '../views/PreviewInvite.vue'
 import AdminSuperadmin from '../views/AdminSuperadmin.vue'
 import AdminFotosEvento from '../views/AdminFotosEvento.vue'
+import AdminCanciones from '../views/AdminCanciones.vue'
 import GuestPhotos from '../views/GuestPhotos.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { useAuth } from '../composables/useAuth'
@@ -53,6 +54,12 @@ const router = createRouter({
       path: '/admin/fotos-evento',
       name: 'admin-fotos-evento',
       component: AdminFotosEvento,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/canciones',
+      name: 'admin-canciones',
+      component: AdminCanciones,
       meta: { requiresAuth: true },
     },
     { path: '/i/:slug', name: 'public-invite', component: PublicInvite },

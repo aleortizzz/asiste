@@ -276,6 +276,8 @@ const previewInvite = computed(() => ({
   allowed_guests: 2,
   status: 'pending',
   guests: [],
+  // Solo lectura: el plan lo activa TizDigital, no es un campo del form.
+  plan: event.value?.plan ?? 'basico',
 }))
 
 function pushPreview() {

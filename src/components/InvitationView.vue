@@ -10,7 +10,9 @@ import {
   Pause,
   Copy,
   Check,
+  Search,
 } from '@lucide/vue'
+import { searchYoutubeVideos } from '../lib/youtube'
 
 // Componente 100% presentacional de la invitación. No sabe de Supabase ni de
 // rutas: recibe `invite` como prop y emite eventos de RSVP hacia arriba.
@@ -24,9 +26,13 @@ const props = defineProps({
   submitting: { type: Boolean, default: false },
   submitted: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  // Pedido de canciones (plan "plus"): separado del RSVP porque acá se puede
+  // mandar más de uno, no es una respuesta única por familia.
+  songSubmitting: { type: Boolean, default: false },
+  songError: { type: String, default: '' },
 })
 
-const emit = defineEmits(['submit-generic', 'submit-named'])
+const emit = defineEmits(['submit-generic', 'submit-named', 'submit-song'])
 
 const now = ref(new Date())
 let clockTimer = null
@@ -208,6 +214,87 @@ async function copyAlias() {
     /* portapapeles bloqueado */
   }
 }
+
+// --- Pedido de canciones (plan "plus") -------------------------------------
+const songQuery = ref('')
+const songResults = ref([])
+const songSearching = ref(false)
+const songSearchError = ref('')
+const selectedSong = ref(null)
+const songRequesterName = ref('')
+const localSongError = ref('')
+const displaySongError = computed(() => localSongError.value || props.songError)
+// Se prende solo después de un envío exitoso (ver watch de songSubmitting
+// más abajo): a diferencia del RSVP, acá se puede mandar más de una canción,
+// así que no es un estado final sino un cartel temporal entre pedidos.
+const justAddedSong = ref(false)
+
+let songDebounce = null
+function onSongQueryInput() {
+  clearTimeout(songDebounce)
+  selectedSong.value = null
+  if (songQuery.value.trim().length < 3) {
+    songResults.value = []
+    songSearchError.value = ''
+    return
+  }
+  songDebounce = setTimeout(runSongSearch, 450)
+}
+
+async function runSongSearch() {
+  const q = songQuery.value.trim()
+  if (q.length < 3) return
+  songSearching.value = true
+  songSearchError.value = ''
+  try {
+    songResults.value = await searchYoutubeVideos(q)
+  } catch {
+    songSearchError.value = 'No pudimos buscar canciones ahora, probá de nuevo.'
+  } finally {
+    songSearching.value = false
+  }
+}
+
+function selectSong(result) {
+  selectedSong.value = result
+  songResults.value = []
+  songQuery.value = result.title
+}
+
+function clearSelectedSong() {
+  selectedSong.value = null
+  songQuery.value = ''
+}
+
+function submitSong() {
+  localSongError.value = ''
+  if (props.preview) return
+  if (!songRequesterName.value.trim()) {
+    localSongError.value = 'Nos falta tu nombre para saber quién la pidió.'
+    return
+  }
+  emit('submit-song', {
+    songTitle: selectedSong.value.title,
+    artist: selectedSong.value.channel,
+    youtubeVideoId: selectedSong.value.videoId,
+    requestedBy: songRequesterName.value.trim(),
+  })
+}
+
+// Al terminar un envío sin error, mostramos el cartelito de "gracias" y
+// dejamos listo el buscador para la próxima (mantenemos el nombre cargado,
+// es común que la misma persona pida varias canciones seguidas).
+watch(
+  () => props.songSubmitting,
+  (submitting, wasSubmitting) => {
+    if (wasSubmitting && !submitting && !props.songError) {
+      justAddedSong.value = true
+      songQuery.value = ''
+      songResults.value = []
+      selectedSong.value = null
+    }
+  },
+)
 
 // Tocar el sobre: arranca la música ya (gesto del usuario, para que el
 // autoplay no se bloquee) y encadena la animación de apertura antes de
@@ -860,6 +947,103 @@ function enviarRespuestasNominales() {
         <Check v-if="aliasCopied" :size="14" />
         <Copy v-else :size="14" />
       </button>
+    </section>
+
+    <!-- ============ CANCIONES (plan "plus") ============ -->
+    <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-xl px-6 py-20">
+      <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">
+        Ayudanos con el playlist
+      </p>
+      <h2 class="mt-2 text-center text-4xl text-rose-800" style="font-family: 'Dancing Script', cursive">
+        ¿Qué canción no puede faltar?
+      </h2>
+      <div class="divider">✦</div>
+
+      <div class="mt-8 rounded-[2rem] bg-white p-6 shadow-xl ring-1 ring-amber-100 sm:p-8">
+        <template v-if="justAddedSong">
+          <p class="py-2 text-center text-4xl">🎶</p>
+          <p class="text-center text-stone-600">¡Gracias! La sumamos a la lista.</p>
+          <button
+            type="button"
+            @click="justAddedSong = false"
+            class="mx-auto mt-4 block text-sm font-medium text-rose-700 underline decoration-rose-300"
+          >
+            Agregar otra
+          </button>
+        </template>
+
+        <template v-else>
+          <div class="relative">
+            <input
+              v-model="songQuery"
+              type="text"
+              placeholder="Buscá una canción o artista…"
+              class="w-full rounded-xl border border-amber-200 bg-black/5 px-3 py-2 pr-9 focus:border-rose-400 focus:outline-none"
+              @input="onSongQueryInput"
+            />
+            <Search
+              :size="16"
+              class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-400"
+            />
+          </div>
+
+          <p v-if="songSearching" class="mt-2 text-center text-xs text-stone-400">Buscando…</p>
+          <p v-else-if="songSearchError" class="mt-2 text-center text-xs text-red-500">
+            {{ songSearchError }}
+          </p>
+
+          <ul v-if="songResults.length && !selectedSong" class="mt-2 max-h-64 space-y-1 overflow-y-auto">
+            <li v-for="r in songResults" :key="r.videoId">
+              <button
+                type="button"
+                @click="selectSong(r)"
+                class="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-amber-50"
+              >
+                <img :src="r.thumbnail" alt="" class="h-10 w-10 shrink-0 rounded object-cover" />
+                <span class="min-w-0">
+                  <span class="block truncate text-sm text-stone-700">{{ r.title }}</span>
+                  <span class="block truncate text-xs text-stone-400">{{ r.channel }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+
+          <div
+            v-if="selectedSong"
+            class="mt-3 flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2 ring-1 ring-amber-200"
+          >
+            <img :src="selectedSong.thumbnail" alt="" class="h-10 w-10 shrink-0 rounded object-cover" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm text-stone-700">{{ selectedSong.title }}</span>
+              <span class="block truncate text-xs text-stone-400">{{ selectedSong.channel }}</span>
+            </span>
+            <button
+              type="button"
+              @click="clearSelectedSong"
+              aria-label="Quitar canción elegida"
+              class="shrink-0 px-1 text-rose-500"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form v-if="selectedSong" @submit.prevent="submitSong" class="mt-4 space-y-3">
+            <input
+              v-model="songRequesterName"
+              placeholder="Tu nombre o familia"
+              class="w-full rounded-xl border border-amber-200 bg-black/5 px-3 py-2 focus:border-rose-400 focus:outline-none"
+            />
+            <p v-if="displaySongError" class="text-sm text-red-600">{{ displaySongError }}</p>
+            <button
+              type="submit"
+              :disabled="songSubmitting"
+              class="w-full rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-4 py-3 font-medium text-white shadow-md transition hover:brightness-105 disabled:opacity-50"
+            >
+              {{ songSubmitting ? 'Agregando…' : 'Agregar canción' }}
+            </button>
+          </form>
+        </template>
+      </div>
     </section>
 
     <!-- ============ CARRUSEL ============ -->

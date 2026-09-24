@@ -44,7 +44,12 @@ create table events (
   notes text,
   gift_alias text,
   guest_limit int,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Gate de funciones pagas: 'basico' = solo invitación, 'plus' = suma
+  -- interacción (pedir canciones, etc). Lo setea TizDigital a mano según
+  -- lo que contrató el cliente — el host no se lo puede subir solo. Ver
+  -- supabase/migrations/20260924_canciones_plan.sql para el detalle.
+  plan text not null default 'basico' check (plan in ('basico', 'plus'))
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -216,6 +221,7 @@ begin
     'status', ig.status,
     'named_by_host', ig.named_by_host,
     'event_name', e.name,
+    'plan', e.plan,
     'hero_kicker', e.hero_kicker,
     'hero_title', e.hero_title,
     'hero_subtitle', e.hero_subtitle,
@@ -417,12 +423,15 @@ $$;
 
 grant execute on function public.soy_superadmin() to authenticated;
 
+drop function if exists public.listar_eventos_superadmin();
+
 create or replace function public.listar_eventos_superadmin()
 returns table (
   event_id uuid,
   event_name text,
   owner_email text,
   event_date date,
+  plan text,
   created_at timestamptz
 )
 language plpgsql
@@ -435,7 +444,7 @@ begin
   end if;
 
   return query
-    select e.id, e.name, u.email::text, e.event_date, e.created_at
+    select e.id, e.name, u.email::text, e.event_date, e.plan, e.created_at
     from events e
     join auth.users u on u.id = e.owner_user_id
     order by e.created_at desc;
@@ -589,3 +598,97 @@ as $$
 $$;
 
 grant execute on function public.listar_fotos_invitados(uuid) to anon, authenticated;
+
+-- ============================================================
+-- CANCIONES SOLICITADAS — feature de plan "plus". Ver
+-- supabase/migrations/20260924_canciones_plan.sql para el detalle.
+-- ============================================================
+
+create table song_requests (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid references events(id) on delete cascade not null,
+  song_title text not null,
+  artist text,
+  youtube_video_id text,
+  requested_by text not null,
+  created_at timestamptz not null default now()
+);
+
+create index song_requests_event_id_idx on song_requests (event_id);
+
+grant select, delete on public.song_requests to authenticated;
+alter table song_requests enable row level security;
+
+create policy "admin gestiona canciones de su evento"
+  on song_requests for all
+  using (exists (
+    select 1 from events
+    where events.id = song_requests.event_id
+    and events.owner_user_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from events
+    where events.id = song_requests.event_id
+    and events.owner_user_id = auth.uid()
+  ));
+
+create policy "superadmin gestiona canciones"
+  on song_requests for all
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()))
+  with check (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+-- Alta pública de un pedido de canción, vía slug (misma puerta angosta que
+-- confirmar_asistencia). Valida server-side que el evento tenga plan
+-- 'plus' — si el host bajó de plan después de mandar el link, esto lo
+-- corta acá aunque alguien deje la pestaña vieja abierta.
+create or replace function public.agregar_cancion_solicitada(
+  p_slug text,
+  p_song_title text,
+  p_artist text,
+  p_youtube_video_id text,
+  p_requested_by text
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_event_id uuid;
+  v_plan text;
+begin
+  select e.id, e.plan into v_event_id, v_plan
+  from invitation_groups ig
+  join events e on e.id = ig.event_id
+  where ig.slug = p_slug;
+
+  if v_event_id is null then
+    raise exception 'Invitación no encontrada';
+  end if;
+
+  if v_plan <> 'plus' then
+    raise exception 'Esta invitación no tiene habilitado el pedido de canciones';
+  end if;
+
+  if trim(coalesce(p_song_title, '')) = '' then
+    raise exception 'Falta el nombre de la canción';
+  end if;
+
+  if trim(coalesce(p_requested_by, '')) = '' then
+    raise exception 'Falta tu nombre';
+  end if;
+
+  insert into song_requests (event_id, song_title, artist, youtube_video_id, requested_by)
+  values (
+    v_event_id,
+    trim(p_song_title),
+    nullif(trim(coalesce(p_artist, '')), ''),
+    nullif(trim(coalesce(p_youtube_video_id, '')), ''),
+    trim(p_requested_by)
+  );
+
+  return json_build_object('ok', true);
+end;
+$$;
+
+grant execute on function public.agregar_cancion_solicitada(text, text, text, text, text) to anon, authenticated;
