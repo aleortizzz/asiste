@@ -49,7 +49,10 @@ create table events (
   -- interacción (pedir canciones, etc). Lo setea TizDigital a mano según
   -- lo que contrató el cliente — el host no se lo puede subir solo. Ver
   -- supabase/migrations/20260924_canciones_plan.sql para el detalle.
-  plan text not null default 'basico' check (plan in ('basico', 'plus'))
+  plan text not null default 'basico' check (plan in ('basico', 'plus')),
+  -- Plantilla visual, elección libre del host (como bg_color). Ver
+  -- supabase/migrations/20260924_plantilla_invitacion.sql.
+  template text not null default 'clasico' check (template in ('clasico', 'partiful', 'craft'))
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -222,6 +225,7 @@ begin
     'named_by_host', ig.named_by_host,
     'event_name', e.name,
     'plan', e.plan,
+    'template', e.template,
     'hero_kicker', e.hero_kicker,
     'hero_title', e.hero_title,
     'hero_subtitle', e.hero_subtitle,

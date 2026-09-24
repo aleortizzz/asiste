@@ -98,6 +98,30 @@ function canAdd(section) {
   return true
 }
 
+// Plantillas visuales disponibles — ver src/components/invitation-templates/.
+// Agregar una plantilla nueva ahí también implica sumarla acá para que el
+// host la pueda elegir.
+const INVITATION_TEMPLATES = [
+  {
+    value: 'clasico',
+    label: 'Clásica',
+    help: 'Sobre animado, cursiva y paleta rosa/ámbar.',
+    swatch: 'linear-gradient(135deg, #fdf7f1, #f4bd85, #9f1239)',
+  },
+  {
+    value: 'partiful',
+    label: 'Partiful',
+    help: 'Blanco y negro, tipografía grotesca y pills de color.',
+    swatch: 'linear-gradient(135deg, #ffffff, #f8c4ff, #000000)',
+  },
+  {
+    value: 'craft',
+    label: 'Craft',
+    help: 'Papel crema, serif editorial y un verde lima como acento.',
+    swatch: 'linear-gradient(135deg, #f7f5f2, #26d862, #1d3023)',
+  },
+]
+
 // Los datos concretos (fecha, salón, dirección…) quedan vacíos a propósito:
 // un valor falso ahí sería peor que uno vacío.
 // Paleta curada de fondos para invitaciones (claros arriba, oscuros al final).
@@ -109,6 +133,7 @@ const BG_PRESETS = [
 ]
 
 const EMPTY = {
+  template: 'clasico',
   hero_kicker: '',
   hero_title: '',
   hero_subtitle: '',
@@ -193,6 +218,7 @@ onMounted(async () => {
   if (event.value) {
     eventType.value = event.value.event_type ?? 'cumpleanos'
     form.value = {
+      template: event.value.template ?? 'clasico',
       // Eventos viejos sin hero_title: usamos su `name` como texto principal.
       hero_title: event.value.hero_title ?? event.value.name ?? '',
       hero_kicker: event.value.hero_kicker ?? '',
@@ -481,6 +507,33 @@ onUnmounted(() => {
             solo lo que quieras. Siguen el orden de la invitación, y al tocar uno la vista previa
             se desliza hasta esa parte.
           </p>
+
+          <!-- 0. PLANTILLA -->
+          <div class="space-y-3">
+            <h2 class="text-sm font-semibold text-gray-500 uppercase">Plantilla</h2>
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                v-for="t in INVITATION_TEMPLATES"
+                :key="t.value"
+                type="button"
+                data-preview="hero"
+                @click="form.template = t.value"
+                :class="
+                  form.template === t.value
+                    ? 'ring-2 ring-gray-900'
+                    : 'ring-1 ring-gray-300 hover:ring-gray-400'
+                "
+                class="rounded-xl p-3 text-left transition"
+              >
+                <span
+                  class="block h-14 w-full rounded-lg"
+                  :style="{ background: t.swatch }"
+                ></span>
+                <span class="mt-2 block text-sm font-medium text-gray-800">{{ t.label }}</span>
+                <span class="block text-xs text-gray-500">{{ t.help }}</span>
+              </button>
+            </div>
+          </div>
 
           <!-- 1. PORTADA -->
           <div class="space-y-4 border-t border-gray-200 pt-4">
