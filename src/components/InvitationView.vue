@@ -322,7 +322,7 @@ function onEnvelopeFadeEnd() {
 
 // --- Carrusel --------------------------------------------------------------
 const slide = ref(0)
-let slideTimer = null
+let momentosTimer = null
 
 function goTo(i) {
   const n = momentosFotos.value.length
@@ -334,28 +334,28 @@ function nextSlide() {
 function prevSlide() {
   goTo(slide.value - 1)
 }
-function startAutoplay() {
+function startMomentosAutoplay() {
   if (reducedMotion) return
-  stopAutoplay()
-  slideTimer = setInterval(nextSlide, 4500)
+  stopMomentosAutoplay()
+  momentosTimer = setInterval(nextSlide, 3000)
 }
-function stopAutoplay() {
-  if (slideTimer) {
-    clearInterval(slideTimer)
-    slideTimer = null
+function stopMomentosAutoplay() {
+  if (momentosTimer) {
+    clearInterval(momentosTimer)
+    momentosTimer = null
   }
 }
 
 let touchX = 0
 function onTouchStart(e) {
   touchX = e.changedTouches[0].clientX
-  stopAutoplay()
+  stopMomentosAutoplay()
 }
 function onTouchEnd(e) {
   const dx = e.changedTouches[0].clientX - touchX
   if (dx > 40) nextSlide()
   else if (dx < -40) prevSlide()
-  startAutoplay()
+  startMomentosAutoplay()
 }
 
 // --- Carrusel centrado del saludo (infinito) ------------------------------
@@ -381,6 +381,19 @@ function saludoStep(delta) {
 function saludoSet(realIndex) {
   saludoSlide.value = saludoLen.value + realIndex
 }
+
+let saludoTimer = null
+function startSaludoAutoplay() {
+  if (reducedMotion || saludoLen.value < 2) return
+  stopSaludoAutoplay()
+  saludoTimer = setInterval(() => saludoStep(1), 3000)
+}
+function stopSaludoAutoplay() {
+  if (saludoTimer) {
+    clearInterval(saludoTimer)
+    saludoTimer = null
+  }
+}
 function onSaludoTransitionEnd(e) {
   if (e.propertyName !== 'transform' || e.target !== e.currentTarget) return
   const n = saludoLen.value
@@ -402,11 +415,13 @@ watch(saludoLen, (n) => {
 let saludoTouchX = 0
 function onSaludoTouchStart(e) {
   saludoTouchX = e.changedTouches[0].clientX
+  stopSaludoAutoplay()
 }
 function onSaludoTouchEnd(e) {
   const dx = e.changedTouches[0].clientX - saludoTouchX
   if (dx > 40) saludoStep(1)
   else if (dx < -40) saludoStep(-1)
+  startSaludoAutoplay()
 }
 
 // --- Reveal al hacer scroll (directiva local v-reveal) -------------------
@@ -475,7 +490,8 @@ onMounted(() => {
   clockTimer = setInterval(() => {
     now.value = new Date()
   }, 1000)
-  startAutoplay()
+  startMomentosAutoplay()
+  startSaludoAutoplay()
   window.addEventListener('scroll', onGridScroll, { passive: true })
   window.addEventListener('resize', onGridScroll)
   setTimeout(updateGridParallax, 60)
@@ -483,7 +499,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
-  stopAutoplay()
+  stopMomentosAutoplay()
+  stopSaludoAutoplay()
   window.removeEventListener('scroll', onGridScroll)
   window.removeEventListener('resize', onGridScroll)
   if (gridRaf) cancelAnimationFrame(gridRaf)
@@ -716,6 +733,8 @@ function enviarRespuestasNominales() {
         class="relative mt-10 overflow-hidden"
         @touchstart.passive="onSaludoTouchStart"
         @touchend.passive="onSaludoTouchEnd"
+        @mouseenter="stopSaludoAutoplay"
+        @mouseleave="startSaludoAutoplay"
       >
         <div
           class="flex ease-out"
@@ -1057,8 +1076,8 @@ function enviarRespuestasNominales() {
         class="relative mx-auto mt-6 max-w-2xl overflow-hidden shadow-xl sm:rounded-[2rem] sm:ring-1 sm:ring-amber-200"
         @touchstart.passive="onTouchStart"
         @touchend.passive="onTouchEnd"
-        @mouseenter="stopAutoplay"
-        @mouseleave="startAutoplay"
+        @mouseenter="stopMomentosAutoplay"
+        @mouseleave="startMomentosAutoplay"
       >
         <div
           class="flex transition-transform duration-700 ease-out"
@@ -1172,6 +1191,7 @@ function enviarRespuestasNominales() {
               <div class="flex shrink-0 gap-2">
                 <button
                   type="button"
+                  translate="no"
                   @click="guest.attending = true"
                   :class="guest.attending ? 'bg-rose-700 text-white' : 'bg-white text-stone-400'"
                   class="rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ring-amber-200 transition sm:text-sm"
@@ -1180,6 +1200,7 @@ function enviarRespuestasNominales() {
                 </button>
                 <button
                   type="button"
+                  translate="no"
                   @click="guest.attending = false"
                   :class="!guest.attending ? 'bg-stone-700 text-white' : 'bg-white text-stone-400'"
                   class="rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ring-amber-200 transition sm:text-sm"
