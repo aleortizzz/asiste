@@ -204,6 +204,17 @@ watch(
   { immediate: true },
 )
 
+// Los carruseles recién arrancan a moverse solos una vez abierto el sobre.
+watch(entered, (v) => {
+  if (v) {
+    startMomentosAutoplay()
+    startSaludoAutoplay()
+  } else {
+    stopMomentosAutoplay()
+    stopSaludoAutoplay()
+  }
+})
+
 const aliasCopied = ref(false)
 async function copyAlias() {
   try {
@@ -490,8 +501,14 @@ onMounted(() => {
   clockTimer = setInterval(() => {
     now.value = new Date()
   }, 1000)
-  startMomentosAutoplay()
-  startSaludoAutoplay()
+  // El autoplay arranca recién cuando se abre el sobre (ver watch de `entered`
+  // más abajo), no acá: si arrancara al montar, los carruseles ya llevarían
+  // varios pasos avanzados —o el reloj a mitad de ciclo— para cuando el
+  // invitado los llega a ver, y el primer cambio se siente errático.
+  if (entered.value) {
+    startMomentosAutoplay()
+    startSaludoAutoplay()
+  }
   window.addEventListener('scroll', onGridScroll, { passive: true })
   window.addEventListener('resize', onGridScroll)
   setTimeout(updateGridParallax, 60)
@@ -794,13 +811,6 @@ function enviarRespuestasNominales() {
 
     <!-- ============ COUNTDOWN ============ -->
     <section v-if="countdown" v-reveal class="relative overflow-hidden py-20">
-      <img
-        :src="bannerFoto"
-        alt=""
-        loading="lazy"
-        class="absolute inset-0 h-full w-full object-cover opacity-25"
-      />
-      <div class="absolute inset-0 opacity-90" :style="{ backgroundColor: bgColor }"></div>
       <div class="relative mx-auto max-w-xl px-6 text-center">
         <p class="text-xs uppercase tracking-[0.3em] text-amber-700">Falta poco</p>
         <div class="mt-6 grid grid-cols-4 gap-2 sm:gap-3">
