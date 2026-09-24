@@ -266,8 +266,8 @@ function onTouchStart(e) {
 }
 function onTouchEnd(e) {
   const dx = e.changedTouches[0].clientX - touchX
-  if (dx > 40) prevSlide()
-  else if (dx < -40) nextSlide()
+  if (dx > 40) nextSlide()
+  else if (dx < -40) prevSlide()
   startAutoplay()
 }
 
@@ -318,8 +318,8 @@ function onSaludoTouchStart(e) {
 }
 function onSaludoTouchEnd(e) {
   const dx = e.changedTouches[0].clientX - saludoTouchX
-  if (dx > 40) saludoStep(-1)
-  else if (dx < -40) saludoStep(1)
+  if (dx > 40) saludoStep(1)
+  else if (dx < -40) saludoStep(-1)
 }
 
 // --- Reveal al hacer scroll (directiva local v-reveal) -------------------
