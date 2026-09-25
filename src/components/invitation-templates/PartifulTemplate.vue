@@ -42,6 +42,7 @@ const {
   galeriaGrid,
   defaultIntro,
   heroTitle,
+  envelopeMonogram,
   shows,
   entered,
   musicPlaying,
@@ -155,7 +156,8 @@ const {
     <!-- ============ PORTADA ============ -->
     <EnvelopeCover
       v-if="!preview && !envelopeGone"
-      :hero-title="heroTitle"
+      :monogram-short="envelopeMonogram.short"
+      :monogram-full="envelopeMonogram.full"
       :music-id="musicId"
       :opening="opening"
       :closing="closing"

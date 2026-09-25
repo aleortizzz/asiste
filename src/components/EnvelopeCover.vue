@@ -5,10 +5,12 @@ import { Music } from '@lucide/vue'
 // Sobre compartido por las tres plantillas: la forma/animación es siempre la
 // misma, lo que cambia es la paleta (via CSS custom properties) que cada
 // plantilla le pasa como props, para que combine con su propia identidad
-// visual. El sello muestra las iniciales sacadas de heroTitle en vez de un
-// ícono genérico — "Sofía & Juan" -> "S & J" en la carta, "SJ" en el sello.
+// visual. El sello y la carta muestran `monogramShort`/`monogramFull` tal
+// cual se los pasan — la lógica de "qué letras mostrar" (o el campo manual
+// del editor) vive en useInvitationLogic(), no acá.
 const props = defineProps({
-  heroTitle: { type: String, default: '' },
+  monogramShort: { type: String, default: '✦' },
+  monogramFull: { type: String, default: '✦' },
   musicId: { type: String, default: '' },
   opening: { type: Boolean, default: false },
   closing: { type: Boolean, default: false },
@@ -31,23 +33,6 @@ const props = defineProps({
 })
 
 defineEmits(['open', 'fade-end'])
-
-// Iniciales del título: "Sofía & Juan" -> ['S','J'], "Antonella" -> ['A'].
-const initials = computed(() => {
-  const t = (props.heroTitle || '').trim()
-  if (!t) return []
-  const byAmp = t.split('&').map((s) => s.trim()).filter(Boolean)
-  if (byAmp.length >= 2) {
-    return byAmp.slice(0, 2).map((p) => p[0]?.toUpperCase()).filter(Boolean)
-  }
-  const words = t.split(/\s+/).filter(Boolean)
-  if (words.length >= 2) return [words[0][0]?.toUpperCase(), words[1][0]?.toUpperCase()].filter(Boolean)
-  return words[0] ? [words[0][0].toUpperCase()] : []
-})
-const monogramShort = computed(() => initials.value.join('') || '✦')
-const monogramFull = computed(() =>
-  initials.value.length >= 2 ? initials.value.join(' & ') : initials.value[0] || '✦',
-)
 
 const cssVars = computed(() => ({
   '--ec-bg': props.bg,
@@ -252,11 +237,19 @@ const cssVars = computed(() => ({
   box-shadow: inset 0 -10px 16px -12px rgba(0, 0, 0, 0.35);
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.28));
   transform-origin: top center;
-  transition: transform 620ms var(--ease-in-out);
+  transition:
+    transform 620ms var(--ease-in-out),
+    z-index 0ms 380ms;
   z-index: 4;
 }
 .ec-envelope--open .ec-flap {
+  /* rotateX no cambia el orden de pintado por sí solo (eso lo decide
+     z-index), así que sin este cambio la solapa se sigue dibujando encima
+     de la carta aunque ya esté girada hacia atrás. La bajamos recién a los
+     380ms, cuando ya rotó lo suficiente como para no notarse el salto y la
+     carta está por empezar a subir. */
   transform: rotateX(-170deg);
+  z-index: 1;
 }
 
 .ec-seal {

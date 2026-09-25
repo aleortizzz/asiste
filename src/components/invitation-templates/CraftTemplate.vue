@@ -47,6 +47,7 @@ const {
   galeriaGrid,
   defaultIntro,
   heroTitle,
+  envelopeMonogram,
   shows,
   entered,
   musicPlaying,
@@ -171,7 +172,8 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
     <!-- ============ PORTADA ============ -->
     <EnvelopeCover
       v-if="!preview && !envelopeGone"
-      :hero-title="heroTitle"
+      :monogram-short="envelopeMonogram.short"
+      :monogram-full="envelopeMonogram.full"
       :music-id="musicId"
       :opening="opening"
       :closing="closing"

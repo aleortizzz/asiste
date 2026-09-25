@@ -136,6 +136,7 @@ const EMPTY = {
   template: 'clasico',
   hero_kicker: '',
   hero_title: '',
+  monogram: '',
   hero_subtitle: '',
   intro_text: '',
   closing_text: '',
@@ -221,6 +222,7 @@ onMounted(async () => {
       template: event.value.template ?? 'clasico',
       // Eventos viejos sin hero_title: usamos su `name` como texto principal.
       hero_title: event.value.hero_title ?? event.value.name ?? '',
+      monogram: event.value.monogram ?? '',
       hero_kicker: event.value.hero_kicker ?? '',
       hero_subtitle: event.value.hero_subtitle ?? '',
       intro_text: event.value.intro_text ?? '',
@@ -264,6 +266,7 @@ async function onSubmit() {
       name: form.value.hero_title?.trim() || 'Mi evento',
       hero_kicker: emptyAsNull(form.value.hero_kicker),
       hero_title: emptyAsNull(form.value.hero_title),
+      monogram: emptyAsNull(form.value.monogram?.trim()),
       hero_subtitle: emptyAsNull(form.value.hero_subtitle),
       intro_text: emptyAsNull(form.value.intro_text),
       closing_text: emptyAsNull(form.value.closing_text),
@@ -554,6 +557,21 @@ onUnmounted(() => {
                 data-preview="hero"
                 placeholder="Ej. Antonella — Ana &amp; Luis"
                 class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Sello del sobre</label>
+              <p class="text-xs text-gray-500">
+                Opcional. Si lo dejás vacío, usamos las iniciales del texto principal (ej. "Ana &amp;
+                Luis" → "A L"). Máximo 3 caracteres — también sirve para poner un símbolo (♥, ✦) en
+                vez de letras.
+              </p>
+              <input
+                v-model="form.monogram"
+                data-preview="hero"
+                maxlength="3"
+                placeholder="Ej. AL, XV, ♥"
+                class="mt-1 w-24 rounded border border-gray-300 px-3 py-2 text-center"
               />
             </div>
             <div>

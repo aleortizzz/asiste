@@ -41,6 +41,7 @@ const {
   defaultIntro,
   heroTitle,
   bgColor,
+  envelopeMonogram,
   shows,
   entered,
   musicPlaying,
@@ -177,7 +178,8 @@ const {
          bloquee) y después de la animación revela la invitación de atrás. -->
     <EnvelopeCover
       v-if="!preview && !envelopeGone"
-      :hero-title="heroTitle"
+      :monogram-short="envelopeMonogram.short"
+      :monogram-full="envelopeMonogram.full"
       :music-id="musicId"
       :opening="opening"
       :closing="closing"
