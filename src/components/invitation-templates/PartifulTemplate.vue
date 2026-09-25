@@ -12,6 +12,7 @@ import {
   Search,
 } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
+import EnvelopeCover from '../EnvelopeCover.vue'
 
 // Plantilla "Partiful" — negro/blanco con washes de gradiente pastel,
 // tipografía grotesca (Space Grotesk + Inter como sustitutos de las
@@ -152,31 +153,27 @@ const {
     </header>
 
     <!-- ============ PORTADA ============ -->
-    <div
+    <EnvelopeCover
       v-if="!preview && !envelopeGone"
-      class="pf-cover fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
-      :class="{ 'pf-cover--out': closing }"
-      @transitionend.self="onEnvelopeFadeEnd"
-    >
-      <div class="pf-cover-card">
-        <img :src="bannerFoto" alt="" class="pf-cover-photo" />
-      </div>
-      <p class="pf-label mt-8 text-black/50">Estás invitado/a</p>
-      <p class="pf-display mt-2 text-center leading-[0.95]" style="font-size: clamp(2.2rem, 9vw, 3.5rem)">
-        {{ heroTitle }}
-      </p>
-      <button
-        type="button"
-        class="pf-btn-primary mt-8"
-        :disabled="opening"
-        @click="openEnvelope"
-      >
-        Ver invitación
-      </button>
-      <p v-if="musicId" class="pf-label mt-4 flex items-center justify-center gap-1.5 text-black/40">
-        <Music :size="12" /> con música
-      </p>
-    </div>
+      :hero-title="heroTitle"
+      :music-id="musicId"
+      :opening="opening"
+      :closing="closing"
+      bg="#ffffff"
+      paper-from="#ffffff"
+      paper-to="#eeeeee"
+      flap-from="#111111"
+      flap-to="#000000"
+      seal-from="#1a1a1a"
+      seal-to="#000000"
+      seal-text="#ffffff"
+      ink="#000000"
+      ink-muted="#666666"
+      letter-ink="#000000"
+      monogram-font="'Space Grotesk', sans-serif"
+      @open="openEnvelope"
+      @fade-end="onEnvelopeFadeEnd"
+    />
 
     <!-- ============ SALUDO ============ -->
     <section v-reveal data-anchor="saludo" class="py-20 text-center">
@@ -720,31 +717,6 @@ const {
   color: #ffffff;
 }
 
-/* --- Portada --------------------------------------------------------- */
-.pf-cover {
-  background: linear-gradient(to bottom, #e8f1ff, #ffffff 60%);
-  transition: opacity 0.6s ease;
-}
-.pf-cover--out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.pf-cover-card {
-  width: clamp(180px, 55vw, 240px);
-  aspect-ratio: 3 / 4;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: rgba(0, 0, 0, 0.05) 0px 0.8px 2.4px -0.6px, rgba(0, 0, 0, 0.05) 0px 2.4px 7.2px -1.25px,
-    rgba(0, 0, 0, 0.05) 0px 6.4px 19.1px -1.875px, rgba(0, 0, 0, 0.05) 0px 20px 60px -2.5px;
-  transform: rotate(-4deg);
-}
-.pf-cover-photo {
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
-}
-
 .kenburns {
   animation:
     kb-zoom 22s ease-out forwards,
@@ -795,8 +767,7 @@ const {
 
 @media (prefers-reduced-motion: reduce) {
   .kenburns,
-  .hero-in,
-  .pf-cover {
+  .hero-in {
     animation: none;
     transition: none;
   }

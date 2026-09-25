@@ -26,3 +26,6 @@ dist-ssr
 run-sql.mjs
 query.mjs
 set-secret.mjs
+
+# Playwright MCP session snapshots
+.playwright-mcp/

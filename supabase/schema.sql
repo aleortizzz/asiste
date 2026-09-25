@@ -52,7 +52,7 @@ create table events (
   plan text not null default 'basico' check (plan in ('basico', 'plus')),
   -- Plantilla visual, elección libre del host (como bg_color). Ver
   -- supabase/migrations/20260924_plantilla_invitacion.sql.
-  template text not null default 'clasico' check (template in ('clasico', 'partiful', 'craft'))
+  template text not null default 'clasico' check (template in ('clasico', 'partiful', 'craft', 'craft-v2'))
 );
 
 -- 2) Mesas del salón, una por evento.

@@ -9,7 +9,7 @@
 
 alter table events
   add column if not exists template text not null default 'clasico'
-    check (template in ('clasico', 'partiful', 'craft'));
+    check (template in ('clasico', 'partiful', 'craft', 'craft-v2'));
 
 -- Reemplaza obtener_invitacion para sumar 'template' al payload público.
 create or replace function public.obtener_invitacion(p_slug text)

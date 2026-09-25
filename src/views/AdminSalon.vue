@@ -117,7 +117,7 @@ const INVITATION_TEMPLATES = [
   {
     value: 'craft',
     label: 'Craft',
-    help: 'Papel crema, serif editorial y un verde lima como acento.',
+    help: 'Papel crema, serif editorial y detalles en verde lima.',
     swatch: 'linear-gradient(135deg, #f7f5f2, #26d862, #1d3023)',
   },
 ]

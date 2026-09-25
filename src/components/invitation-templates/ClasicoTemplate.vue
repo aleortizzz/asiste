@@ -12,6 +12,7 @@ import {
   Search,
 } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
+import EnvelopeCover from '../EnvelopeCover.vue'
 
 // Plantilla "Clásica" — la invitación original de asiste (sobre animado,
 // paleta rosa/ámbar, tipografía cursiva). 100% presentacional: toda la
@@ -174,44 +175,27 @@ const {
     <!-- Tapa toda la pantalla hasta que el invitado lo toca. Al abrirse dispara
          la música (dentro del gesto de click, para que el navegador no la
          bloquee) y después de la animación revela la invitación de atrás. -->
-    <div
+    <EnvelopeCover
       v-if="!preview && !envelopeGone"
-      class="envelope-overlay fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
-      :class="{ 'envelope-overlay--out': closing }"
-      :style="{ backgroundColor: bgColor }"
-      @transitionend.self="onEnvelopeFadeEnd"
-    >
-      <button
-        type="button"
-        class="envelope"
-        :class="{ 'envelope--open': opening }"
-        :disabled="opening"
-        aria-label="Abrir invitación"
-        @click="openEnvelope"
-      >
-        <span class="envelope-back"></span>
-        <span class="envelope-letter">
-          <span class="envelope-letter-mark">✦</span>
-        </span>
-        <span class="envelope-pocket"></span>
-        <span class="envelope-flap"></span>
-        <span class="envelope-seal">✦</span>
-      </button>
-
-      <p
-        class="envelope-caption mt-8 text-center text-xs uppercase tracking-[0.35em] text-amber-800/80"
-        :class="{ 'envelope-caption--out': opening }"
-      >
-        Tocá el sobre para abrir tu invitación
-      </p>
-      <p
-        v-if="musicId"
-        class="envelope-caption mt-3 flex items-center justify-center gap-1.5 text-[0.65rem] uppercase tracking-widest text-amber-800/60"
-        :class="{ 'envelope-caption--out': opening }"
-      >
-        <Music :size="12" /> con música
-      </p>
-    </div>
+      :hero-title="heroTitle"
+      :music-id="musicId"
+      :opening="opening"
+      :closing="closing"
+      :bg="bgColor"
+      paper-from="#fffdf9"
+      paper-to="#fbe6cd"
+      flap-from="#f4bd85"
+      flap-to="#e6a05f"
+      seal-from="#e11d48"
+      seal-to="#9f1239"
+      seal-text="#fde7ea"
+      ink="#92400e"
+      ink-muted="#a16207"
+      letter-ink="#9f1239"
+      monogram-font="'Dancing Script', cursive"
+      @open="openEnvelope"
+      @fade-end="onEnvelopeFadeEnd"
+    />
 
     <!-- ============ SALUDO ============ -->
     <section v-reveal data-anchor="saludo" class="py-20 text-center">
@@ -882,139 +866,6 @@ const {
   }
   .kenburns {
     opacity: 1;
-  }
-}
-
-/* --- Sobre (portada) ----------------------------------------------------- */
-.envelope-overlay {
-  transition: opacity 0.6s ease;
-}
-.envelope-overlay--out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.envelope {
-  position: relative;
-  width: clamp(220px, 72vw, 300px);
-  aspect-ratio: 3 / 2;
-  padding: 0;
-  border: none;
-  background: none;
-  perspective: 900px;
-  cursor: pointer;
-}
-.envelope:disabled {
-  cursor: default;
-}
-
-.envelope-back {
-  position: absolute;
-  inset: 0;
-  border-radius: 12px;
-  background: linear-gradient(155deg, #fffdf9 0%, #fbe6cd 100%);
-  box-shadow: 0 30px 60px -25px rgba(120, 72, 40, 0.45);
-}
-
-.envelope-letter {
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 4%;
-  height: 58%;
-  border-radius: 8px 8px 3px 3px;
-  background: #fffdf9;
-  box-shadow: 0 8px 20px -10px rgba(120, 72, 40, 0.3);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 10%;
-  color: #9f1239;
-  font-size: 1.1rem;
-  transform: translateY(0);
-  transition: transform 0.7s cubic-bezier(0.22, 0.9, 0.32, 1) 0.35s;
-  z-index: 2;
-}
-.envelope--open .envelope-letter {
-  transform: translateY(-46%);
-}
-
-.envelope-pocket {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 62%;
-  background: linear-gradient(155deg, #fde1c4, #f4bd85);
-  clip-path: polygon(0 0, 50% 46%, 100% 0, 100% 100%, 0 100%);
-  border-radius: 0 0 12px 12px;
-  z-index: 3;
-}
-
-.envelope-flap {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 56%;
-  background: linear-gradient(200deg, #f4bd85, #e6a05f);
-  clip-path: polygon(0 0, 100% 0, 50% 92%);
-  border-radius: 12px 12px 0 0;
-  box-shadow: 0 4px 10px -6px rgba(120, 72, 40, 0.4);
-  transform-origin: top center;
-  transition: transform 0.6s cubic-bezier(0.5, 0, 0.2, 1);
-  z-index: 4;
-}
-.envelope--open .envelope-flap {
-  transform: rotateX(-165deg);
-}
-
-.envelope-seal {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  transform: translate(-50%, -50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 32% 28%, #e11d48, #9f1239 70%);
-  color: #fde7ea;
-  font-size: 1.1rem;
-  box-shadow: 0 6px 14px -6px rgba(159, 18, 57, 0.6);
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
-  z-index: 5;
-}
-.envelope--open .envelope-seal {
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.4);
-}
-
-.envelope-letter-mark {
-  color: #d6a756;
-  font-size: 1.3rem;
-}
-
-.envelope-caption {
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
-}
-.envelope-caption--out {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .envelope-overlay,
-  .envelope-flap,
-  .envelope-letter,
-  .envelope-seal,
-  .envelope-caption {
-    transition: none;
   }
 }
 </style>

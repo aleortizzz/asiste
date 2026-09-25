@@ -9,10 +9,13 @@ import CraftTemplate from './invitation-templates/CraftTemplate.vue'
 // elige entre las plantillas de src/components/invitation-templates/, que
 // comparten el mismo contrato de props/emits (y la misma lógica, vía
 // useInvitationLogic). Agregar una plantilla nueva es agregarla acá.
+// 'craft-v2' queda mapeada a la misma Craft por si algún evento de prueba
+// quedó con ese valor guardado (Craft ya es la versión pulida).
 const TEMPLATES = {
   clasico: ClasicoTemplate,
   partiful: PartifulTemplate,
   craft: CraftTemplate,
+  'craft-v2': CraftTemplate,
 }
 
 const props = defineProps({

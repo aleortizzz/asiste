@@ -13,13 +13,16 @@ import {
   Search,
 } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
+import EnvelopeCover from '../EnvelopeCover.vue'
 
-// Plantilla "Craft" — invernadero botánico sobre papel crema: fondo bone
-// linen, un único momento oscuro (Forest Depths) al abrir con serif
-// condensada gigante, verde lima reservado solo para la acción principal
-// de cada sección, cards planas sin sombra (la separación es de color, no
-// de elevación). Mismo contrato de props/emits que las otras plantillas —
-// toda la lógica vive en useInvitationLogic().
+// Plantilla "Craft" - invernadero botánico sobre papel crema: bone linen,
+// un único momento oscuro (forest depths) al abrir, verde lima como acento
+// repetido en varios detalles (no solo el botón principal), cards planas sin
+// sombra. Pulida con las skills de diseño/animación instaladas
+// (emilkowalski/skills + taste-skill): curvas de easing propias, feedback
+// táctil, hover gateado a mouse real, stagger en grillas, reduced-motion
+// que solo saca el movimiento. Mismo contrato de props/emits que las otras
+// plantillas - toda la lógica vive en useInvitationLogic().
 const props = defineProps({
   invite: { type: Object, required: true },
   preview: { type: Boolean, default: false },
@@ -104,10 +107,10 @@ const {
   enviarRespuestasNominales,
 } = useInvitationLogic(props, emit)
 
-// Collage del hero: solo aparece si el host cargó fotos propias (no las de
-// demo) — banner + saludo, hasta 4. Sin fotos reales, el hero se queda tal
-// cual (verde sólido + blobs), que es la versión que ya se aprobó.
-const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')].slice(0, 4))
+// Foto única del hero: banner primero, si no hay usa la primera de saludo.
+// Solo cuenta como "propia" si el host la cargó (no las de demo). Sin foto
+// real, el hero se queda con el verde + blobs solo.
+const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')][0] || '')
 </script>
 
 <template>
@@ -126,15 +129,15 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
       data-anchor="hero"
       class="relative flex h-svh min-h-[560px] items-center justify-center overflow-hidden bg-[#1d3023] px-6 text-center"
     >
-      <template v-if="heroPhotos.length">
-        <div class="craft-glow craft-glow-1"></div>
-        <div class="craft-glow craft-glow-2"></div>
-        <div class="craft-hero-photos">
-          <div v-for="(src, i) in heroPhotos" :key="i" :class="`craft-hero-photo craft-hero-photo-${i}`">
-            <img :src="src" alt="" loading="lazy" decoding="async" />
-          </div>
-        </div>
-        <div class="absolute inset-0 bg-[#1d3023]/35"></div>
+      <template v-if="heroPhoto">
+        <img
+          :src="heroPhoto"
+          alt=""
+          fetchpriority="high"
+          class="kenburns absolute inset-0 h-full w-full object-cover"
+        />
+        <div class="absolute inset-0 bg-linear-to-b from-[#1d3023]/65 via-[#1d3023]/35 to-[#1d3023]/85"></div>
+        <div class="craft-hero-flare-wash absolute inset-0"></div>
       </template>
       <template v-else>
         <div class="craft-blob craft-blob-1"></div>
@@ -166,26 +169,27 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
     </header>
 
     <!-- ============ PORTADA ============ -->
-    <div
+    <EnvelopeCover
       v-if="!preview && !envelopeGone"
-      class="craft-cover fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center"
-      :class="{ 'craft-cover--out': closing }"
-      @transitionend.self="onEnvelopeFadeEnd"
-    >
-      <div class="craft-blob craft-blob-1"></div>
-      <div class="craft-blob craft-blob-2"></div>
-
-      <p class="craft-label relative z-10 text-[#eae6df]/70">Estás invitado/a</p>
-      <p class="craft-display relative z-10 mt-3 text-[#f7f5f2]" style="font-size: clamp(2.4rem, 11vw, 4.5rem)">
-        {{ heroTitle }}
-      </p>
-      <button type="button" class="craft-btn-primary relative z-10 mt-8" :disabled="opening" @click="openEnvelope">
-        Abrir invitación
-      </button>
-      <p v-if="musicId" class="craft-label relative z-10 mt-4 flex items-center justify-center gap-1.5 text-[#eae6df]/60">
-        <Music :size="12" /> con música
-      </p>
-    </div>
+      :hero-title="heroTitle"
+      :music-id="musicId"
+      :opening="opening"
+      :closing="closing"
+      bg="#1d3023"
+      paper-from="#f7f5f2"
+      paper-to="#eae6df"
+      flap-from="#eae6df"
+      flap-to="#d7d2cc"
+      seal-from="#26d862"
+      seal-to="#0e634f"
+      seal-text="#1d3023"
+      ink="#eae6df"
+      ink-muted="#8fa895"
+      letter-ink="#1d3023"
+      monogram-font="'Bodoni Moda', serif"
+      @open="openEnvelope"
+      @fade-end="onEnvelopeFadeEnd"
+    />
 
     <!-- ============ SALUDO ============ -->
     <section v-reveal data-anchor="saludo" class="py-16">
@@ -205,21 +209,25 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
         @mouseleave="startSaludoAutoplay"
       >
         <div
-          class="flex ease-out"
-          :class="saludoNoTransition ? '' : 'transition-transform duration-500'"
+          class="flex"
+          :class="saludoNoTransition ? '' : 'craft-slide-track'"
           :style="{ transform: `translateX(calc(14% - ${saludoSlide * 72}%))` }"
           @transitionend="onSaludoTransitionEnd"
         >
           <div
             v-for="(src, i) in saludoLoop"
             :key="i"
-            class="w-[72%] shrink-0 px-2 ease-out"
-            :class="[
-              saludoNoTransition ? '' : 'transition-all duration-500',
-              i === saludoSlide ? 'scale-100 opacity-100' : 'scale-[0.9] opacity-40',
-            ]"
+            class="w-[72%] shrink-0 px-2"
+            :class="[saludoNoTransition ? '' : 'craft-slide-item', i === saludoSlide ? 'scale-100 opacity-100' : 'scale-[0.9] opacity-40']"
           >
-            <img :src="src" alt="" loading="lazy" decoding="async" class="craft-card block aspect-3/4 w-full object-cover" />
+            <img
+              :src="src"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              class="craft-card block aspect-3/4 w-full object-cover"
+              :class="{ 'craft-ring': i === saludoSlide }"
+            />
           </div>
         </div>
 
@@ -234,7 +242,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
           type="button"
           :aria-label="`Ir a la foto ${i + 1}`"
           @click="saludoSet(i)"
-          class="h-1.5 rounded-full transition-all"
+          class="craft-dot h-1.5 rounded-full"
           :class="i === saludoActive ? 'w-5 bg-[#26d862] opacity-100' : 'w-1.5 bg-[#2a1a1d] opacity-20'"
         ></button>
       </div>
@@ -243,8 +251,8 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
     <!-- ============ COUNTDOWN → stat cards ============ -->
     <section v-if="countdown" v-reveal class="mx-auto max-w-[1200px] px-6 py-16">
       <p class="craft-label text-center text-[#645757]">Falta poco</p>
-      <div class="mt-6 grid grid-cols-4 gap-3 sm:gap-4">
-        <div v-for="u in countdownUnits" :key="u.label" class="craft-stat-card">
+      <div class="craft-stagger mt-6 grid grid-cols-4 gap-3 sm:gap-4">
+        <div v-for="(u, i) in countdownUnits" :key="u.label" class="craft-stat-card" :style="{ '--i': i }">
           <p class="craft-display-sm text-[#0e634f]">{{ u.value }}</p>
           <p class="mt-1 text-[11px] leading-[1.5] text-[#645757] sm:text-[13px]">{{ u.label }}</p>
         </div>
@@ -255,21 +263,22 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
     <section v-reveal data-anchor="fiesta" class="mx-auto max-w-[720px] px-6 py-16 text-center">
       <p class="craft-label text-[#645757]">Los detalles</p>
       <h2 class="craft-display-sm mt-2">La celebración</h2>
+      <div class="craft-rule"></div>
 
-      <div class="craft-card mt-8 divide-y divide-[#d7d2cc] px-6 text-left sm:px-8">
-        <div v-if="invite.event_date" class="flex items-center gap-4 py-5">
+      <div class="craft-card craft-accent-top craft-stagger mt-8 divide-y divide-[#d7d2cc] px-6 text-left sm:px-8">
+        <div v-if="invite.event_date" class="flex items-center gap-4 py-5" style="--i: 0">
           <span class="craft-icon-circle"><CalendarHeart :size="18" :stroke-width="1.5" /></span>
           <div class="min-w-0">
             <p class="craft-label text-[#645757]">Cuándo</p>
             <p class="craft-heading-sm mt-1">{{ formatDateLong(invite.event_date) }}</p>
             <p v-if="invite.reception_time" class="mt-0.5 text-xs text-[#645757]">
               {{ formatTime(invite.reception_time)
-              }}<span v-if="invite.end_time"> — {{ formatTime(invite.end_time) }}</span> h
+              }}<span v-if="invite.end_time"> - {{ formatTime(invite.end_time) }}</span> h
             </p>
           </div>
         </div>
 
-        <div v-if="invite.venue_name || invite.venue_address" class="flex items-center gap-4 py-5">
+        <div v-if="invite.venue_name || invite.venue_address" class="flex items-center gap-4 py-5" style="--i: 1">
           <span class="craft-icon-circle"><MapPin :size="18" :stroke-width="1.5" /></span>
           <div class="min-w-0">
             <p class="craft-label text-[#645757]">Dónde</p>
@@ -281,7 +290,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
           </div>
         </div>
 
-        <div v-if="invite.dress_code" class="flex items-center gap-4 py-5">
+        <div v-if="invite.dress_code" class="flex items-center gap-4 py-5" style="--i: 2">
           <span class="craft-icon-circle"><Gem :size="18" :stroke-width="1.5" /></span>
           <div class="min-w-0">
             <p class="craft-label text-[#645757]">Dress code</p>
@@ -311,10 +320,10 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
 
     <!-- ============ CANCIONES (plan "plus") ============ -->
     <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-[720px] px-6 py-16 text-center">
-      <p class="craft-label text-[#645757]">Ayudanos con el playlist</p>
-      <h2 class="craft-display-sm mt-2">¿Qué canción no puede faltar?</h2>
+      <h2 class="craft-display-sm">¿Qué canción no puede faltar?</h2>
+      <div class="craft-rule"></div>
 
-      <div class="craft-card mt-8 p-6 text-left sm:p-8">
+      <div class="craft-card craft-accent-top mt-8 p-6 text-left sm:p-8">
         <template v-if="justAddedSong">
           <p class="py-2 text-center text-4xl">🌿</p>
           <p class="craft-body text-center">¡Gracias! La sumamos a la lista.</p>
@@ -340,11 +349,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
 
           <ul v-if="songResults.length && !selectedSong" class="mt-2 max-h-64 space-y-1 overflow-y-auto">
             <li v-for="r in songResults" :key="r.videoId">
-              <button
-                type="button"
-                @click="selectSong(r)"
-                class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-[#eae6df]"
-              >
+              <button type="button" @click="selectSong(r)" class="craft-song-row flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left">
                 <img :src="r.thumbnail" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover" />
                 <span class="min-w-0">
                   <span class="block truncate text-sm">{{ r.title }}</span>
@@ -376,17 +381,17 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
 
     <!-- ============ MOMENTOS ============ -->
     <section v-if="shows('momentos')" v-reveal data-anchor="momentos" class="py-16">
-      <p class="craft-label text-center text-[#645757]">Especímenes</p>
-      <h2 class="craft-display-sm mt-2 text-center">Momentos</h2>
+      <h2 class="craft-display-sm text-center">Momentos</h2>
+      <div class="craft-rule"></div>
 
       <div
-        class="craft-card relative mx-auto mt-6 max-w-2xl overflow-hidden"
+        class="craft-card craft-accent-top relative mx-auto mt-6 max-w-2xl overflow-hidden"
         @touchstart.passive="onTouchStart"
         @touchend.passive="onTouchEnd"
         @mouseenter="stopMomentosAutoplay"
         @mouseleave="startMomentosAutoplay"
       >
-        <div class="flex transition-transform duration-700 ease-out" :style="{ transform: `translateX(-${slide * 100}%)` }">
+        <div class="craft-slide-track flex" :style="{ transform: `translateX(-${slide * 100}%)` }">
           <div v-for="(src, i) in momentosFotos" :key="i" class="min-w-full">
             <img :src="src" :alt="`Foto ${i + 1}`" loading="lazy" decoding="async" class="block aspect-4/5 w-full object-cover sm:aspect-16/10" />
           </div>
@@ -402,7 +407,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
             type="button"
             :aria-label="`Ir a la foto ${i + 1}`"
             @click="goTo(i)"
-            class="h-2 rounded-full bg-white transition-all"
+            class="craft-dot h-2 rounded-full bg-white"
             :class="i === slide ? 'w-6 opacity-100' : 'w-2 opacity-50'"
           ></button>
         </div>
@@ -413,9 +418,15 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
     <section v-if="shows('galeria')" v-reveal data-anchor="galeria" class="mx-auto max-w-[1200px] px-6 py-16">
       <p class="craft-label text-center text-[#645757]">Recuerdos</p>
       <h2 class="craft-display-sm mt-2 text-center">Galería</h2>
+      <div class="craft-rule"></div>
 
       <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div v-for="(src, i) in galeriaGrid" :key="i" ref="gridItems" class="craft-card overflow-hidden will-change-transform">
+        <div
+          v-for="(src, i) in galeriaGrid"
+          :key="i"
+          ref="gridItems"
+          class="craft-card overflow-hidden will-change-transform"
+        >
           <img :src="src" :alt="`Recuerdo ${i + 1}`" loading="lazy" decoding="async" class="block aspect-square w-full object-cover" />
         </div>
       </div>
@@ -423,11 +434,11 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
 
     <!-- ============ RSVP ============ -->
     <section id="rsvp" v-reveal data-anchor="rsvp" class="mx-auto max-w-[600px] scroll-mt-6 px-6 py-16">
-      <div class="craft-card p-8 text-center">
+      <div class="craft-card craft-accent-top p-8 text-center">
         <h2 class="craft-display-sm">Confirmá tu asistencia</h2>
 
         <p v-if="preview" class="mt-4 rounded-lg bg-[#d7d2cc]/40 px-3 py-2 text-center text-xs text-[#645757]">
-          Vista previa — la confirmación funciona en la invitación real.
+          Vista previa. La confirmación funciona en la invitación real.
         </p>
 
         <div v-if="submitted" class="py-4">
@@ -515,7 +526,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
       type="button"
       @click="toggleMusic"
       :aria-label="musicPlaying ? 'Pausar música' : 'Reproducir música'"
-      class="fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-[#1d3023] text-[#f7f5f2] transition hover:brightness-110"
+      class="craft-fab fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-[#1d3023] text-[#f7f5f2]"
     >
       <Pause v-if="musicPlaying" :size="18" />
       <Music v-else :size="18" />
@@ -526,6 +537,11 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
 <style scoped>
 .craft {
   font-family: 'DM Serif Text', ui-serif, Georgia, serif;
+  /* Curvas propias (emil-design-eng): las de CSS por default (ease, ease-in)
+     son débiles y "ease-in" en especial se siente lento para UI. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --lime: #26d862;
 }
 
 .craft-display {
@@ -559,9 +575,23 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   text-transform: uppercase;
 }
 
+/* Rayita verde repetida bajo los títulos de sección: la forma "prolija" de
+   sumar detalles en el color principal sin caer en el glow difuso de IA. */
+.craft-rule {
+  width: 32px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--lime);
+  margin: 14px auto 0;
+}
+
 .craft-card {
   background: #eae6df;
   border-radius: 8px;
+}
+.craft-accent-top {
+  border-top: 3px solid var(--lime);
+  border-radius: 3px 3px 8px 8px;
 }
 
 .craft-stat-card {
@@ -578,8 +608,12 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   width: 2.75rem;
   flex-shrink: 0;
   border-radius: 999px;
-  background: #d7d2cc;
-  color: #1d3023;
+  background: rgba(38, 216, 98, 0.14);
+  color: #0e634f;
+}
+
+.craft-ring {
+  box-shadow: 0 0 0 3px var(--lime);
 }
 
 .craft-link {
@@ -600,26 +634,32 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   padding: 10px 14px;
   background: #ffffff;
   font-family: 'DM Serif Text', serif;
+  transition: border-color 150ms ease;
 }
 .craft-input:focus {
   outline: 2px solid #1d3023;
   outline-offset: 1px;
+  border-color: var(--lime);
 }
 
+/* --- Botones: feedback táctil (:active) en todos, hover gateado a mouse real
+     para que no quede "pegado" en touch (emil-design-eng + taste-skill). --- */
 .craft-btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   border-radius: 8px;
-  background: #26d862;
+  background: var(--lime);
   color: #1d3023;
   padding: 10px 24px;
   font-weight: 700;
   font-size: 0.95rem;
-  transition: filter 0.15s ease;
+  transition:
+    filter 150ms ease,
+    transform 120ms var(--ease-out);
 }
-.craft-btn-primary:hover {
-  filter: brightness(1.08);
+.craft-btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .craft-btn-primary:disabled {
   opacity: 0.5;
@@ -638,10 +678,12 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   font-weight: 600;
   font-size: 0.9rem;
   background: transparent;
-  transition: background 0.15s ease;
+  transition:
+    background 150ms ease,
+    transform 120ms var(--ease-out);
 }
-.craft-btn-ghost:hover {
-  background: #eae6df;
+.craft-btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .craft-btn-ghost:disabled {
   opacity: 0.5;
@@ -655,10 +697,12 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  transition: background 0.15s ease;
+  transition:
+    background 150ms ease,
+    transform 120ms var(--ease-out);
 }
-.craft-btn-ghost-invert:hover {
-  background: rgba(247, 245, 242, 0.12);
+.craft-btn-ghost-invert:active {
+  transform: scale(0.96);
 }
 
 .craft-nav-arrow {
@@ -674,10 +718,55 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   background: rgba(255, 255, 255, 0.85);
   font-size: 1.1rem;
   color: #1d3023;
-  transition: background 0.15s ease;
+  transition: background 150ms ease;
 }
-.craft-nav-arrow:hover {
-  background: #ffffff;
+.craft-nav-arrow:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.craft-dot {
+  transition:
+    width 200ms var(--ease-out),
+    opacity 200ms ease,
+    transform 120ms var(--ease-out);
+}
+.craft-dot:active {
+  transform: scale(0.9);
+}
+
+.craft-song-row {
+  transition: background 150ms ease;
+}
+
+.craft-fab {
+  transition:
+    filter 150ms ease,
+    transform 120ms var(--ease-out);
+}
+.craft-fab:active {
+  transform: scale(0.94);
+}
+
+/* Hover solo para mouse real: en touch, :hover queda "pegado" tras el tap. */
+@media (hover: hover) and (pointer: fine) {
+  .craft-btn-primary:hover {
+    filter: brightness(1.08);
+  }
+  .craft-btn-ghost:hover {
+    background: #eae6df;
+  }
+  .craft-btn-ghost-invert:hover {
+    background: rgba(247, 245, 242, 0.12);
+  }
+  .craft-nav-arrow:hover {
+    background: #ffffff;
+  }
+  .craft-fab:hover {
+    filter: brightness(1.1);
+  }
+  .craft-song-row:hover {
+    background: #eae6df;
+  }
 }
 
 .craft-toggle {
@@ -685,6 +774,10 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   padding: 4px 12px;
   font-size: 0.75rem;
   font-weight: 700;
+  transition: transform 120ms var(--ease-out);
+}
+.craft-toggle:active {
+  transform: scale(0.94);
 }
 .craft-toggle-off {
   background: transparent;
@@ -692,7 +785,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   box-shadow: inset 0 0 0 1px #d7d2cc;
 }
 .craft-toggle-on {
-  background: #26d862;
+  background: var(--lime);
   color: #1d3023;
 }
 .craft-toggle-off-active {
@@ -700,20 +793,20 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   color: #f7f5f2;
 }
 
-/* --- Hero + portada: shape orgánico fluido, sin librerías --------------- */
+/* --- Hero sin foto: shape orgánico fluido, sin librerías ---------------- */
 .craft-blob {
   position: absolute;
   border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
   filter: blur(50px);
   opacity: 0.55;
-  animation: craft-morph 16s ease-in-out infinite;
+  animation: craft-morph 16s var(--ease-in-out) infinite;
 }
 .craft-blob-1 {
   top: -10%;
   left: -10%;
   height: 60vh;
   width: 60vh;
-  background: radial-gradient(circle at 30% 30%, #26d862, #1d3023 70%);
+  background: radial-gradient(circle at 30% 30%, var(--lime), #1d3023 70%);
 }
 .craft-blob-2 {
   bottom: -15%;
@@ -740,99 +833,20 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   }
 }
 
-/* --- Hero con fotos: el verde pasa a ser un glow detrás del collage, en vez
-     del color de fondo dominante (esa versión solo se usa sin fotos). ----- */
-.craft-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.6;
-  mix-blend-mode: screen;
-  animation: craft-morph 18s ease-in-out infinite;
+/* --- Hero con foto: foto de fondo completa (como Clásica/Partiful), con un
+     wash de luz verde por encima en vez del overlay plano negro. ---------- */
+.craft-hero-flare-wash {
+  background: radial-gradient(circle at 12% 8%, rgba(38, 216, 98, 0.4), transparent 24%);
+  animation: craft-flare-pulse 8s var(--ease-in-out) infinite;
 }
-.craft-glow-1 {
-  top: -15%;
-  left: -10%;
-  height: 55vh;
-  width: 55vh;
-  background: radial-gradient(circle, #26d862, transparent 70%);
-}
-.craft-glow-2 {
-  bottom: -20%;
-  right: -10%;
-  height: 50vh;
-  width: 50vh;
-  background: radial-gradient(circle, #0e634f, transparent 70%);
-  animation-duration: 22s;
-  animation-delay: -8s;
-}
-
-.craft-hero-photos {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-}
-.craft-hero-photo {
-  position: absolute;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.65);
-}
-.craft-hero-photo img {
-  display: block;
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
-}
-.craft-hero-photo-0 {
-  top: 8%;
-  left: 5%;
-  width: 40%;
-  aspect-ratio: 3 / 4;
-  transform: rotate(-9deg);
-}
-.craft-hero-photo-1 {
-  top: 12%;
-  right: 5%;
-  width: 34%;
-  aspect-ratio: 3 / 4;
-  transform: rotate(7deg);
-}
-.craft-hero-photo-2 {
-  bottom: 10%;
-  left: 9%;
-  width: 32%;
-  aspect-ratio: 4 / 5;
-  transform: rotate(6deg);
-}
-.craft-hero-photo-3 {
-  bottom: 8%;
-  right: 8%;
-  width: 30%;
-  aspect-ratio: 4 / 5;
-  transform: rotate(-5deg);
-}
-@media (max-width: 640px) {
-  .craft-hero-photo-0 {
-    width: 46%;
+@keyframes craft-flare-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
   }
-  .craft-hero-photo-1 {
-    width: 40%;
+  50% {
+    opacity: 0.6;
   }
-  .craft-hero-photo-2,
-  .craft-hero-photo-3 {
-    width: 38%;
-  }
-}
-
-.craft-cover {
-  background: #1d3023;
-  transition: opacity 0.6s ease;
-  overflow: hidden;
-}
-.craft-cover--out {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .kenburns {
@@ -858,7 +872,7 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
 }
 
 .hero-in {
-  animation: hero-up 1.1s ease 0.15s both;
+  animation: hero-up 1.1s var(--ease-out) 0.15s both;
 }
 @keyframes hero-up {
   from {
@@ -871,25 +885,62 @@ const heroPhotos = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')
   }
 }
 
+/* Carruseles: la curva de "algo que se mueve en pantalla" es ease-in-out,
+   no ease-out (que es para elementos que entran/salen). */
+.craft-slide-track {
+  transition-property: transform;
+  transition-duration: 500ms;
+  transition-timing-function: var(--ease-in-out);
+}
+.craft-slide-item {
+  transition-property: transform, opacity;
+  transition-duration: 500ms;
+  transition-timing-function: var(--ease-in-out);
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(28px);
   transition:
-    opacity 0.8s ease,
-    transform 0.8s ease;
+    opacity 0.7s var(--ease-out),
+    transform 0.7s var(--ease-out);
 }
 .reveal-in {
   opacity: 1;
   transform: none;
 }
 
+/* Stagger (emil-design-eng): varios elementos que entran juntos se sienten
+   más naturales con una cascada corta entre ellos, no todos a la vez. */
+.craft-stagger > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.reveal-in.craft-stagger > *,
+.reveal-in .craft-stagger > * {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* "Menos y más suave, no cero": se saca el movimiento (transform) pero se
+     deja el fade de opacidad, que no marea a nadie. */
   .hero-in,
-  .craft-cover,
   .craft-blob,
-  .craft-glow {
+  .craft-hero-flare-wash,
+  .kenburns,
+  .craft-slide-track,
+  .craft-slide-item,
+  .reveal,
+  .craft-stagger > * {
     animation: none;
-    transition: none;
+    transform: none !important;
+    transition-property: opacity;
+    transition-duration: 300ms;
   }
 }
 </style>
