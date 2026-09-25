@@ -55,7 +55,10 @@ create table events (
   template text not null default 'clasico' check (template in ('clasico', 'partiful', 'craft', 'craft-v2')),
   -- Sello del sobre (opcional). Vacío = se infiere de hero_title. Ver
   -- supabase/migrations/20260925_sobre_monograma.sql.
-  monogram text
+  monogram text,
+  -- Color de acento único: las plantillas son diseño/tipografía, el color lo
+  -- elige el host. Ver supabase/migrations/20260925_color_principal.sql.
+  primary_color text not null default '#9f1239'
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -230,6 +233,7 @@ begin
     'plan', e.plan,
     'template', e.template,
     'monogram', e.monogram,
+    'primary_color', e.primary_color,
     'hero_kicker', e.hero_kicker,
     'hero_title', e.hero_title,
     'hero_subtitle', e.hero_subtitle,

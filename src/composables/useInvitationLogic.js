@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { searchYoutubeVideos } from '../lib/youtube'
+import { lighten, darken, contrastText, isDark } from '../lib/color'
 
 // Toda la lógica de la invitación pública, compartida entre las distintas
 // plantillas visuales (ver src/components/invitation-templates/). Cada
@@ -102,6 +103,38 @@ export function useInvitationLogic(props, emit) {
     () => props.invite?.hero_title || props.invite?.event_name || 'Nuestro festejo',
   )
   const bgColor = computed(() => props.invite?.bg_color || '#fdf7f1')
+
+  // Color principal: la única perilla de "acento" que elige el host — mueve
+  // botones, rayitas/anillos decorativos, y el sobre. Las plantillas ya NO
+  // hardcodean su propio color; son diseño/tipografía, el color es de acá.
+  const primaryColor = computed(() => props.invite?.primary_color || '#9f1239')
+  const primaryDark = computed(() => darken(primaryColor.value, 0.28))
+  const primaryTint = computed(() => lighten(primaryColor.value, 0.7))
+  const primaryLight = computed(() => lighten(primaryColor.value, 0.88))
+  const onPrimary = computed(() => contrastText(primaryColor.value))
+
+  // Paleta del sobre, derivada de bgColor + primaryColor en vez de hardcodeada
+  // por plantilla. `letterInk` siempre es oscuro (la carta es sobre papel
+  // claro sí o sí); `ink`/`inkMuted` se adaptan según si el fondo elegido es
+  // claro u oscuro, así el texto de las leyendas siempre se lee bien.
+  const envelopePalette = computed(() => {
+    const bg = bgColor.value
+    const primary = primaryColor.value
+    const bgIsDark = isDark(bg)
+    return {
+      bg,
+      paperFrom: lighten(primary, 0.94),
+      paperTo: lighten(primary, 0.8),
+      flapFrom: lighten(primary, 0.72),
+      flapTo: lighten(primary, 0.55),
+      sealFrom: lighten(primary, 0.08),
+      sealTo: darken(primary, 0.18),
+      sealText: onPrimary.value,
+      ink: bgIsDark ? lighten(primary, 0.75) : darken(primary, 0.35),
+      inkMuted: bgIsDark ? lighten(primary, 0.5) : darken(primary, 0.15),
+      letterInk: darken(primary, 0.22),
+    }
+  })
 
   // Sello del sobre: si el host cargó algo en "monogram" desde el editor, se
   // usa tal cual (tope de 3 caracteres — por si el input del navegador no
@@ -641,6 +674,12 @@ export function useInvitationLogic(props, emit) {
     defaultIntro,
     heroTitle,
     bgColor,
+    primaryColor,
+    primaryDark,
+    primaryTint,
+    primaryLight,
+    onPrimary,
+    envelopePalette,
     envelopeMonogram,
     hiddenSections,
     shows,

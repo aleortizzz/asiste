@@ -41,6 +41,11 @@ const {
   defaultIntro,
   heroTitle,
   bgColor,
+  primaryColor,
+  primaryDark,
+  primaryTint,
+  primaryLight,
+  envelopePalette,
   envelopeMonogram,
   shows,
   entered,
@@ -106,7 +111,13 @@ const {
 <template>
   <div
     class="min-h-screen overflow-x-clip text-stone-700"
-    :style="{ backgroundColor: bgColor }"
+    :style="{
+      backgroundColor: bgColor,
+      '--pc': primaryColor,
+      '--pc-dark': primaryDark,
+      '--pc-tint': primaryTint,
+      '--pc-soft': primaryLight,
+    }"
   >
     <!-- iframe de YouTube oculto: se carga desde el inicio para poder controlarlo -->
     <iframe
@@ -183,17 +194,7 @@ const {
       :music-id="musicId"
       :opening="opening"
       :closing="closing"
-      :bg="bgColor"
-      paper-from="#fffdf9"
-      paper-to="#fbe6cd"
-      flap-from="#f4bd85"
-      flap-to="#e6a05f"
-      seal-from="#e11d48"
-      seal-to="#9f1239"
-      seal-text="#fde7ea"
-      ink="#92400e"
-      ink-muted="#a16207"
-      letter-ink="#9f1239"
+      v-bind="envelopePalette"
       monogram-font="'Dancing Script', cursive"
       @open="openEnvelope"
       @fade-end="onEnvelopeFadeEnd"
@@ -203,7 +204,7 @@ const {
     <section v-reveal data-anchor="saludo" class="py-20 text-center">
       <div class="mx-auto max-w-xl px-6">
         <div class="divider">✦</div>
-        <p v-if="invite.family_name" class="text-xs uppercase tracking-[0.3em] text-amber-700">
+        <p v-if="invite.family_name" class="pc-eyebrow text-xs uppercase tracking-[0.3em]">
           {{ invite.family_name }}
         </p>
         <p
@@ -243,7 +244,7 @@ const {
               alt=""
               loading="lazy"
               decoding="async"
-              class="block aspect-3/4 w-full rounded-[2rem] object-cover shadow-xl ring-1 ring-amber-200"
+              class="pc-ring block aspect-3/4 w-full rounded-[2rem] object-cover shadow-xl ring-1"
             />
           </div>
         </div>
@@ -273,7 +274,7 @@ const {
           type="button"
           :aria-label="`Ir a la foto ${i + 1}`"
           @click="saludoSet(i)"
-          class="h-1.5 rounded-full bg-rose-800 transition-all"
+          class="pc-dot h-1.5 rounded-full transition-all"
           :class="i === saludoActive ? 'w-5 opacity-100' : 'w-1.5 opacity-30'"
         ></button>
       </div>
@@ -282,14 +283,14 @@ const {
     <!-- ============ COUNTDOWN ============ -->
     <section v-if="countdown" v-reveal class="relative overflow-hidden py-20">
       <div class="relative mx-auto max-w-xl px-6 text-center">
-        <p class="text-xs uppercase tracking-[0.3em] text-amber-700">Falta poco</p>
+        <p class="pc-eyebrow text-xs uppercase tracking-[0.3em]">Falta poco</p>
         <div class="mt-6 grid grid-cols-4 gap-2 sm:gap-3">
           <div
             v-for="u in countdownUnits"
             :key="u.label"
-            class="rounded-2xl bg-white/80 py-4 shadow ring-1 ring-amber-100 backdrop-blur-sm"
+            class="pc-ring rounded-2xl bg-white/80 py-4 shadow ring-1 backdrop-blur-sm"
           >
-            <p class="text-2xl font-semibold text-rose-800 sm:text-3xl">{{ u.value }}</p>
+            <p class="pc-heading text-2xl font-semibold sm:text-3xl">{{ u.value }}</p>
             <p class="mt-1 text-[9px] uppercase tracking-widest text-stone-400 sm:text-[10px]">
               {{ u.label }}
             </p>
@@ -300,11 +301,11 @@ const {
 
     <!-- ============ DETALLES DE LA FIESTA ============ -->
     <section v-reveal data-anchor="fiesta" class="mx-auto max-w-xl px-6 py-24">
-      <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">
+      <p class="pc-eyebrow text-center text-[0.7rem] uppercase tracking-[0.45em]">
         Los detalles
       </p>
       <h2
-        class="mt-2 text-center text-4xl text-rose-800"
+        class="pc-heading mt-2 text-center text-4xl"
         style="font-family: 'Dancing Script', cursive"
       >
         La celebración
@@ -313,19 +314,19 @@ const {
 
       <!-- Tarjeta con doble marco -->
       <div
-        class="relative mt-8 rounded-[1.9rem] bg-white/90 p-2.5 shadow-[0_28px_60px_-28px_rgba(120,72,40,0.35)] ring-1 ring-amber-200/70 backdrop-blur-sm"
+        class="pc-ring relative mt-8 rounded-[1.9rem] bg-white/90 p-2.5 shadow-[0_28px_60px_-28px_rgba(120,72,40,0.35)] ring-1 backdrop-blur-sm"
       >
-        <div class="rounded-[1.5rem] border border-amber-200/70 px-6 sm:px-8">
-          <div class="divide-y divide-amber-100">
+        <div class="pc-border rounded-[1.5rem] border px-6 sm:px-8">
+          <div class="pc-divide divide-y">
             <!-- Cuándo -->
             <div v-if="invite.event_date" class="flex items-center gap-4 py-5">
               <span
-                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+                class="pc-ring pc-icon grid h-11 w-11 shrink-0 place-items-center rounded-full ring-1"
               >
                 <CalendarHeart :size="18" :stroke-width="1.5" />
               </span>
               <div class="min-w-0">
-                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Cuándo</p>
+                <p class="pc-eyebrow text-[0.62rem] uppercase tracking-[0.28em]">Cuándo</p>
                 <p
                   class="mt-1 text-[17px] leading-tight text-stone-700"
                   style="font-family: 'Playfair Display', serif"
@@ -345,12 +346,12 @@ const {
               class="flex items-center gap-4 py-5"
             >
               <span
-                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+                class="pc-ring pc-icon grid h-11 w-11 shrink-0 place-items-center rounded-full ring-1"
               >
                 <MapPin :size="18" :stroke-width="1.5" />
               </span>
               <div class="min-w-0">
-                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Dónde</p>
+                <p class="pc-eyebrow text-[0.62rem] uppercase tracking-[0.28em]">Dónde</p>
                 <p
                   v-if="invite.venue_name"
                   class="mt-1 text-[17px] leading-tight text-stone-700"
@@ -366,7 +367,7 @@ const {
                   :href="invite.maps_url"
                   target="_blank"
                   rel="noopener"
-                  class="mt-2 inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-wider text-rose-700 transition hover:bg-rose-50"
+                  class="pc-link pc-border mt-2 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[0.7rem] font-medium uppercase tracking-wider transition pc-hover-tint"
                 >
                   Cómo llegar <ArrowUpRight :size="13" :stroke-width="2" />
                 </a>
@@ -376,12 +377,12 @@ const {
             <!-- Dress code -->
             <div v-if="invite.dress_code" class="flex items-center gap-4 py-5">
               <span
-                class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+                class="pc-ring pc-icon grid h-11 w-11 shrink-0 place-items-center rounded-full ring-1"
               >
                 <Gem :size="18" :stroke-width="1.5" />
               </span>
               <div class="min-w-0">
-                <p class="text-[0.62rem] uppercase tracking-[0.28em] text-amber-700/80">Dress code</p>
+                <p class="pc-eyebrow text-[0.62rem] uppercase tracking-[0.28em]">Dress code</p>
                 <p
                   class="mt-1 text-[17px] leading-tight text-stone-700"
                   style="font-family: 'Playfair Display', serif"
@@ -404,7 +405,7 @@ const {
 
       <div
         v-if="shows('detalle')"
-        class="mt-12 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-amber-200"
+        class="pc-ring mt-12 overflow-hidden rounded-[2rem] shadow-xl ring-1"
       >
         <img
           :src="detalleFoto"
@@ -424,7 +425,7 @@ const {
       class="mx-auto max-w-md px-6 pb-8 text-center"
     >
       <span
-        class="mx-auto grid h-12 w-12 place-items-center rounded-full text-amber-700 ring-1 ring-amber-300/70"
+        class="pc-ring pc-icon mx-auto grid h-12 w-12 place-items-center rounded-full ring-1"
       >
         <Gift :size="20" :stroke-width="1.5" />
       </span>
@@ -440,7 +441,7 @@ const {
       <button
         type="button"
         @click="copyAlias"
-        class="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-mono text-sm text-stone-700 shadow ring-1 ring-amber-200 transition hover:bg-amber-50"
+        class="pc-ring pc-hover-tint mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-mono text-sm text-stone-700 shadow ring-1 transition"
       >
         {{ aliasCopied ? '¡Copiado!' : invite.gift_alias }}
         <Check v-if="aliasCopied" :size="14" />
@@ -450,22 +451,22 @@ const {
 
     <!-- ============ CANCIONES (plan "plus") ============ -->
     <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-xl px-6 py-20">
-      <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">
+      <p class="pc-eyebrow text-center text-[0.7rem] uppercase tracking-[0.45em]">
         Ayudanos con el playlist
       </p>
-      <h2 class="mt-2 text-center text-4xl text-rose-800" style="font-family: 'Dancing Script', cursive">
+      <h2 class="pc-heading mt-2 text-center text-4xl" style="font-family: 'Dancing Script', cursive">
         ¿Qué canción no puede faltar?
       </h2>
       <div class="divider">✦</div>
 
-      <div class="mt-8 rounded-[2rem] bg-white p-6 shadow-xl ring-1 ring-amber-100 sm:p-8">
+      <div class="pc-ring mt-8 rounded-[2rem] bg-white p-6 shadow-xl ring-1 sm:p-8">
         <template v-if="justAddedSong">
           <p class="py-2 text-center text-4xl">🎶</p>
           <p class="text-center text-stone-600">¡Gracias! La sumamos a la lista.</p>
           <button
             type="button"
             @click="justAddedSong = false"
-            class="mx-auto mt-4 block text-sm font-medium text-rose-700 underline decoration-rose-300"
+            class="pc-link mx-auto mt-4 block text-sm font-medium underline pc-decoration-tint"
           >
             Agregar otra
           </button>
@@ -477,7 +478,7 @@ const {
               v-model="songQuery"
               type="text"
               placeholder="Buscá una canción o artista…"
-              class="w-full rounded-xl border border-amber-200 bg-black/5 px-3 py-2 pr-9 focus:border-rose-400 focus:outline-none"
+              class="pc-border pc-input w-full rounded-xl border bg-black/5 px-3 py-2 pr-9 focus:outline-none"
               @input="onSongQueryInput"
             />
             <Search
@@ -496,7 +497,7 @@ const {
               <button
                 type="button"
                 @click="selectSong(r)"
-                class="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-amber-50"
+                class="pc-hover-tint flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition"
               >
                 <img :src="r.thumbnail" alt="" class="h-10 w-10 shrink-0 rounded object-cover" />
                 <span class="min-w-0">
@@ -509,7 +510,7 @@ const {
 
           <div
             v-if="selectedSong"
-            class="mt-3 flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2 ring-1 ring-amber-200"
+            class="pc-tint-bg pc-ring mt-3 flex items-center gap-3 rounded-xl px-3 py-2 ring-1"
           >
             <img :src="selectedSong.thumbnail" alt="" class="h-10 w-10 shrink-0 rounded object-cover" />
             <span class="min-w-0 flex-1">
@@ -520,7 +521,7 @@ const {
               type="button"
               @click="clearSelectedSong"
               aria-label="Quitar canción elegida"
-              class="shrink-0 px-1 text-rose-500"
+              class="pc-link-soft shrink-0 px-1"
             >
               ✕
             </button>
@@ -530,13 +531,13 @@ const {
             <input
               v-model="songRequesterName"
               placeholder="Tu nombre o familia"
-              class="w-full rounded-xl border border-amber-200 bg-black/5 px-3 py-2 focus:border-rose-400 focus:outline-none"
+              class="pc-border pc-input w-full rounded-xl border bg-black/5 px-3 py-2 focus:outline-none"
             />
             <p v-if="displaySongError" class="text-sm text-red-600">{{ displaySongError }}</p>
             <button
               type="submit"
               :disabled="songSubmitting"
-              class="w-full rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-4 py-3 font-medium text-white shadow-md transition hover:brightness-105 disabled:opacity-50"
+              class="pc-btn w-full rounded-full px-4 py-3 font-medium text-white shadow-md transition disabled:opacity-50"
             >
               {{ songSubmitting ? 'Agregando…' : 'Agregar canción' }}
             </button>
@@ -547,13 +548,13 @@ const {
 
     <!-- ============ CARRUSEL ============ -->
     <section v-if="shows('momentos')" v-reveal data-anchor="momentos" class="py-20">
-      <h2 class="text-center text-3xl text-rose-800" style="font-family: 'Dancing Script', cursive">
+      <h2 class="pc-heading text-center text-3xl" style="font-family: 'Dancing Script', cursive">
         Momentos
       </h2>
       <div class="divider">✦</div>
 
       <div
-        class="relative mx-auto mt-6 max-w-2xl overflow-hidden shadow-xl sm:rounded-[2rem] sm:ring-1 sm:ring-amber-200"
+        class="pc-ring relative mx-auto mt-6 max-w-2xl overflow-hidden shadow-xl sm:rounded-[2rem] sm:ring-1"
         @touchstart.passive="onTouchStart"
         @touchend.passive="onTouchEnd"
         @mouseenter="stopMomentosAutoplay"
@@ -607,9 +608,9 @@ const {
 
     <!-- ============ GALERÍA (grid) ============ -->
     <section v-if="shows('galeria')" v-reveal data-anchor="galeria" class="overflow-hidden py-20">
-      <p class="text-center text-[0.7rem] uppercase tracking-[0.45em] text-amber-700/80">Recuerdos</p>
+      <p class="pc-eyebrow text-center text-[0.7rem] uppercase tracking-[0.45em]">Recuerdos</p>
       <h2
-        class="mt-2 text-center text-4xl text-rose-800"
+        class="pc-heading mt-2 text-center text-4xl"
         style="font-family: 'Dancing Script', cursive"
       >
         Galería
@@ -621,7 +622,7 @@ const {
           v-for="(src, i) in galeriaGrid"
           :key="i"
           ref="gridItems"
-          class="overflow-hidden rounded-2xl shadow-lg ring-1 ring-amber-200/60 will-change-transform"
+          class="pc-ring overflow-hidden rounded-2xl shadow-lg ring-1 will-change-transform"
         >
           <img
             :src="src"
@@ -636,15 +637,15 @@ const {
 
     <!-- ============ RSVP ============ -->
     <section id="rsvp" v-reveal data-anchor="rsvp" class="mx-auto max-w-xl scroll-mt-6 px-6 py-20">
-      <div class="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-amber-100">
-        <h2 class="text-center text-3xl text-rose-800" style="font-family: 'Dancing Script', cursive">
+      <div class="pc-ring rounded-[2rem] bg-white p-8 shadow-xl ring-1">
+        <h2 class="pc-heading text-center text-3xl" style="font-family: 'Dancing Script', cursive">
           Confirmá tu asistencia
         </h2>
         <div class="divider">✦</div>
 
         <p
           v-if="preview"
-          class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700"
+          class="pc-tint-bg pc-eyebrow mb-4 rounded-lg px-3 py-2 text-center text-xs"
         >
           Vista previa — la confirmación funciona en la invitación real.
         </p>
@@ -652,7 +653,7 @@ const {
         <!-- Respuesta enviada -->
         <div v-if="submitted" class="py-4 text-center">
           <p class="text-5xl">💌</p>
-          <p class="mt-4 text-lg text-rose-800" style="font-family: 'Playfair Display', serif">
+          <p class="pc-heading mt-4 text-lg" style="font-family: 'Playfair Display', serif">
             ¡Gracias! Registramos tu respuesta.
           </p>
           <p class="mt-2 text-sm text-stone-500">Nos vemos muy pronto.</p>
@@ -665,7 +666,7 @@ const {
             <li
               v-for="guest in namedGuests"
               :key="guest.id"
-              class="flex items-center justify-between gap-2 rounded-xl border border-amber-200/70 bg-black/5 px-3 py-2"
+              class="pc-border flex items-center justify-between gap-2 rounded-xl border bg-black/5 px-3 py-2"
             >
               <span class="text-stone-800">{{ guest.full_name }}</span>
               <div class="flex shrink-0 gap-2">
@@ -673,8 +674,8 @@ const {
                   type="button"
                   translate="no"
                   @click="guest.attending = true"
-                  :class="guest.attending ? 'bg-rose-700 text-white' : 'bg-white text-stone-400'"
-                  class="rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ring-amber-200 transition sm:text-sm"
+                  :class="guest.attending ? 'pc-btn text-white' : 'bg-white text-stone-400'"
+                  class="pc-ring rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition sm:text-sm"
                 >
                   Asiste
                 </button>
@@ -683,7 +684,7 @@ const {
                   translate="no"
                   @click="guest.attending = false"
                   :class="!guest.attending ? 'bg-stone-700 text-white' : 'bg-white text-stone-400'"
-                  class="rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ring-amber-200 transition sm:text-sm"
+                  class="pc-ring rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition sm:text-sm"
                 >
                   No asiste
                 </button>
@@ -697,7 +698,7 @@ const {
             type="button"
             :disabled="submitting"
             @click="enviarRespuestasNominales"
-            class="mt-6 w-full rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-4 py-3 font-medium text-white shadow-md transition hover:brightness-105 disabled:opacity-50"
+            class="pc-btn mt-6 w-full rounded-full px-4 py-3 font-medium text-white shadow-md transition disabled:opacity-50"
           >
             {{ submitting ? 'Enviando…' : 'Confirmar respuestas' }}
           </button>
@@ -715,14 +716,14 @@ const {
               <input
                 v-model="names[i]"
                 placeholder="Nombre y apellido"
-                class="flex-1 rounded-xl border border-amber-200 bg-black/5 px-3 py-2 focus:border-rose-400 focus:outline-none"
+                class="pc-border pc-input flex-1 rounded-xl border bg-black/5 px-3 py-2 focus:outline-none"
               />
               <button
                 v-if="names.length > 1"
                 type="button"
                 @click="removeName(i)"
                 aria-label="Quitar invitado"
-                class="px-2 text-rose-500"
+                class="pc-link-soft px-2"
               >
                 ✕
               </button>
@@ -732,7 +733,7 @@ const {
               v-if="names.length < invite.allowed_guests"
               type="button"
               @click="addName"
-              class="text-sm font-medium text-rose-700 underline decoration-rose-300"
+              class="pc-link text-sm font-medium underline pc-decoration-tint"
             >
               + Agregar invitado
             </button>
@@ -743,7 +744,7 @@ const {
               <button
                 type="submit"
                 :disabled="submitting"
-                class="flex-1 rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-4 py-3 font-medium text-white shadow-md transition hover:brightness-105 disabled:opacity-50"
+                class="pc-btn flex-1 rounded-full px-4 py-3 font-medium text-white shadow-md transition disabled:opacity-50"
               >
                 {{ submitting ? 'Enviando…' : 'Confirmar asistencia' }}
               </button>
@@ -771,7 +772,7 @@ const {
     <!-- ============ CIERRE ============ -->
     <footer data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
       <div class="divider">✦</div>
-      <p class="text-4xl text-rose-800" style="font-family: 'Dancing Script', cursive">
+      <p class="pc-heading text-4xl" style="font-family: 'Dancing Script', cursive">
         {{ invite.closing_text || '¡Los esperamos!' }}
       </p>
     </footer>
@@ -782,7 +783,7 @@ const {
       type="button"
       @click="toggleMusic"
       :aria-label="musicPlaying ? 'Pausar música' : 'Reproducir música'"
-      class="fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-rose-800 text-white shadow-lg ring-1 ring-white/20 transition hover:brightness-110"
+      class="pc-btn fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full text-white shadow-lg ring-1 ring-white/20 transition"
     >
       <Pause v-if="musicPlaying" :size="18" />
       <Music v-else :size="18" />
@@ -809,7 +810,7 @@ const {
   justify-content: center;
   gap: 0.7rem;
   margin: 0.9rem 0 0.2rem;
-  color: #b45309;
+  color: var(--pc-dark);
   font-size: 0.8rem;
 }
 .divider::before,
@@ -819,10 +820,73 @@ const {
   width: 46px;
 }
 .divider::before {
-  background: linear-gradient(to right, transparent, #d6a756);
+  background: linear-gradient(to right, transparent, var(--pc-tint));
 }
 .divider::after {
-  background: linear-gradient(to left, transparent, #d6a756);
+  background: linear-gradient(to left, transparent, var(--pc-tint));
+}
+
+/* Color principal: todas las plantillas comparten este esquema de acento
+   (definido como custom properties en el root, ver :style del wrapper) para
+   que un solo color elegido por el host teña textos, rings, botones, etc. */
+.pc-heading {
+  color: var(--pc);
+}
+.pc-eyebrow {
+  color: var(--pc-dark);
+}
+.pc-icon {
+  color: var(--pc-dark);
+}
+.pc-link {
+  color: var(--pc);
+}
+.pc-link-soft {
+  color: var(--pc);
+  opacity: 0.75;
+}
+.pc-decoration-tint {
+  text-decoration-color: var(--pc-tint);
+}
+.pc-ring {
+  --tw-ring-color: var(--pc-tint);
+}
+.pc-border {
+  border-color: var(--pc-tint);
+}
+.pc-divide > * + * {
+  border-color: var(--pc-tint);
+}
+.pc-dot {
+  background-color: var(--pc);
+}
+.pc-tint-bg {
+  background-color: var(--pc-soft);
+}
+.pc-hover-tint {
+  transition: background-color 0.2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pc-hover-tint:hover {
+    background-color: var(--pc-soft);
+  }
+}
+.pc-btn {
+  background-color: var(--pc);
+  transition:
+    filter 0.15s ease,
+    transform 0.1s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pc-btn:hover {
+    filter: brightness(1.08);
+  }
+}
+.pc-btn:active {
+  transform: scale(0.98);
+}
+.pc-input:focus {
+  border-color: var(--pc) !important;
 }
 
 .kenburns {

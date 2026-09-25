@@ -101,35 +101,49 @@ function canAdd(section) {
 // Plantillas visuales disponibles — ver src/components/invitation-templates/.
 // Agregar una plantilla nueva ahí también implica sumarla acá para que el
 // host la pueda elegir.
+// El color (fondo + acento) es independiente de la plantilla — cada una es
+// solo diseño/tipografía. Las swatches de acá son solo tipográficas
+// (grises), no de color: el color real se elige aparte, más abajo.
 const INVITATION_TEMPLATES = [
   {
     value: 'clasico',
     label: 'Clásica',
-    help: 'Sobre animado, cursiva y paleta rosa/ámbar.',
-    swatch: 'linear-gradient(135deg, #fdf7f1, #f4bd85, #9f1239)',
+    help: 'Sobre animado y tipografía cursiva, estilo romántico.',
+    font: "'Dancing Script', cursive",
   },
   {
     value: 'partiful',
     label: 'Partiful',
-    help: 'Blanco y negro, tipografía grotesca y pills de color.',
-    swatch: 'linear-gradient(135deg, #ffffff, #f8c4ff, #000000)',
+    help: 'Tipografía grotesca, pills y composición editorial moderna.',
+    font: "'Space Grotesk', sans-serif",
   },
   {
     value: 'craft',
     label: 'Craft',
-    help: 'Papel crema, serif editorial y detalles en verde lima.',
-    swatch: 'linear-gradient(135deg, #f7f5f2, #26d862, #1d3023)',
+    help: 'Serif editorial, cards planas y un hero dramático al abrir.',
+    font: "'Bodoni Moda', serif",
   },
 ]
 
 // Los datos concretos (fecha, salón, dirección…) quedan vacíos a propósito:
 // un valor falso ahí sería peor que uno vacío.
-// Paleta curada de fondos para invitaciones (claros arriba, oscuros al final).
+// Paleta curada de fondos para invitaciones (blanco puro primero para el que
+// no quiere color, después pasteles claros, oscuros al final).
 const BG_PRESETS = [
+  '#ffffff',
   '#fdf7f1', '#f9f1e7', '#f6ede2', '#faf3f4', '#f7eef4',
   '#f3e8ef', '#eef1f7', '#e9eef4', '#eaf1ec', '#eef4ee',
   '#f0f0eb', '#f4f1ea', '#e7ded2', '#dfe6e2', '#d9e2ec',
   '#e6dde8', '#3b3a44', '#2a3b34', '#2e3a4d', '#43303a',
+]
+
+// Paleta curada de colores "principales" (acento) — evita el reflejo típico
+// de morado/celeste de IA; variedad de familias para que no todas las
+// invitaciones terminen pareciendo la misma con distinto fondo.
+const PRIMARY_PRESETS = [
+  '#9f1239', '#e11d48', '#c2410c', '#b45309', '#65a30d',
+  '#0e7490', '#1d4ed8', '#7c3aed', '#be185d', '#1d3023',
+  '#000000', '#334155',
 ]
 
 const EMPTY = {
@@ -141,6 +155,7 @@ const EMPTY = {
   intro_text: '',
   closing_text: '',
   bg_color: '#fdf7f1',
+  primary_color: '#9f1239',
   music_url: '',
   banner: [],
   retrato: [],
@@ -209,6 +224,17 @@ watch(
 watch(hexInput, (v) => {
   if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.bg_color = v.toLowerCase()
 })
+
+const primaryHexInput = ref(form.value.primary_color)
+watch(
+  () => form.value.primary_color,
+  (v) => {
+    if (v !== primaryHexInput.value) primaryHexInput.value = v
+  },
+)
+watch(primaryHexInput, (v) => {
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.primary_color = v.toLowerCase()
+})
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
 const saving = ref(false)
@@ -228,6 +254,7 @@ onMounted(async () => {
       intro_text: event.value.intro_text ?? '',
       closing_text: event.value.closing_text ?? '',
       bg_color: event.value.bg_color ?? '#fdf7f1',
+      primary_color: event.value.primary_color ?? '#9f1239',
       music_url: event.value.music_url ?? '',
       banner: event.value.banner ?? [],
       retrato: event.value.retrato ?? [],
@@ -529,9 +556,11 @@ onUnmounted(() => {
                 class="rounded-xl p-3 text-left transition"
               >
                 <span
-                  class="block h-14 w-full rounded-lg"
-                  :style="{ background: t.swatch }"
-                ></span>
+                  class="flex h-14 w-full items-center justify-center rounded-lg bg-gray-100 text-2xl text-gray-700"
+                  :style="{ fontFamily: t.font }"
+                >
+                  Aa
+                </span>
                 <span class="mt-2 block text-sm font-medium text-gray-800">{{ t.label }}</span>
                 <span class="block text-xs text-gray-500">{{ t.help }}</span>
               </button>
@@ -646,6 +675,44 @@ onUnmounted(() => {
                 >
                   buscar paletas y copiar el hex
                 </a>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Color principal</label>
+              <p class="text-xs text-gray-500">
+                El acento de la invitación: botones, el sello del sobre, rayitas y detalles. Es el
+                mismo selector para cualquier plantilla.
+              </p>
+              <div class="mt-2 grid grid-cols-10 gap-2">
+                <button
+                  v-for="c in PRIMARY_PRESETS"
+                  :key="c"
+                  type="button"
+                  @click="form.primary_color = c"
+                  :style="{ backgroundColor: c }"
+                  :class="
+                    form.primary_color.toLowerCase() === c
+                      ? 'ring-2 ring-gray-900 ring-offset-2'
+                      : 'ring-1 ring-gray-300'
+                  "
+                  :aria-label="`Color principal ${c}`"
+                  class="aspect-square w-full rounded-lg"
+                ></button>
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <span
+                  class="h-8 w-8 shrink-0 rounded-lg ring-1 ring-gray-300"
+                  :style="{ backgroundColor: form.primary_color }"
+                ></span>
+                <input
+                  v-model="primaryHexInput"
+                  data-preview="saludo"
+                  maxlength="7"
+                  spellcheck="false"
+                  placeholder="#9f1239"
+                  class="w-28 rounded border border-gray-300 px-3 py-1.5 font-mono text-sm uppercase"
+                />
               </div>
             </div>
 

@@ -13,6 +13,7 @@ import {
   Search,
 } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
+import { darken } from '../../lib/color'
 import EnvelopeCover from '../EnvelopeCover.vue'
 
 // Plantilla "Craft" - invernadero botánico sobre papel crema: bone linen,
@@ -47,6 +48,13 @@ const {
   galeriaGrid,
   defaultIntro,
   heroTitle,
+  bgColor,
+  primaryColor,
+  primaryDark,
+  primaryTint,
+  primaryLight,
+  onPrimary,
+  envelopePalette,
   envelopeMonogram,
   shows,
   entered,
@@ -112,10 +120,14 @@ const {
 // Solo cuenta como "propia" si el host la cargó (no las de demo). Sin foto
 // real, el hero se queda con el verde + blobs solo.
 const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')][0] || '')
+
+// Sombra profunda del color principal: preserva el "único momento oscuro" del
+// hero sin foto (antes forest fijo) pero siguiendo el color que elija el host.
+const heroDeep = computed(() => darken(primaryColor.value, 0.72))
 </script>
 
 <template>
-  <div class="craft min-h-screen overflow-x-clip bg-[#f7f5f2] text-[#2a1a1d]">
+  <div class="craft min-h-screen overflow-x-clip text-[#2a1a1d]">
     <iframe
       v-if="ytSrc && !preview"
       ref="ytFrame"
@@ -128,7 +140,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
     <!-- ============ HERO (único momento oscuro) ============ -->
     <header
       data-anchor="hero"
-      class="relative flex h-svh min-h-[560px] items-center justify-center overflow-hidden bg-[#1d3023] px-6 text-center"
+      class="craft-hero relative flex h-svh min-h-[560px] items-center justify-center overflow-hidden px-6 text-center"
     >
       <template v-if="heroPhoto">
         <img
@@ -137,7 +149,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
           fetchpriority="high"
           class="kenburns absolute inset-0 h-full w-full object-cover"
         />
-        <div class="absolute inset-0 bg-linear-to-b from-[#1d3023]/65 via-[#1d3023]/35 to-[#1d3023]/85"></div>
+        <div class="craft-hero-scrim absolute inset-0"></div>
         <div class="craft-hero-flare-wash absolute inset-0"></div>
       </template>
       <template v-else>
@@ -177,17 +189,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
       :music-id="musicId"
       :opening="opening"
       :closing="closing"
-      bg="#1d3023"
-      paper-from="#f7f5f2"
-      paper-to="#eae6df"
-      flap-from="#eae6df"
-      flap-to="#d7d2cc"
-      seal-from="#26d862"
-      seal-to="#0e634f"
-      seal-text="#1d3023"
-      ink="#eae6df"
-      ink-muted="#8fa895"
-      letter-ink="#1d3023"
+      v-bind="envelopePalette"
       monogram-font="'Bodoni Moda', serif"
       @open="openEnvelope"
       @fade-end="onEnvelopeFadeEnd"
@@ -196,7 +198,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
     <!-- ============ SALUDO ============ -->
     <section v-reveal data-anchor="saludo" class="py-16">
       <div class="mx-auto max-w-[720px] px-6 text-center">
-        <p v-if="invite.family_name" class="craft-label text-[#26d862]">{{ invite.family_name }}</p>
+        <p v-if="invite.family_name" class="craft-label text-[var(--pc)]">{{ invite.family_name }}</p>
         <p class="craft-display-sm mt-4 whitespace-pre-line text-[#2a1a1d]">
           {{ invite.intro_text || defaultIntro }}
         </p>
@@ -245,7 +247,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
           :aria-label="`Ir a la foto ${i + 1}`"
           @click="saludoSet(i)"
           class="craft-dot h-1.5 rounded-full"
-          :class="i === saludoActive ? 'w-5 bg-[#26d862] opacity-100' : 'w-1.5 bg-[#2a1a1d] opacity-20'"
+          :class="i === saludoActive ? 'w-5 bg-[var(--pc)] opacity-100' : 'w-1.5 bg-[#2a1a1d] opacity-20'"
         ></button>
       </div>
     </section>
@@ -255,7 +257,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
       <p class="craft-label text-center text-[#645757]">Falta poco</p>
       <div class="craft-stagger mt-6 grid grid-cols-4 gap-3 sm:gap-4">
         <div v-for="(u, i) in countdownUnits" :key="u.label" class="craft-stat-card" :style="{ '--i': i }">
-          <p class="craft-display-sm text-[#0e634f]">{{ u.value }}</p>
+          <p class="craft-display-sm text-[var(--pc-dark)]">{{ u.value }}</p>
           <p class="mt-1 text-[11px] leading-[1.5] text-[#645757] sm:text-[13px]">{{ u.label }}</p>
         </div>
       </div>
@@ -528,7 +530,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
       type="button"
       @click="toggleMusic"
       :aria-label="musicPlaying ? 'Pausar música' : 'Reproducir música'"
-      class="craft-fab fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-[#1d3023] text-[#f7f5f2]"
+      class="craft-fab fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-[var(--pc-deep)] text-[#f7f5f2]"
     >
       <Pause v-if="musicPlaying" :size="18" />
       <Music v-else :size="18" />
@@ -543,7 +545,16 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
      son débiles y "ease-in" en especial se siente lento para UI. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --lime: #26d862;
+  /* Color principal: --lime era un verde fijo, ahora sigue al color que
+     elija el host (ver useInvitationLogic → primaryColor/envelopePalette). */
+  --lime: v-bind(primaryColor);
+  --pc: v-bind(primaryColor);
+  --pc-dark: v-bind(primaryDark);
+  --pc-tint: v-bind(primaryTint);
+  --pc-soft: v-bind(primaryLight);
+  --pc-on: v-bind(onPrimary);
+  --pc-deep: v-bind(heroDeep);
+  background-color: v-bind(bgColor);
 }
 
 .craft-display {
@@ -610,8 +621,8 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
   width: 2.75rem;
   flex-shrink: 0;
   border-radius: 999px;
-  background: rgba(38, 216, 98, 0.14);
-  color: #0e634f;
+  background: color-mix(in srgb, var(--lime) 14%, transparent);
+  color: var(--pc-dark);
 }
 
 .craft-ring {
@@ -624,8 +635,9 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
   gap: 0.3rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #0e634f;
+  color: var(--pc-dark);
   text-decoration: underline;
+  text-decoration-color: var(--pc-tint);
   text-underline-offset: 3px;
 }
 
@@ -639,7 +651,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
   transition: border-color 150ms ease;
 }
 .craft-input:focus {
-  outline: 2px solid #1d3023;
+  outline: 2px solid var(--pc-deep);
   outline-offset: 1px;
   border-color: var(--lime);
 }
@@ -652,7 +664,7 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
   gap: 0.4rem;
   border-radius: 8px;
   background: var(--lime);
-  color: #1d3023;
+  color: var(--pc-on);
   padding: 10px 24px;
   font-weight: 700;
   font-size: 0.95rem;
@@ -788,10 +800,10 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
 }
 .craft-toggle-on {
   background: var(--lime);
-  color: #1d3023;
+  color: var(--pc-on);
 }
 .craft-toggle-off-active {
-  background: #1d3023;
+  background: var(--pc-deep);
   color: #f7f5f2;
 }
 
@@ -808,14 +820,14 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
   left: -10%;
   height: 60vh;
   width: 60vh;
-  background: radial-gradient(circle at 30% 30%, var(--lime), #1d3023 70%);
+  background: radial-gradient(circle at 30% 30%, var(--lime), var(--pc-deep) 70%);
 }
 .craft-blob-2 {
   bottom: -15%;
   right: -12%;
   height: 55vh;
   width: 55vh;
-  background: radial-gradient(circle at 70% 70%, #0e634f, #1d3023 70%);
+  background: radial-gradient(circle at 70% 70%, var(--pc-dark), var(--pc-deep) 70%);
   animation-duration: 20s;
   animation-delay: -6s;
 }
@@ -837,8 +849,21 @@ const heroPhoto = computed(() => [...slotUrls('banner'), ...slotUrls('retrato')]
 
 /* --- Hero con foto: foto de fondo completa (como Clásica/Partiful), con un
      wash de luz verde por encima en vez del overlay plano negro. ---------- */
+.craft-hero {
+  background-color: var(--pc-deep);
+}
+
+.craft-hero-scrim {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--pc-deep) 65%, transparent),
+    color-mix(in srgb, var(--pc-deep) 35%, transparent),
+    color-mix(in srgb, var(--pc-deep) 85%, transparent)
+  );
+}
+
 .craft-hero-flare-wash {
-  background: radial-gradient(circle at 12% 8%, rgba(38, 216, 98, 0.4), transparent 24%);
+  background: radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--lime) 40%, transparent), transparent 24%);
   animation: craft-flare-pulse 8s var(--ease-in-out) infinite;
 }
 @keyframes craft-flare-pulse {

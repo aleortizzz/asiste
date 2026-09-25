@@ -42,6 +42,13 @@ const {
   galeriaGrid,
   defaultIntro,
   heroTitle,
+  bgColor,
+  primaryColor,
+  primaryDark,
+  primaryTint,
+  primaryLight,
+  onPrimary,
+  envelopePalette,
   envelopeMonogram,
   shows,
   entered,
@@ -105,7 +112,7 @@ const {
 </script>
 
 <template>
-  <div class="partiful min-h-screen overflow-x-clip bg-white text-black">
+  <div class="partiful min-h-screen overflow-x-clip text-black">
     <iframe
       v-if="ytSrc && !preview"
       ref="ytFrame"
@@ -161,17 +168,7 @@ const {
       :music-id="musicId"
       :opening="opening"
       :closing="closing"
-      bg="#ffffff"
-      paper-from="#ffffff"
-      paper-to="#eeeeee"
-      flap-from="#111111"
-      flap-to="#000000"
-      seal-from="#1a1a1a"
-      seal-to="#000000"
-      seal-text="#ffffff"
-      ink="#000000"
-      ink-muted="#666666"
-      letter-ink="#000000"
+      v-bind="envelopePalette"
       monogram-font="'Space Grotesk', sans-serif"
       @open="openEnvelope"
       @fade-end="onEnvelopeFadeEnd"
@@ -234,7 +231,7 @@ const {
           type="button"
           :aria-label="`Ir a la foto ${i + 1}`"
           @click="saludoSet(i)"
-          class="h-1.5 rounded-full bg-black transition-all"
+          class="pf-dot h-1.5 rounded-full transition-all"
           :class="i === saludoActive ? 'w-5 opacity-100' : 'w-1.5 opacity-20'"
         ></button>
       </div>
@@ -522,7 +519,7 @@ const {
       type="button"
       @click="toggleMusic"
       :aria-label="musicPlaying ? 'Pausar música' : 'Reproducir música'"
-      class="fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full bg-black text-white shadow-lg transition hover:brightness-110"
+      class="pf-fab fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full shadow-lg transition"
     >
       <Pause v-if="musicPlaying" :size="18" />
       <Music v-else :size="18" />
@@ -539,6 +536,12 @@ const {
   --pf-ash: #999999;
   --pf-silver: #cccccc;
   --pf-sand: #d9c58b;
+  --pc: v-bind(primaryColor);
+  --pc-dark: v-bind(primaryDark);
+  --pc-tint: v-bind(primaryTint);
+  --pc-soft: v-bind(primaryLight);
+  --pc-on: v-bind(onPrimary);
+  background-color: v-bind(bgColor);
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -586,7 +589,7 @@ const {
   flex-shrink: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.05);
-  color: #000000;
+  color: var(--pc);
 }
 
 .pf-pill {
@@ -594,6 +597,7 @@ const {
   padding: 6px 14px;
   border-radius: 960px;
   background: rgba(0, 0, 0, 0.05);
+  color: var(--pc-dark);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -603,22 +607,38 @@ const {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  color: var(--pc);
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: underline;
+  text-decoration-color: var(--pc-tint);
   text-underline-offset: 3px;
+}
+
+.pf-dot {
+  background-color: var(--pc);
+}
+
+.pf-fab {
+  background-color: var(--pc);
+  color: var(--pc-on);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pf-fab:hover {
+    filter: brightness(1.1);
+  }
 }
 
 .pf-input {
   width: 100%;
   border-radius: 8px;
-  border: 1px solid #000000;
+  border: 1px solid var(--pc);
   padding: 10px 14px;
   font-family: 'Inter', sans-serif;
   background: #ffffff;
 }
 .pf-input:focus {
-  outline: 2px solid #000000;
+  outline: 2px solid var(--pc);
   outline-offset: 1px;
 }
 
@@ -627,8 +647,8 @@ const {
   align-items: center;
   gap: 0.4rem;
   border-radius: 8px;
-  background: #000000;
-  color: #ffffff;
+  background: var(--pc);
+  color: var(--pc-on);
   padding: 10px 24px;
   font-weight: 700;
   font-size: 0.9rem;
