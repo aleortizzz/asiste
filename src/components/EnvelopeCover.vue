@@ -282,6 +282,11 @@ const cssVars = computed(() => ({
   clip-path: polygon(0 0, 50% 50%, 100% 0, 100% 100%, 0 100%);
   border-radius: 10px;
   z-index: 3;
+  /* Capa propia desde el principio: sin esto, cuando la carta empieza a
+     subir Chrome la pasa a una capa de GPU y re-agrupa al bolsillo (que está
+     encima) perdiendo el clip-path durante la animación — el frente tapaba
+     toda la boca en V y la carta "parpadeaba" entre atrás y adelante. */
+  will-change: transform;
 }
 /* Pliegues de las solapas laterales/inferior: diagonales de cada esquina
    de abajo hacia el centro (la mitad de arriba de la X coincide con la V
