@@ -1,4 +1,5 @@
 @import "tailwindcss";
+/*! cache-bust 2026-09-25 */
 
 /* Tailwind v4 sacó el `cursor: pointer` por defecto de los botones (usa el
    default del navegador, que es la flecha). Lo reponemos para todo lo
