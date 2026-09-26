@@ -78,6 +78,9 @@ const {
   nextSlide,
   prevSlide,
   onTouchStart,
+  onTouchMove,
+  momentosDrag,
+  momentosDragging,
   onTouchEnd,
   stopMomentosAutoplay,
   startMomentosAutoplay,
@@ -91,6 +94,9 @@ const {
   startSaludoAutoplay,
   onSaludoTransitionEnd,
   onSaludoTouchStart,
+  onSaludoTouchMove,
+  saludoDrag,
+  saludoDragging,
   onSaludoTouchEnd,
   vReveal,
   scrollToRsvp,
@@ -178,10 +184,10 @@ const {
         v-if="entered && !submitted"
         type="button"
         @click="scrollToRsvp"
-        class="absolute bottom-7 z-10 flex flex-col items-center gap-1 text-[0.65rem] uppercase tracking-[0.3em] text-white/80 transition hover:text-white"
+        class="absolute bottom-7 z-10 flex flex-col items-center gap-1 text-[0.65rem] uppercase tracking-[0.3em] text-white/80 hero-cta"
       >
         Confirmar asistencia
-        <span class="animate-bounce text-lg">↓</span>
+        <span class="hint-float text-lg">↓</span>
       </button>
     </header>
 
@@ -221,24 +227,26 @@ const {
       <!-- Carrusel centrado infinito: la foto del medio se ve más grande -->
       <div
         v-if="shows('retrato')"
-        class="relative mt-10 overflow-hidden"
+        class="relative mt-10 touch-pan-y overflow-hidden"
         @touchstart.passive="onSaludoTouchStart"
+        @touchmove.passive="onSaludoTouchMove"
         @touchend.passive="onSaludoTouchEnd"
+        @touchcancel.passive="onSaludoTouchEnd"
         @mouseenter="stopSaludoAutoplay"
         @mouseleave="startSaludoAutoplay"
       >
         <div
-          class="flex ease-out"
-          :class="saludoNoTransition ? '' : 'transition-transform duration-500'"
-          :style="{ transform: `translateX(calc(14% - ${saludoSlide * 72}%))` }"
+          class="carousel-ease flex"
+          :class="saludoNoTransition || saludoDragging ? '' : 'transition-transform duration-500'"
+          :style="{ transform: `translateX(calc(14% - ${saludoSlide * 72}% + ${saludoDrag}px))` }"
           @transitionend="onSaludoTransitionEnd"
         >
           <div
             v-for="(src, i) in saludoLoop"
             :key="i"
-            class="w-[72%] shrink-0 px-2 ease-out"
+            class="carousel-ease w-[72%] shrink-0 px-2"
             :class="[
-              saludoNoTransition ? '' : 'transition-all duration-500',
+              saludoNoTransition ? '' : 'transition-[scale,opacity] duration-500',
               i === saludoSlide ? 'scale-100 opacity-100' : 'scale-[0.84] opacity-40',
             ]"
           >
@@ -256,7 +264,7 @@ const {
           type="button"
           aria-label="Foto anterior"
           @click="saludoStep(-1)"
-          class="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-lg text-stone-700 shadow backdrop-blur-sm transition hover:bg-white"
+          class="absolute left-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-lg text-stone-700 shadow backdrop-blur-sm carousel-arrow"
         >
           ‹
         </button>
@@ -264,7 +272,7 @@ const {
           type="button"
           aria-label="Foto siguiente"
           @click="saludoStep(1)"
-          class="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-lg text-stone-700 shadow backdrop-blur-sm transition hover:bg-white"
+          class="absolute right-3 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-lg text-stone-700 shadow backdrop-blur-sm carousel-arrow"
         >
           ›
         </button>
@@ -277,7 +285,7 @@ const {
           type="button"
           :aria-label="`Ir a la foto ${i + 1}`"
           @click="saludoSet(i)"
-          class="pc-dot h-1.5 rounded-full transition-all"
+          class="pc-dot h-1.5 rounded-full transition-[width,opacity] duration-300"
           :class="i === saludoActive ? 'w-5 opacity-100' : 'w-1.5 opacity-30'"
         ></button>
       </div>
@@ -557,15 +565,18 @@ const {
       <div class="divider">✦</div>
 
       <div
-        class="pc-ring relative mx-auto mt-6 max-w-2xl overflow-hidden shadow-xl sm:rounded-[2rem] sm:ring-1"
+        class="pc-ring relative mx-auto mt-6 max-w-2xl touch-pan-y overflow-hidden shadow-xl sm:rounded-[2rem] sm:ring-1"
         @touchstart.passive="onTouchStart"
+        @touchmove.passive="onTouchMove"
         @touchend.passive="onTouchEnd"
+        @touchcancel.passive="onTouchEnd"
         @mouseenter="stopMomentosAutoplay"
         @mouseleave="startMomentosAutoplay"
       >
         <div
-          class="flex transition-transform duration-700 ease-out"
-          :style="{ transform: `translateX(-${slide * 100}%)` }"
+          class="carousel-ease flex"
+          :class="momentosDragging ? '' : 'transition-transform duration-500'"
+          :style="{ transform: `translateX(calc(-${slide * 100}% + ${momentosDrag}px))` }"
         >
           <div v-for="(src, i) in momentosFotos" :key="i" class="min-w-full">
             <img
@@ -582,7 +593,7 @@ const {
           type="button"
           aria-label="Foto anterior"
           @click="prevSlide"
-          class="absolute left-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/70 text-lg text-stone-700 shadow backdrop-blur-sm transition hover:bg-white sm:left-3"
+          class="absolute left-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/70 text-lg text-stone-700 shadow backdrop-blur-sm carousel-arrow sm:left-3"
         >
           ‹
         </button>
@@ -590,7 +601,7 @@ const {
           type="button"
           aria-label="Foto siguiente"
           @click="nextSlide"
-          class="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/70 text-lg text-stone-700 shadow backdrop-blur-sm transition hover:bg-white sm:right-3"
+          class="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/70 text-lg text-stone-700 shadow backdrop-blur-sm carousel-arrow sm:right-3"
         >
           ›
         </button>
@@ -602,7 +613,7 @@ const {
             type="button"
             :aria-label="`Ir a la foto ${i + 1}`"
             @click="goTo(i)"
-            class="h-2 rounded-full bg-white transition-all"
+            class="h-2 rounded-full bg-white transition-[width,opacity] duration-300"
             :class="i === slide ? 'w-6 opacity-100' : 'w-2 opacity-50'"
           ></button>
         </div>
@@ -678,7 +689,7 @@ const {
                   translate="no"
                   @click="guest.attending = true"
                   :class="guest.attending ? 'pc-btn text-white' : 'bg-white text-stone-400'"
-                  class="pc-ring rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition sm:text-sm"
+                  class="pc-ring press rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition sm:text-sm"
                 >
                   Asiste
                 </button>
@@ -687,7 +698,7 @@ const {
                   translate="no"
                   @click="guest.attending = false"
                   :class="!guest.attending ? 'bg-stone-700 text-white' : 'bg-white text-stone-400'"
-                  class="pc-ring rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition sm:text-sm"
+                  class="pc-ring press rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition sm:text-sm"
                 >
                   No asiste
                 </button>
@@ -755,7 +766,7 @@ const {
                 type="button"
                 :disabled="submitting"
                 @click="declinarGenerico"
-                class="rounded-full border border-stone-300 px-4 py-3 text-stone-600 transition hover:bg-stone-50 disabled:opacity-50"
+                class="decline-btn rounded-full border border-stone-300 px-4 py-3 text-stone-600 disabled:opacity-50"
               >
                 No podremos ir
               </button>
@@ -944,8 +955,74 @@ const {
   }
 }
 
+/* Curva tipo iOS para los carruseles: arranca rápido (continúa el
+   movimiento del dedo al soltar) y frena suave. */
+.carousel-ease {
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Respuesta al tocar: se "hunden" apenas. Los hovers solo con mouse, así en
+   el celular no quedan pegados después de tocar. */
+.carousel-arrow {
+  transition:
+    background-color 0.2s ease,
+    scale 0.15s ease-out;
+}
+/* `scale` (no `transform`): Tailwind v4 centra la flecha con la propiedad
+   `translate`, así no se pisan. */
+.carousel-arrow:active {
+  scale: 0.92;
+}
+.decline-btn {
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease-out;
+}
+.decline-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.press {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease-out;
+}
+.press:active {
+  transform: scale(0.95);
+}
+.hero-cta {
+  transition: color 0.2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .carousel-arrow:hover {
+    background-color: #fff;
+  }
+  .decline-btn:hover:not(:disabled) {
+    background-color: var(--color-stone-50);
+  }
+  .hero-cta:hover {
+    color: #fff;
+  }
+}
+
+/* Flecha de "Confirmar asistencia": flota suave en vez del bounce de
+   Tailwind, que es brusco. */
+.hint-float {
+  animation: hint-float 2.4s ease-in-out infinite;
+}
+@keyframes hint-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .hero-flare {
+  .hero-flare,
+  .hint-float {
     animation: none;
   }
   .kenburns,

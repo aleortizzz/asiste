@@ -355,18 +355,12 @@ export function useInvitationLogic(props, emit) {
     }
   }
 
-  let touchX = 0
-  function onTouchStart(e) {
-    touchX = e.changedTouches[0].clientX
-    stopMomentosAutoplay()
-  }
-  function onTouchEnd(e) {
-    const dx = e.changedTouches[0].clientX - touchX
-    // Dirección natural del celular: deslizar a la izquierda = siguiente foto.
-    if (dx < -40) nextSlide()
-    else if (dx > 40) prevSlide()
-    startMomentosAutoplay()
-  }
+  const momentosSwipe = useSwipe({
+    next: nextSlide,
+    prev: prevSlide,
+    pause: stopMomentosAutoplay,
+    resume: startMomentosAutoplay,
+  })
 
   // --- Carrusel centrado del saludo (infinito) ------------------------------
   // Repetimos las fotos 3 veces y arrancamos en la copia del medio: así siempre
@@ -422,17 +416,12 @@ export function useInvitationLogic(props, emit) {
     saludoSlide.value = n + Math.min(saludoActive.value, Math.max(0, n - 1))
   })
 
-  let saludoTouchX = 0
-  function onSaludoTouchStart(e) {
-    saludoTouchX = e.changedTouches[0].clientX
-    stopSaludoAutoplay()
-  }
-  function onSaludoTouchEnd(e) {
-    const dx = e.changedTouches[0].clientX - saludoTouchX
-    if (dx < -40) saludoStep(1)
-    else if (dx > 40) saludoStep(-1)
-    startSaludoAutoplay()
-  }
+  const saludoSwipe = useSwipe({
+    next: () => saludoStep(1),
+    prev: () => saludoStep(-1),
+    pause: stopSaludoAutoplay,
+    resume: startSaludoAutoplay,
+  })
 
   // --- Reveal al hacer scroll (directiva local v-reveal) -------------------
   const vReveal = {
@@ -671,8 +660,11 @@ export function useInvitationLogic(props, emit) {
     prevSlide,
     startMomentosAutoplay,
     stopMomentosAutoplay,
-    onTouchStart,
-    onTouchEnd,
+    onTouchStart: momentosSwipe.onStart,
+    onTouchMove: momentosSwipe.onMove,
+    onTouchEnd: momentosSwipe.onEnd,
+    momentosDrag: momentosSwipe.offset,
+    momentosDragging: momentosSwipe.dragging,
     saludoLen,
     saludoLoop,
     saludoSlide,
@@ -683,8 +675,11 @@ export function useInvitationLogic(props, emit) {
     startSaludoAutoplay,
     stopSaludoAutoplay,
     onSaludoTransitionEnd,
-    onSaludoTouchStart,
-    onSaludoTouchEnd,
+    onSaludoTouchStart: saludoSwipe.onStart,
+    onSaludoTouchMove: saludoSwipe.onMove,
+    onSaludoTouchEnd: saludoSwipe.onEnd,
+    saludoDrag: saludoSwipe.offset,
+    saludoDragging: saludoSwipe.dragging,
     vReveal,
     scrollToRsvp,
     gridItems,
@@ -699,4 +694,54 @@ export function useInvitationLogic(props, emit) {
     declinarGenerico,
     enviarRespuestasNominales,
   }
+}
+
+// Deslizar en los carruseles: la foto sigue al dedo mientras se arrastra
+// (`offset` en px, para sumar al translateX del track) y al soltar pasa de
+// foto si se arrastró más de 40px O si fue un "flick" rápido aunque corto
+// (velocidad > 0.11 px/ms). Dirección natural del celular: deslizar a la
+// izquierda = siguiente. Si el gesto arranca vertical se ignora, para no
+// trabar el scroll de la página (el track además usa touch-action: pan-y).
+function useSwipe({ next, prev, pause, resume }) {
+  const offset = ref(0)
+  const dragging = ref(false)
+  let x0 = 0
+  let y0 = 0
+  let t0 = 0
+  let axis = null
+
+  function onStart(e) {
+    const t = e.changedTouches[0]
+    x0 = t.clientX
+    y0 = t.clientY
+    t0 = Date.now()
+    axis = null
+    pause()
+  }
+  function onMove(e) {
+    const t = e.changedTouches[0]
+    const dx = t.clientX - x0
+    const dy = t.clientY - y0
+    if (!axis) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+      axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+    }
+    if (axis !== 'x') return
+    dragging.value = true
+    offset.value = dx
+  }
+  function onEnd(e) {
+    const dx = e.changedTouches[0].clientX - x0
+    const velocity = Math.abs(dx) / Math.max(1, Date.now() - t0)
+    const horizontal = axis !== 'y'
+    dragging.value = false
+    offset.value = 0
+    if (horizontal && (Math.abs(dx) > 40 || (velocity > 0.11 && Math.abs(dx) > 10))) {
+      if (dx < 0) next()
+      else prev()
+    }
+    resume()
+  }
+
+  return { offset, dragging, onStart, onMove, onEnd }
 }
