@@ -58,7 +58,13 @@ create table events (
   monogram text,
   -- Color de acento único: las plantillas son diseño/tipografía, el color lo
   -- elige el host. Ver supabase/migrations/20260925_color_principal.sql.
-  primary_color text not null default '#9f1239'
+  primary_color text not null default '#9f1239',
+  -- Línea corta opcional en la carta del sobre. Ver
+  -- supabase/migrations/20260926_sobre_texto.sql.
+  envelope_text text,
+  -- Color propio del sobre (opcional, independiente del color principal).
+  -- Ver supabase/migrations/20260926_color_sobre.sql.
+  envelope_color text
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -234,6 +240,8 @@ begin
     'template', e.template,
     'monogram', e.monogram,
     'primary_color', e.primary_color,
+    'envelope_text', e.envelope_text,
+    'envelope_color', e.envelope_color,
     'hero_kicker', e.hero_kicker,
     'hero_title', e.hero_title,
     'hero_subtitle', e.hero_subtitle,

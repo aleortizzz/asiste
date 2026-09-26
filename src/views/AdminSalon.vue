@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AdminNav from '../components/AdminNav.vue'
+import EnvelopeCover from '../components/EnvelopeCover.vue'
 import { useEvent } from '../composables/useEvent'
 import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
+import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
@@ -151,11 +153,13 @@ const EMPTY = {
   hero_kicker: '',
   hero_title: '',
   monogram: '',
+  envelope_text: '',
   hero_subtitle: '',
   intro_text: '',
   closing_text: '',
   bg_color: '#fdf7f1',
   primary_color: '#9f1239',
+  envelope_color: '',
   music_url: '',
   banner: [],
   retrato: [],
@@ -235,6 +239,34 @@ watch(
 watch(primaryHexInput, (v) => {
   if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.primary_color = v.toLowerCase()
 })
+// Color propio del sobre ('' = derivado del color principal, como antes).
+const envelopeHexInput = ref(form.value.envelope_color)
+watch(
+  () => form.value.envelope_color,
+  (v) => {
+    if (v !== envelopeHexInput.value) envelopeHexInput.value = v
+  },
+)
+watch(envelopeHexInput, (v) => {
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.envelope_color = v.toLowerCase()
+})
+// Preview del sobre en la pestaña "Sobre": misma derivación que usa la
+// invitación real (ver src/lib/envelope.js), pero calculada acá en vivo a
+// partir del form, para no depender de guardar/recargar para verla.
+const envelopePreviewPalette = computed(() =>
+  deriveEnvelopePalette(form.value.bg_color, form.value.primary_color, form.value.envelope_color),
+)
+const envelopePreviewMonogram = computed(() =>
+  deriveEnvelopeMonogram(form.value.monogram, form.value.hero_title),
+)
+const TEMPLATE_FONTS = {
+  clasico: "'Dancing Script', cursive",
+  partiful: "'Space Grotesk', sans-serif",
+  craft: "'Bodoni Moda', serif",
+}
+const envelopePreviewOpen = ref(false)
+const envelopePreviewFont = computed(() => TEMPLATE_FONTS[form.value.template] || 'inherit')
+
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
 const saving = ref(false)
@@ -249,12 +281,14 @@ onMounted(async () => {
       // Eventos viejos sin hero_title: usamos su `name` como texto principal.
       hero_title: event.value.hero_title ?? event.value.name ?? '',
       monogram: event.value.monogram ?? '',
+      envelope_text: event.value.envelope_text ?? '',
       hero_kicker: event.value.hero_kicker ?? '',
       hero_subtitle: event.value.hero_subtitle ?? '',
       intro_text: event.value.intro_text ?? '',
       closing_text: event.value.closing_text ?? '',
       bg_color: event.value.bg_color ?? '#fdf7f1',
       primary_color: event.value.primary_color ?? '#9f1239',
+      envelope_color: event.value.envelope_color ?? '',
       music_url: event.value.music_url ?? '',
       banner: event.value.banner ?? [],
       retrato: event.value.retrato ?? [],
@@ -294,6 +328,8 @@ async function onSubmit() {
       hero_kicker: emptyAsNull(form.value.hero_kicker),
       hero_title: emptyAsNull(form.value.hero_title),
       monogram: emptyAsNull(form.value.monogram?.trim()),
+      envelope_text: emptyAsNull(form.value.envelope_text?.trim()),
+      envelope_color: emptyAsNull(form.value.envelope_color),
       hero_subtitle: emptyAsNull(form.value.hero_subtitle),
       intro_text: emptyAsNull(form.value.intro_text),
       closing_text: emptyAsNull(form.value.closing_text),
@@ -424,8 +460,8 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Switch Información / Fotos -->
-        <div class="mt-4 grid grid-cols-2 rounded-lg border border-gray-300 p-0.5 text-sm">
+        <!-- Switch Información / Sobre / Fotos -->
+        <div class="mt-4 grid grid-cols-3 rounded-lg border border-gray-300 p-0.5 text-sm">
           <button
             type="button"
             @click="panel = 'info'"
@@ -436,11 +472,145 @@ onUnmounted(() => {
           </button>
           <button
             type="button"
+            @click="panel = 'sobre'"
+            :class="panel === 'sobre' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
+            class="rounded-md py-1.5 font-medium transition-colors"
+          >
+            Sobre
+          </button>
+          <button
+            type="button"
             @click="panel = 'fotos'"
             :class="panel === 'fotos' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
             class="rounded-md py-1.5 font-medium transition-colors"
           >
             Fotos
+          </button>
+        </div>
+
+        <!-- ================= SOBRE ================= -->
+        <div v-if="panel === 'sobre'" class="mt-6 space-y-6" @focusin="onFieldFocus">
+          <p class="text-xs text-gray-500">
+            El sobre animado que se ve al abrir la invitación. La forma y la tipografía las define
+            la plantilla elegida en «Información»; acá elegís el sello, el texto y el color.
+          </p>
+
+          <!-- Preview en vivo, contenido (no overlay a pantalla completa) -->
+          <div
+            class="flex justify-center overflow-hidden rounded-2xl ring-1 ring-gray-200"
+            :style="{ backgroundColor: form.bg_color }"
+          >
+            <EnvelopeCover
+              inline
+              :opening="envelopePreviewOpen"
+              :monogram-short="envelopePreviewMonogram.short"
+              :monogram-full="envelopePreviewMonogram.full"
+              :text="form.envelope_text?.trim() || ''"
+              :monogram-font="envelopePreviewFont"
+              v-bind="envelopePreviewPalette"
+            />
+          </div>
+          <button
+            type="button"
+            @click="envelopePreviewOpen = !envelopePreviewOpen"
+            class="-mt-3 w-full rounded border border-gray-300 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            {{ envelopePreviewOpen ? 'Cerrar sobre' : 'Abrir sobre para ver la carta' }}
+          </button>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Contenido del sello</label>
+            <p class="text-xs text-gray-500">
+              El texto o símbolo que aparece en el círculo del sobre (y arriba de la carta, adentro).
+              Opcional — si lo dejás vacío, usamos las iniciales del texto principal (ej. "Ana &amp;
+              Luis" → "A L"). Máximo 3 caracteres, también sirve para un emoji o símbolo (♥, ✦) en
+              vez de letras.
+            </p>
+            <input
+              v-model="form.monogram"
+              data-preview="hero"
+              maxlength="3"
+              placeholder="Ej. AL, XV, ♥"
+              class="mt-1 w-24 rounded border border-gray-300 px-3 py-2 text-center"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Texto de la carta</label>
+            <p class="text-xs text-gray-500">
+              Opcional. Una línea corta escrita en la carta que sale del sobre al abrirlo: un
+              nombre, «Mis XV», «Te invitamos»… Si lo dejás vacío, la carta muestra las iniciales
+              del sello.
+            </p>
+            <input
+              v-model="form.envelope_text"
+              maxlength="40"
+              placeholder="Ej. Mis XV, Te invitamos"
+              class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+            />
+            <p class="mt-1 text-right text-xs text-gray-400">
+              {{ form.envelope_text?.length || 0 }}/40
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Color del sobre</label>
+            <p class="text-xs text-gray-500">
+              Por defecto el sobre va en un tono claro del color principal de la invitación. Si
+              querés otro (ej. sobre negro con invitación lila), elegilo acá: el sello del centro
+              toma una versión más oscura del mismo color del sobre.
+            </p>
+            <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                :checked="!!form.envelope_color"
+                @change="form.envelope_color = $event.target.checked ? '#000000' : ''"
+              />
+              Usar un color diferente al de la invitación
+            </label>
+            <template v-if="form.envelope_color">
+              <div class="mt-3 grid grid-cols-10 gap-2">
+                <button
+                  v-for="c in PRIMARY_PRESETS"
+                  :key="c"
+                  type="button"
+                  @click="form.envelope_color = c"
+                  :style="{ backgroundColor: c }"
+                  :class="
+                    form.envelope_color.toLowerCase() === c
+                      ? 'ring-2 ring-gray-900 ring-offset-2'
+                      : 'ring-1 ring-gray-300'
+                  "
+                  :aria-label="`Color del sobre ${c}`"
+                  class="aspect-square w-full rounded-lg"
+                ></button>
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <span
+                  class="h-8 w-8 shrink-0 rounded-lg ring-1 ring-gray-300"
+                  :style="{ backgroundColor: form.envelope_color }"
+                ></span>
+                <input
+                  v-model="envelopeHexInput"
+                  maxlength="7"
+                  spellcheck="false"
+                  placeholder="#111111"
+                  class="w-28 rounded border border-gray-300 px-3 py-1.5 font-mono text-sm uppercase"
+                />
+              </div>
+            </template>
+          </div>
+
+          <!-- Mismo guardado que «Información»: el form es uno solo (form.value),
+               así que guarda también lo que se haya tocado en la otra pestaña. -->
+          <p v-if="message" class="text-sm">{{ message }}</p>
+          <button
+            type="button"
+            @click="onSubmit"
+            :disabled="saving"
+            class="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
+          >
+            {{ saving ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
 
@@ -589,21 +759,6 @@ onUnmounted(() => {
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700">Sello del sobre</label>
-              <p class="text-xs text-gray-500">
-                Opcional. Si lo dejás vacío, usamos las iniciales del texto principal (ej. "Ana &amp;
-                Luis" → "A L"). Máximo 3 caracteres — también sirve para poner un símbolo (♥, ✦) en
-                vez de letras.
-              </p>
-              <input
-                v-model="form.monogram"
-                data-preview="hero"
-                maxlength="3"
-                placeholder="Ej. AL, XV, ♥"
-                class="mt-1 w-24 rounded border border-gray-300 px-3 py-2 text-center"
-              />
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-700">Línea de abajo</label>
               <input
                 v-model="form.hero_subtitle"
@@ -681,8 +836,9 @@ onUnmounted(() => {
             <div>
               <label class="block text-sm font-medium text-gray-700">Color principal</label>
               <p class="text-xs text-gray-500">
-                El acento de la invitación: botones, el sello del sobre, rayitas y detalles. Es el
-                mismo selector para cualquier plantilla.
+                El acento de la invitación: botones, rayitas y detalles. Es el mismo selector para
+                cualquier plantilla. El sobre también lo usa, salvo que le elijas un color propio
+                en la pestaña «Sobre».
               </p>
               <div class="mt-2 grid grid-cols-10 gap-2">
                 <button

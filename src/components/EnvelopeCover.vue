@@ -11,6 +11,10 @@ import { Music } from '@lucide/vue'
 const props = defineProps({
   monogramShort: { type: String, default: '✦' },
   monogramFull: { type: String, default: '✦' },
+  // Línea corta escrita en la carta (ej. "Mis XV", "Te invitamos"). Si
+  // viene, reemplaza al monograma adentro de la carta y la carta sube más,
+  // para que el texto quede entero fuera del sobre y se lea. Opcional.
+  text: { type: String, default: '' },
   musicId: { type: String, default: '' },
   opening: { type: Boolean, default: false },
   closing: { type: Boolean, default: false },
@@ -19,6 +23,8 @@ const props = defineProps({
   paperTo: { type: String, required: true },
   flapFrom: { type: String, required: true },
   flapTo: { type: String, required: true },
+  // Color de los pliegues dibujados (claro en sobres oscuros, oscuro en claros).
+  seam: { type: String, default: 'rgba(0, 0, 0, 0.07)' },
   sealFrom: { type: String, required: true },
   sealTo: { type: String, required: true },
   sealText: { type: String, required: true },
@@ -30,6 +36,10 @@ const props = defineProps({
   inkMuted: { type: String, required: true },
   letterInk: { type: String, required: true },
   monogramFont: { type: String, default: 'inherit' },
+  // Modo embebido: para la vista previa del sobre en AdminSalon — mismo
+  // sobre, pero contenido en una caja en vez de overlay a pantalla completa,
+  // sin leyenda ni click (es solo para mostrar la paleta elegida).
+  inline: { type: Boolean, default: false },
 })
 
 defineEmits(['open', 'fade-end'])
@@ -40,6 +50,7 @@ const cssVars = computed(() => ({
   '--ec-paper-to': props.paperTo,
   '--ec-flap-from': props.flapFrom,
   '--ec-flap-to': props.flapTo,
+  '--ec-seam': props.seam,
   '--ec-seal-from': props.sealFrom,
   '--ec-seal-to': props.sealTo,
   '--ec-seal-text': props.sealText,
@@ -52,8 +63,11 @@ const cssVars = computed(() => ({
 
 <template>
   <div
-    class="ec-overlay fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center"
-    :class="{ 'ec-overlay--out': closing }"
+    class="ec-overlay flex flex-col items-center justify-center px-6 text-center"
+    :class="[
+      inline ? 'ec-overlay--inline relative' : 'fixed inset-0 z-50',
+      { 'ec-overlay--out': closing },
+    ]"
     :style="cssVars"
     @transitionend.self="$emit('fade-end')"
   >
@@ -61,14 +75,20 @@ const cssVars = computed(() => ({
       type="button"
       class="ec-envelope"
       :class="{ 'ec-envelope--open': opening }"
-      :disabled="opening"
-      aria-label="Abrir invitación"
+      :disabled="opening || inline"
+      :aria-label="inline ? undefined : 'Abrir invitación'"
+      :tabindex="inline ? -1 : undefined"
       @click="$emit('open')"
     >
       <span class="ec-shadow"></span>
       <span class="ec-back"></span>
-      <span class="ec-letter">
-        <span class="ec-monogram">{{ monogramFull }}</span>
+      <span class="ec-letter" :class="{ 'ec-letter--text': text }">
+        <span
+          v-if="text"
+          class="ec-letter-text"
+          :class="{ 'ec-letter-text--long': text.length > 24 }"
+        >{{ text }}</span>
+        <span v-else class="ec-monogram">{{ monogramFull }}</span>
         <span class="ec-letter-rule"></span>
       </span>
       <span class="ec-pocket"></span>
@@ -76,12 +96,14 @@ const cssVars = computed(() => ({
       <span class="ec-seal">{{ monogramShort }}</span>
     </button>
 
-    <p class="ec-caption ec-in" :class="{ 'ec-caption--out': opening }">
-      Tocá el sobre para abrir tu invitación
-    </p>
-    <p v-if="musicId" class="ec-caption ec-caption--muted ec-in" :class="{ 'ec-caption--out': opening }">
-      <Music :size="12" /> con música
-    </p>
+    <template v-if="!inline">
+      <p class="ec-caption ec-in" :class="{ 'ec-caption--out': opening }">
+        Tocá el sobre para abrir tu invitación
+      </p>
+      <p v-if="musicId" class="ec-caption ec-caption--muted ec-in" :class="{ 'ec-caption--out': opening }">
+        <Music :size="12" /> con música
+      </p>
+    </template>
   </div>
 </template>
 
@@ -98,6 +120,13 @@ const cssVars = computed(() => ({
   opacity: 0;
   filter: blur(6px);
   pointer-events: none;
+}
+
+.ec-overlay--inline {
+  /* Arriba deja lugar para la carta cuando se abre el sobre en la vista
+     previa (con texto sube ~80px por encima del sobre). */
+  padding: 5.5rem 0.75rem 1.5rem;
+  border-radius: 1rem;
 }
 
 .ec-in {
@@ -198,6 +227,29 @@ const cssVars = computed(() => ({
 .ec-envelope--open .ec-letter {
   transform: translateY(-48%);
 }
+.ec-letter--text {
+  justify-content: flex-start;
+  padding: 0.9rem 0.75rem 0;
+}
+/* Con texto sube más (-72% en vez de -48%): así el texto, que va arriba de
+   todo en la carta, queda entero por encima del borde del sobre y no lo
+   recorta la boca en V del bolsillo. */
+.ec-envelope--open .ec-letter--text {
+  transform: translateY(-72%);
+}
+.ec-letter-text {
+  font-family: var(--ec-monogram-font);
+  color: var(--ec-letter-ink);
+  font-size: clamp(1.05rem, 4.6vw, 1.45rem);
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* Textos largos (hasta 40 caracteres en el editor): un poco más chico para
+   que sigan entrando en dos líneas dentro de la parte visible de la carta. */
+.ec-letter-text--long {
+  font-size: clamp(0.9rem, 3.8vw, 1.15rem);
+}
 .ec-monogram {
   font-family: var(--ec-monogram-font);
   color: var(--ec-letter-ink);
@@ -215,14 +267,29 @@ const cssVars = computed(() => ({
 
 .ec-pocket {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 60%;
+  inset: 0;
   background: linear-gradient(160deg, var(--ec-paper-from) 0%, var(--ec-paper-to) 100%);
-  clip-path: polygon(0 0, 50% 44%, 100% 0, 100% 100%, 0 100%);
-  border-radius: 0 0 10px 10px;
+  /* Frente del sobre a altura completa, con la boca en V que sale de las
+     esquinas de arriba. La punta de la V (50%) queda apenas por encima de
+     la punta de .ec-flap (58% * 90% = 52.2%), y como las dos diagonales
+     salen de las mismas esquinas, la solapa cerrada tapa toda la boca: no
+     asoma nada de la carta. Antes el bolsillo cubría solo el 60% de abajo y
+     quedaban dos cuñas descubiertas a los costados de la solapa, por donde
+     se veía la carta — parecía un sobre abierto. */
+  clip-path: polygon(0 0, 50% 50%, 100% 0, 100% 100%, 0 100%);
+  border-radius: 10px;
   z-index: 3;
+}
+/* Pliegues de las solapas laterales/inferior: diagonales de cada esquina
+   de abajo hacia el centro (la mitad de arriba de la X coincide con la V
+   y queda recortada por el clip-path). */
+.ec-pocket::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to top right, transparent calc(50% - 0.6px), var(--ec-seam) 50%, transparent calc(50% + 0.6px)),
+    linear-gradient(to top left, transparent calc(50% - 0.6px), var(--ec-seam) 50%, transparent calc(50% + 0.6px));
 }
 
 .ec-flap {

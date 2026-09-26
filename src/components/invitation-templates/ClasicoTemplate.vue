@@ -191,6 +191,7 @@ const {
       v-if="!preview && !envelopeGone"
       :monogram-short="envelopeMonogram.short"
       :monogram-full="envelopeMonogram.full"
+      :text="invite.envelope_text || ''"
       :music-id="musicId"
       :opening="opening"
       :closing="closing"

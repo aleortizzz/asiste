@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { searchYoutubeVideos } from '../lib/youtube'
-import { lighten, darken, contrastText, isDark } from '../lib/color'
+import { lighten, darken, contrastText } from '../lib/color'
+import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 
 // Toda la lógica de la invitación pública, compartida entre las distintas
 // plantillas visuales (ver src/components/invitation-templates/). Cada
@@ -113,63 +114,14 @@ export function useInvitationLogic(props, emit) {
   const primaryLight = computed(() => lighten(primaryColor.value, 0.88))
   const onPrimary = computed(() => contrastText(primaryColor.value))
 
-  // Paleta del sobre, derivada de bgColor + primaryColor en vez de hardcodeada
-  // por plantilla. `letterInk` siempre es oscuro (la carta es sobre papel
-  // claro sí o sí); `ink`/`inkMuted` se adaptan según si el fondo elegido es
-  // claro u oscuro, así el texto de las leyendas siempre se lee bien.
-  const envelopePalette = computed(() => {
-    const bg = bgColor.value
-    const primary = primaryColor.value
-    const bgIsDark = isDark(bg)
-    return {
-      bg,
-      paperFrom: lighten(primary, 0.94),
-      paperTo: lighten(primary, 0.8),
-      flapFrom: lighten(primary, 0.72),
-      flapTo: lighten(primary, 0.55),
-      sealFrom: lighten(primary, 0.08),
-      sealTo: darken(primary, 0.18),
-      sealText: onPrimary.value,
-      ink: bgIsDark ? lighten(primary, 0.75) : darken(primary, 0.35),
-      inkMuted: bgIsDark ? lighten(primary, 0.5) : darken(primary, 0.15),
-      letterInk: darken(primary, 0.22),
-    }
-  })
-
-  // Sello del sobre: si el host cargó algo en "monogram" desde el editor, se
-  // usa tal cual (tope de 3 caracteres — por si el input del navegador no
-  // llegó a frenarlo, o vino de otro lado). Si lo dejó vacío, se arma solo a
-  // partir de heroTitle: "Sofía & Juan" -> letra de cada lado ("S & J" en la
-  // carta, "SJ" en el sello chico); "Antonella" -> "A" en los dos. Esto es a
-  // propósito un fallback razonable, no una regla infalible — por eso existe
-  // el campo manual, para cuando el texto principal no son nombres de gente
-  // (ej. "Fiesta de fin de año").
-  const envelopeMonogram = computed(() => {
-    const custom = (props.invite?.monogram || '').trim()
-    if (custom) {
-      const capped = [...custom].slice(0, 3).join('')
-      return { short: capped, full: capped }
-    }
-    const t = (heroTitle.value || '').trim()
-    if (!t) return { short: '✦', full: '✦' }
-    const byAmp = t.split('&').map((s) => s.trim()).filter(Boolean)
-    let initials
-    if (byAmp.length >= 2) {
-      initials = byAmp.slice(0, 2).map((p) => p[0]?.toUpperCase()).filter(Boolean)
-    } else {
-      const words = t.split(/\s+/).filter(Boolean)
-      initials = words.length >= 2
-        ? [words[0][0]?.toUpperCase(), words[1][0]?.toUpperCase()].filter(Boolean)
-        : words[0]
-          ? [words[0][0].toUpperCase()]
-          : []
-    }
-    if (!initials.length) return { short: '✦', full: '✦' }
-    return {
-      short: initials.join(''),
-      full: initials.length >= 2 ? initials.join(' & ') : initials[0],
-    }
-  })
+  // Paleta y sello del sobre: lógica compartida con la vista previa en vivo
+  // de AdminSalon (ver src/lib/envelope.js) para no duplicarla en dos lugares.
+  const envelopePalette = computed(() =>
+    deriveEnvelopePalette(bgColor.value, primaryColor.value, props.invite?.envelope_color),
+  )
+  const envelopeMonogram = computed(() =>
+    deriveEnvelopeMonogram(props.invite?.monogram, heroTitle.value),
+  )
 
   // Secciones de fotos que el cliente ocultó desde el editor.
   const hiddenSections = computed(() =>
@@ -361,12 +313,16 @@ export function useInvitationLogic(props, emit) {
       envelopeGone.value = true
       return
     }
+    // Con texto en la carta (envelope_text) esperamos más antes del fade: la
+    // carta termina de subir a los ~1130ms, y sin esta pausa el overlay se
+    // desvanecía antes de que se llegara a leer.
+    const delay = props.invite?.envelope_text?.trim() ? 2300 : 950
     setTimeout(() => {
       entered.value = true
-    }, 950)
+    }, delay)
     setTimeout(() => {
       closing.value = true
-    }, 950)
+    }, delay)
   }
 
   function onEnvelopeFadeEnd() {
