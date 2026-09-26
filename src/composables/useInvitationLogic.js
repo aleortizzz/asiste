@@ -362,8 +362,9 @@ export function useInvitationLogic(props, emit) {
   }
   function onTouchEnd(e) {
     const dx = e.changedTouches[0].clientX - touchX
-    if (dx > 40) nextSlide()
-    else if (dx < -40) prevSlide()
+    // Dirección natural del celular: deslizar a la izquierda = siguiente foto.
+    if (dx < -40) nextSlide()
+    else if (dx > 40) prevSlide()
     startMomentosAutoplay()
   }
 
@@ -428,8 +429,8 @@ export function useInvitationLogic(props, emit) {
   }
   function onSaludoTouchEnd(e) {
     const dx = e.changedTouches[0].clientX - saludoTouchX
-    if (dx > 40) saludoStep(1)
-    else if (dx < -40) saludoStep(-1)
+    if (dx < -40) saludoStep(1)
+    else if (dx > 40) saludoStep(-1)
     startSaludoAutoplay()
   }
 

@@ -237,18 +237,21 @@ const cssVars = computed(() => ({
 .ec-envelope--open .ec-letter--text {
   transform: translateY(-72%);
 }
+/* Tipografía fija para cualquier plantilla (no la del monograma): una serif
+   neutra que se lee bien en el segundo que la carta queda a la vista. */
 .ec-letter-text {
-  font-family: var(--ec-monogram-font);
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 500;
   color: var(--ec-letter-ink);
-  font-size: clamp(1.05rem, 4.6vw, 1.45rem);
-  line-height: 1.15;
+  font-size: clamp(1.2rem, 5vw, 1.55rem);
+  line-height: 1.2;
   text-align: center;
   overflow-wrap: anywhere;
 }
 /* Textos largos (hasta 40 caracteres en el editor): un poco más chico para
    que sigan entrando en dos líneas dentro de la parte visible de la carta. */
 .ec-letter-text--long {
-  font-size: clamp(0.9rem, 3.8vw, 1.15rem);
+  font-size: clamp(1.05rem, 4.5vw, 1.3rem);
 }
 .ec-monogram {
   font-family: var(--ec-monogram-font);

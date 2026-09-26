@@ -26,9 +26,9 @@ export function deriveEnvelopePalette(bgColor, primaryColor, envelopeColor) {
     sealText: contrastText(seal),
     ink: bgIsDark ? lighten(primaryColor, 0.75) : darken(primaryColor, 0.35),
     inkMuted: bgIsDark ? lighten(primaryColor, 0.5) : darken(primaryColor, 0.15),
-    // Negro fijo (no un tono del color principal): se lee bien sobre el
-    // papel claro de la carta con cualquier color que elija el host.
-    letterInk: '#111111',
+    // Gris casi negro fijo (no un tono del color principal ni negro puro,
+    // que queda duro): se lee bien sobre el papel claro de la carta.
+    letterInk: '#3a3a3a',
   }
 }
 

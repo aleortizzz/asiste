@@ -422,7 +422,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
     <!-- ============ GALERÍA ============ -->
     <section v-if="shows('galeria')" v-reveal data-anchor="galeria" class="mx-auto max-w-[1200px] px-6 py-16">
       <p class="craft-label text-center text-[#645757]">Recuerdos</p>
-      <h2 class="craft-display-sm mt-2 text-center">Galería</h2>
+      <h2 class="craft-display-sm mt-2 text-center">Imágenes que quedan</h2>
       <div class="craft-rule"></div>
 
       <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -509,7 +509,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
                 {{ submitting ? 'Enviando…' : 'Confirmar asistencia' }}
               </button>
               <button type="button" :disabled="submitting" @click="declinarGenerico" class="craft-btn-ghost justify-center">
-                No podemos ir
+                No podremos ir
               </button>
             </div>
           </form>

@@ -145,6 +145,8 @@ const {
         class="kenburns absolute inset-0 h-full w-full object-cover"
       />
       <div class="absolute inset-0 bg-linear-to-b from-black/45 via-black/25 to-black/75"></div>
+      <!-- Destello de luz con el color principal (mismo efecto que Craft). -->
+      <div class="hero-flare absolute inset-0"></div>
 
       <div class="hero-in relative z-10 w-full min-w-0 px-6 text-center text-white">
         <p v-if="invite.hero_kicker" class="text-[0.7rem] uppercase tracking-[0.4em] text-white/80">
@@ -453,7 +455,7 @@ const {
     <!-- ============ CANCIONES (plan "plus") ============ -->
     <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-xl px-6 py-20">
       <p class="pc-eyebrow text-center text-[0.7rem] uppercase tracking-[0.45em]">
-        Ayudanos con el playlist
+        Ayudanos con la playlist
       </p>
       <h2 class="pc-heading mt-2 text-center text-4xl" style="font-family: 'Dancing Script', cursive">
         ¿Qué canción no puede faltar?
@@ -614,7 +616,7 @@ const {
         class="pc-heading mt-2 text-center text-4xl"
         style="font-family: 'Dancing Script', cursive"
       >
-        Galería
+        Imágenes que quedan
       </h2>
       <div class="divider">✦</div>
 
@@ -755,7 +757,7 @@ const {
                 @click="declinarGenerico"
                 class="rounded-full border border-stone-300 px-4 py-3 text-stone-600 transition hover:bg-stone-50 disabled:opacity-50"
               >
-                No podemos ir
+                No podremos ir
               </button>
             </div>
           </form>
@@ -926,7 +928,26 @@ const {
   }
 }
 
+/* Destello de la portada: misma luz que pulsa en Craft
+   (.craft-hero-flare-wash), con el color principal. */
+.hero-flare {
+  background: radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--pc) 40%, transparent), transparent 24%);
+  animation: hero-flare-pulse 8s ease-in-out infinite;
+}
+@keyframes hero-flare-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .hero-flare {
+    animation: none;
+  }
   .kenburns,
   .hero-in {
     animation: none;

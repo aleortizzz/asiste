@@ -30,16 +30,58 @@ async function toggleSection(slot) {
 }
 
 const uploading = ref(false)
+const uploadingSlot = ref(null)
 const photoError = ref('')
+// Sección donde pasó el error, para mostrarlo justo debajo de esa sección
+// (antes salía al final de la pestaña y, subiendo la portada, quedaba fuera
+// de la pantalla: parecía que no se había cargado nada sin decir por qué).
+const photoErrorSlot = ref(null)
 const fileInput = ref(null)
 let pendingSlot = null
 
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MB = 1024 * 1024
+// La portada va sin tope propio (solo el máximo de Supabase, 50 MB) para
+// no perder calidad a pantalla completa; el resto, 5 MB.
+const MAX_PHOTO_BYTES = 5 * MB
+const MAX_BANNER_BYTES = 50 * MB
+
+function setPhotoError(slot, msg) {
+  photoErrorSlot.value = slot
+  photoError.value = msg
+}
+
+function validatePhoto(slot, file) {
+  if (!PHOTO_TYPES.includes(file.type)) {
+    const ext = (file.name.split('.').pop() || '').toUpperCase()
+    return `El formato ${ext ? `«${ext}» ` : ''}no es compatible. Subí la foto en JPG, PNG o WEBP (las fotos HEIC del iPhone se pueden exportar como JPG).`
+  }
+  const max = slot === 'banner' ? MAX_BANNER_BYTES : MAX_PHOTO_BYTES
+  if (file.size > max) {
+    return `La foto pesa ${(file.size / MB).toFixed(1)} MB y el máximo para esta sección es ${max / MB} MB.`
+  }
+  return ''
+}
+
+// Supabase devuelve los errores de Storage en inglés: traducimos los
+// habituales y, si es otro, mostramos el original para poder diagnosticarlo.
+function uploadErrorMessage(err) {
+  const msg = err?.message || ''
+  if (/maximum allowed size|too large|413/i.test(msg)) {
+    return 'La foto supera el tamaño máximo permitido por el servidor.'
+  }
+  if (/mime type|invalid_mime/i.test(msg)) {
+    return 'El formato de la foto no es compatible. Subila en JPG, PNG o WEBP.'
+  }
+  return `No se pudo subir la foto${msg ? `: ${msg}` : '.'}`
+}
+
 function pickPhoto(slot) {
   if (!event.value) {
-    photoError.value = 'Guardá primero los datos en «Información» para poder subir fotos.'
+    setPhotoError(slot, 'Guardá primero los datos en «Información» para poder subir fotos.')
     return
   }
-  photoError.value = ''
+  setPhotoError(null, '')
   pendingSlot = slot
   if (fileInput.value) {
     fileInput.value.value = ''
@@ -52,8 +94,14 @@ async function onFilePicked(e) {
   if (!file || !pendingSlot) return
   const slot = pendingSlot
   const single = photoSections.find((s) => s.slot === slot)?.single
+  const invalid = validatePhoto(slot, file)
+  if (invalid) {
+    setPhotoError(slot, invalid)
+    return
+  }
   uploading.value = true
-  photoError.value = ''
+  uploadingSlot.value = slot
+  setPhotoError(null, '')
   try {
     if (single && form.value[slot][0]) await removeFile(form.value[slot][0].path)
     const item = await uploadFile(slot, file, event.value.owner_user_id)
@@ -61,7 +109,7 @@ async function onFilePicked(e) {
     else form.value[slot] = [...form.value[slot], item]
     await persistPhotos()
   } catch (err) {
-    photoError.value = err.message || 'No se pudo subir la foto.'
+    setPhotoError(slot, uploadErrorMessage(err))
   } finally {
     uploading.value = false
   }
@@ -75,7 +123,7 @@ async function removePhoto(slot, i) {
     form.value[slot] = form.value[slot].filter((_, idx) => idx !== i)
     await persistPhotos()
   } catch (err) {
-    photoError.value = err.message || 'No se pudo eliminar la foto.'
+    setPhotoError(slot, err.message || 'No se pudo eliminar la foto.')
   } finally {
     uploading.value = false
   }
@@ -681,10 +729,16 @@ onUnmounted(() => {
                 +
               </button>
             </div>
+            <p v-if="uploading && uploadingSlot === s.slot" class="text-sm text-gray-500">Subiendo…</p>
+            <p
+              v-if="photoError && photoErrorSlot === s.slot"
+              class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+            >
+              {{ photoError }}
+            </p>
           </div>
 
-          <p v-if="uploading" class="text-sm text-gray-500">Subiendo…</p>
-          <p v-if="photoError" class="text-sm text-red-600">{{ photoError }}</p>
+          <p v-if="photoError && !photoErrorSlot" class="text-sm text-red-600">{{ photoError }}</p>
         </div>
 
         <input

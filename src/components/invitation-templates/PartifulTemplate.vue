@@ -138,6 +138,8 @@ const {
         class="absolute inset-0"
         style="background: linear-gradient(120deg, rgba(248, 196, 255, 0.35), rgba(240, 182, 224, 0.1) 55%, transparent 80%)"
       ></div>
+      <!-- Destello de luz con el color principal (mismo efecto que Craft). -->
+      <div class="hero-flare absolute inset-0"></div>
 
       <div class="hero-in relative z-10 w-full min-w-0 px-6 text-center text-white">
         <p v-if="invite.hero_kicker" class="pf-label text-white/80">{{ invite.hero_kicker }}</p>
@@ -314,7 +316,7 @@ const {
     <!-- ============ CANCIONES (plan "plus") ============ -->
     <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="pf-wash px-6 py-20">
       <div class="mx-auto max-w-xl">
-        <p class="pf-label text-center text-black/50">Ayudanos con el playlist</p>
+        <p class="pf-label text-center text-black/50">Ayudanos con la playlist</p>
         <h2 class="pf-display mt-2 text-center text-3xl sm:text-4xl">¿Qué canción no puede faltar?</h2>
 
         <div class="pf-card mt-8 p-6 sm:p-8">
@@ -417,7 +419,7 @@ const {
     <!-- ============ GALERÍA ============ -->
     <section v-if="shows('galeria')" v-reveal data-anchor="galeria" class="pf-wash overflow-hidden py-20">
       <p class="pf-label text-center text-black/50">Recuerdos</p>
-      <h2 class="pf-display mt-2 text-center text-2xl sm:text-3xl">Galería</h2>
+      <h2 class="pf-display mt-2 text-center text-2xl sm:text-3xl">Imágenes que quedan</h2>
 
       <div class="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-3 px-4 sm:grid-cols-4 sm:gap-4">
         <div v-for="(src, i) in galeriaGrid" :key="i" ref="gridItems" class="pf-card overflow-hidden will-change-transform">
@@ -498,7 +500,7 @@ const {
                 {{ submitting ? 'Enviando…' : 'Confirmar asistencia' }}
               </button>
               <button type="button" :disabled="submitting" @click="declinarGenerico" class="pf-btn-ghost justify-center">
-                No podemos ir
+                No podremos ir
               </button>
             </div>
           </form>
@@ -788,7 +790,26 @@ const {
   transform: none;
 }
 
+/* Destello de la portada: misma luz que pulsa en Craft
+   (.craft-hero-flare-wash), con el color principal. */
+.hero-flare {
+  background: radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--pc) 40%, transparent), transparent 24%);
+  animation: hero-flare-pulse 8s ease-in-out infinite;
+}
+@keyframes hero-flare-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .hero-flare {
+    animation: none;
+  }
   .kenburns,
   .hero-in {
     animation: none;
