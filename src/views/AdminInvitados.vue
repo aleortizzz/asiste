@@ -151,9 +151,142 @@ async function addGroup() {
   await fetchGroups()
 }
 
-async function removeGroup(id) {
-  await supabase.from('invitation_groups').delete().eq('id', id)
+async function removeGroup(group) {
+  const warning =
+    group.status === 'pending'
+      ? `¿Eliminar la invitación de "${group.family_name}"? El link va a dejar de funcionar.`
+      : `"${group.family_name}" ya respondió la invitación. Si la eliminás se pierde su respuesta y su asignación de mesas. ¿Eliminar igual?`
+  if (!confirm(warning)) return
+  await supabase.from('invitation_groups').delete().eq('id', group.id)
   await fetchGroups()
+}
+
+// --- Edición de un grupo ---
+// Solo se puede editar mientras la invitación está pendiente: una vez que
+// respondieron (confirmaron o declinaron), cambiar nombres o cantidad
+// pisaría lo que eligieron ellos.
+const editingId = ref(null)
+const editForm = ref(null)
+const editError = ref('')
+const saving = ref(false)
+
+function isLocked(group) {
+  return group.status !== 'pending'
+}
+
+function lockedReason(group) {
+  if (group.status === 'declined') return 'No se puede editar porque ya respondieron que no asisten.'
+  return 'No se puede editar porque ya confirmaron su asistencia.'
+}
+
+function startEdit(group) {
+  if (isLocked(group)) return
+  editError.value = ''
+  editingId.value = group.id
+  editForm.value = {
+    family_name: group.family_name,
+    allowed_guests: group.allowed_guests,
+    useNames: group.named_by_host,
+    // id = invitado que ya existe en la base; sin id = nombre nuevo a insertar.
+    names: group.guests.length
+      ? group.guests.map((g) => ({ key: g.id, id: g.id, full_name: g.full_name }))
+      : [{ key: nanoid(), id: null, full_name: '' }],
+  }
+}
+
+function cancelEdit() {
+  editingId.value = null
+  editForm.value = null
+  editError.value = ''
+}
+
+async function saveEdit(group) {
+  editError.value = ''
+  const f = editForm.value
+  const familyName = f.family_name.trim()
+  if (!familyName) {
+    editError.value = 'El nombre del invitado no puede quedar vacío.'
+    return
+  }
+
+  const names = f.useNames
+    ? f.names.map((n) => ({ ...n, full_name: n.full_name.trim() })).filter((n) => n.full_name)
+    : []
+  if (f.useNames && names.length === 0) {
+    editError.value = 'Cargá al menos un nombre.'
+    return
+  }
+
+  const requested = f.useNames ? names.length : f.allowed_guests
+  if (!Number.isInteger(requested) || requested < 1) {
+    editError.value = 'La cantidad de invitaciones tiene que ser al menos 1.'
+    return
+  }
+
+  // Un grupo pendiente cuenta entero contra el cupo, así que lo descontamos
+  // y sumamos la cantidad nueva.
+  const othersAllowed = activeAllowed.value - group.allowed_guests
+  if (event.value.guest_limit != null && othersAllowed + requested > event.value.guest_limit) {
+    const remaining = event.value.guest_limit - othersAllowed
+    editError.value = `Superás el tope de invitados del evento (${event.value.guest_limit}). Para este grupo quedan ${Math.max(remaining, 0)} lugares.`
+    return
+  }
+
+  saving.value = true
+  try {
+    // .eq('status', 'pending'): si justo respondieron mientras editabas,
+    // el update no toca nada y no pisamos su respuesta.
+    const { data: updated, error: err } = await supabase
+      .from('invitation_groups')
+      .update({ family_name: familyName, allowed_guests: requested, named_by_host: f.useNames })
+      .eq('id', group.id)
+      .eq('status', 'pending')
+      .select('id')
+    if (err) throw err
+    if (!updated.length) {
+      editError.value = 'Mientras editabas, respondieron la invitación. No se guardaron los cambios.'
+      await fetchGroups()
+      return
+    }
+
+    // Los invitados solo se tocan si siguen sin responder (rsvp_status 'invited').
+    const keptIds = new Set(names.filter((n) => n.id).map((n) => n.id))
+    const toDelete = group.guests.filter((g) => !keptIds.has(g.id)).map((g) => g.id)
+    if (toDelete.length) {
+      const { error: delErr } = await supabase
+        .from('guests')
+        .delete()
+        .in('id', toDelete)
+        .eq('rsvp_status', 'invited')
+      if (delErr) throw delErr
+    }
+
+    const originalNames = new Map(group.guests.map((g) => [g.id, g.full_name]))
+    for (const n of names.filter((n) => n.id && originalNames.get(n.id) !== n.full_name)) {
+      const { error: updErr } = await supabase
+        .from('guests')
+        .update({ full_name: n.full_name })
+        .eq('id', n.id)
+        .eq('rsvp_status', 'invited')
+      if (updErr) throw updErr
+    }
+
+    const toInsert = names.filter((n) => !n.id)
+    if (toInsert.length) {
+      const { error: insErr } = await supabase
+        .from('guests')
+        .insert(toInsert.map((n) => ({ group_id: group.id, full_name: n.full_name, rsvp_status: 'invited' })))
+      if (insErr) throw insErr
+    }
+
+    cancelEdit()
+    await fetchGroups()
+  } catch (err) {
+    editError.value = err.message
+    await fetchGroups()
+  } finally {
+    saving.value = false
+  }
 }
 
 function linkFor(slug) {
@@ -257,9 +390,87 @@ async function copyLink(group) {
                 <button @click="copyLink(group)" class="text-sm text-blue-600 underline">
                   {{ copiedId === group.id ? 'Copiado ✅' : 'Copiar link' }}
                 </button>
-                <button @click="removeGroup(group.id)" class="text-sm text-red-600 underline">Eliminar</button>
+                <span class="group relative">
+                  <button
+                    type="button"
+                    @click="startEdit(group)"
+                    :aria-disabled="isLocked(group)"
+                    :class="isLocked(group) ? 'cursor-not-allowed text-gray-400' : 'text-gray-900'"
+                    class="text-sm underline"
+                  >
+                    Editar
+                  </button>
+                  <span
+                    v-if="isLocked(group)"
+                    role="tooltip"
+                    class="invisible absolute right-0 bottom-full z-10 mb-2 w-56 rounded bg-gray-900 px-3 py-2 text-xs text-white shadow group-focus-within:visible group-hover:visible"
+                  >
+                    {{ lockedReason(group) }}
+                  </span>
+                </span>
+                <button @click="removeGroup(group)" class="text-sm text-red-600 underline">Eliminar</button>
               </div>
             </div>
+
+            <form
+              v-if="editingId === group.id && editForm"
+              @submit.prevent="saveEdit(group)"
+              class="mt-3 space-y-3 rounded border border-gray-200 p-4"
+            >
+              <input
+                v-model="editForm.family_name"
+                placeholder="Nombre del invitado"
+                class="w-full rounded border border-gray-300 px-3 py-2"
+              />
+
+              <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" v-model="editForm.useNames" />
+                Cargar los nombres de los invitados
+              </label>
+
+              <input
+                v-if="!editForm.useNames"
+                v-model.number="editForm.allowed_guests"
+                type="number"
+                min="1"
+                placeholder="Cantidad de invitaciones"
+                class="w-48 rounded border border-gray-300 px-3 py-2"
+              />
+
+              <div v-else class="space-y-2">
+                <div v-for="(name, i) in editForm.names" :key="name.key" class="flex gap-2">
+                  <input
+                    v-model="name.full_name"
+                    placeholder="Nombre y apellido"
+                    class="flex-1 rounded border border-gray-300 px-3 py-2"
+                  />
+                  <button
+                    v-if="editForm.names.length > 1"
+                    type="button"
+                    @click="editForm.names.splice(i, 1)"
+                    class="text-red-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  @click="editForm.names.push({ key: nanoid(), id: null, full_name: '' })"
+                  class="text-sm text-blue-600 underline"
+                >
+                  + Agregar nombre
+                </button>
+              </div>
+
+              <p v-if="editError" class="text-sm text-red-600">{{ editError }}</p>
+
+              <div class="flex gap-3">
+                <button type="submit" :disabled="saving" class="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50">
+                  {{ saving ? 'Guardando…' : 'Guardar cambios' }}
+                </button>
+                <button type="button" @click="cancelEdit" class="text-sm text-gray-600 underline">Cancelar</button>
+              </div>
+            </form>
 
             <ul v-if="expandedId === group.id" class="mt-2 ml-4 space-y-1">
               <li v-for="guest in group.guests" :key="guest.id" class="text-sm text-gray-600">
