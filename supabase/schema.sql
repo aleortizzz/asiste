@@ -90,6 +90,8 @@ create table invitation_groups (
   allowed_guests int not null default 1,
   named_by_host boolean not null default false,
   status text not null default 'pending' check (status in ('pending', 'confirmed', 'declined')),
+  -- Hora de la última respuesta (la completa el trigger invitation_groups_responded_at).
+  responded_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -712,3 +714,86 @@ end;
 $$;
 
 grant execute on function public.agregar_cancion_solicitada(text, text, text, text, text) to anon, authenticated;
+
+
+-- Hora de respuesta de cada familia (ver migrations/20260927_respondido_en.sql).
+create or replace function public.marcar_respondido_en()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.status <> 'pending' then
+    new.responded_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists invitation_groups_responded_at on invitation_groups;
+create trigger invitation_groups_responded_at
+  before update of status on invitation_groups
+  for each row
+  execute function public.marcar_respondido_en();
+
+
+-- Historial de respuestas (ver migrations/20260927_historial_respuestas.sql).
+create table if not exists rsvp_log (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid references invitation_groups(id) on delete cascade not null,
+  status text not null check (status in ('confirmed', 'declined')),
+  attending_count int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists rsvp_log_group_id_idx on rsvp_log (group_id);
+
+-- 2) Solo lectura para el admin (las filas las escribe el trigger).
+grant select on public.rsvp_log to authenticated;
+alter table rsvp_log enable row level security;
+
+drop policy if exists "admin ve el historial de sus invitados" on rsvp_log;
+create policy "admin ve el historial de sus invitados"
+  on rsvp_log for select
+  using (exists (
+    select 1 from invitation_groups
+    join events on events.id = invitation_groups.event_id
+    where invitation_groups.id = rsvp_log.group_id
+      and events.owner_user_id = auth.uid()
+  ));
+
+drop policy if exists "superadmin ve el historial" on rsvp_log;
+create policy "superadmin ve el historial"
+  on rsvp_log for select
+  using (exists (select 1 from superadmins s where s.user_id = auth.uid()));
+
+-- 3) Trigger: después de que una respuesta escribe el status, anota una fila.
+--    Las funciones de RSVP actualizan los invitados ANTES que el status del
+--    grupo, así que acá el conteo de "attending" ya es el de esta respuesta.
+--    security definer: el invitado responde sin sesión, igual tiene que poder
+--    escribir en el registro.
+create or replace function public.registrar_respuesta()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status <> 'pending' then
+    insert into rsvp_log (group_id, status, attending_count)
+    values (
+      new.id,
+      new.status,
+      (select count(*) from guests where group_id = new.id and rsvp_status = 'attending')
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists invitation_groups_rsvp_log on invitation_groups;
+create trigger invitation_groups_rsvp_log
+  after update of status on invitation_groups
+  for each row
+  execute function public.registrar_respuesta();
+
