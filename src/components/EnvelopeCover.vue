@@ -221,11 +221,15 @@ const cssVars = computed(() => ({
   justify-content: flex-end;
   padding-bottom: 12%;
   transform: translateY(0);
-  transition: transform 750ms var(--ease-out) 380ms;
+  /* Ojo: la transición que corre es la del estado de DESTINO. Esta (sin
+     delay) es la de cerrar: la carta baja primero y recién después se
+     cierra la solapa (ver .ec-flap). La de abrir está en --open. */
+  transition: transform 550ms var(--ease-in-out);
   z-index: 2;
 }
 .ec-envelope--open .ec-letter {
   transform: translateY(-48%);
+  transition: transform 750ms var(--ease-out) 380ms;
 }
 .ec-letter--text {
   justify-content: flex-start;
@@ -312,12 +316,18 @@ const cssVars = computed(() => ({
   box-shadow: inset 0 -10px 16px -12px rgba(0, 0, 0, 0.35);
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.28));
   transform-origin: top center;
+  /* Al cerrar: espera a que la carta esté adentro (450ms) y vuelve a quedar
+     por delante de la carta recién pasada la mitad del giro (+250ms), cuando
+     ya está de vuelta del lado de adelante. */
   transition:
-    transform 620ms var(--ease-in-out),
-    z-index 0ms 380ms;
+    transform 620ms var(--ease-in-out) 450ms,
+    z-index 0ms 700ms;
   z-index: 4;
 }
 .ec-envelope--open .ec-flap {
+  transition:
+    transform 620ms var(--ease-in-out),
+    z-index 0ms 380ms;
   /* rotateX no cambia el orden de pintado por sí solo (eso lo decide
      z-index), así que sin este cambio la solapa se sigue dibujando encima
      de la carta aunque ya esté girada hacia atrás. La bajamos recién a los
@@ -346,12 +356,16 @@ const cssVars = computed(() => ({
   box-shadow:
     0 6px 14px -6px rgba(0, 0, 0, 0.5),
     inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  /* Al cerrar, el sello vuelve cuando la solapa ya terminó de bajar. */
   transition:
-    opacity 350ms ease,
-    transform 350ms var(--ease-out);
+    opacity 350ms ease 950ms,
+    transform 350ms var(--ease-out) 950ms;
   z-index: 5;
 }
 .ec-envelope--open .ec-seal {
+  transition:
+    opacity 350ms ease,
+    transform 350ms var(--ease-out);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.4);
 }
