@@ -1,6 +1,29 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import InvitationView from '../components/InvitationView.vue'
+import { useEvent } from '../composables/useEvent'
+
+// ?guardada=1: en vez del borrador del editor, muestra la invitación tal como
+// está guardada (botón «Ver mi invitación» del Inicio). No usa el link de
+// ninguna familia a propósito: abrirlo registraría una visita falsa.
+const route = useRoute()
+const { event, loadEvent } = useEvent()
+
+async function loadSaved() {
+  if (!event.value) await loadEvent()
+  const e = event.value
+  if (!e) return
+  draft.value = {
+    ...e,
+    event_name: e.hero_title ?? e.name,
+    family_name: 'Familia García',
+    named_by_host: false,
+    allowed_guests: 2,
+    status: 'pending',
+    guests: [],
+  }
+}
 
 // Vista que vive dentro del <iframe> del panel de edición. Recibe el borrador
 // del evento por postMessage (en vivo mientras se edita) y también lo lee de
@@ -46,6 +69,10 @@ function onStorage(e) {
 }
 
 onMounted(() => {
+  if (route.query.guardada) {
+    loadSaved()
+    return
+  }
   readStorage()
   window.addEventListener('message', onMessage)
   window.addEventListener('storage', onStorage)

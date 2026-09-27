@@ -12,6 +12,7 @@ import PreviewInvite from '../views/PreviewInvite.vue'
 import AdminSuperadmin from '../views/AdminSuperadmin.vue'
 import AdminFotosEvento from '../views/AdminFotosEvento.vue'
 import AdminCanciones from '../views/AdminCanciones.vue'
+import AdminActividad from '../views/AdminActividad.vue'
 import GuestPhotos from '../views/GuestPhotos.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { useAuth } from '../composables/useAuth'
@@ -23,6 +24,7 @@ const router = createRouter({
     { path: '/admin/registro', name: 'admin-signup', component: AdminSignup },
     { path: '/admin/nueva-contrasena', name: 'admin-nueva-contrasena', component: AdminNuevaContrasena },
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboard, meta: { requiresAuth: true } },
+    { path: '/admin/actividad', name: 'admin-actividad', component: AdminActividad, meta: { requiresAuth: true } },
     { path: '/admin/salon', name: 'admin-salon', component: AdminSalon, meta: { requiresAuth: true } },
     {
       path: '/admin/salon/preview',
