@@ -49,7 +49,7 @@ const filtered = () =>
 </script>
 
 <template>
-  <div class="pl-16">
+  <div class="admin-page">
     <AdminNav />
     <div class="mx-auto max-w-3xl p-8">
       <div class="flex items-center gap-2">

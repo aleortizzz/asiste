@@ -1,6 +1,24 @@
 @import "tailwindcss";
 /*! cache-bust 2026-09-25 */
 
+/* Sistema visual del panel admin («Caldera»): lienzo gris cálido, superficies
+   claras, un solo acento violeta y nada de sombras. Solo lo usa el admin —
+   las plantillas de invitación tienen sus propios colores y fuentes.
+   Anton reemplaza a PP Neue Corp Compact (tipografía paga). */
+@theme {
+  --color-accent: #4e1f6e;
+  --color-accent-soft: #ebe3f1;
+  --color-plasma: #524ae9;
+  --color-sulfur: #f5f28e;
+  --color-limestone: #f7f6f2;
+  --color-pumice: #e2e2df;
+  --color-obsidian: #070607;
+  --color-chalk: #ffffff;
+
+  --font-display: 'Anton', 'Bebas Neue', Impact, sans-serif;
+  --font-ui: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Tailwind v4 sacó el `cursor: pointer` por defecto de los botones (usa el
    default del navegador, que es la flecha). Lo reponemos para todo lo
    clickeable para que no se vea "muerto". */
@@ -14,5 +32,104 @@
 
   button:disabled {
     cursor: not-allowed;
+  }
+}
+
+@layer components {
+  /* Contenedor de cada pantalla del admin: deja lugar para la barra lateral
+     (desktop) o la barra de arriba (celular). Ver AdminNav.vue. */
+  .admin-page {
+    min-height: 100dvh;
+    background: var(--color-pumice);
+    color: var(--color-obsidian);
+    font-family: var(--font-ui);
+    padding-top: 4rem;
+  }
+  @media (width >= 64rem) {
+    .admin-page {
+      padding-top: 0;
+      padding-left: 16.5rem;
+    }
+  }
+
+  /* Titulares grandes del admin. */
+  .admin-display {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+  }
+
+  /* Campos de texto: pill blanca sobre la tarjeta clara, foco violeta. */
+  .admin-input {
+    width: 100%;
+    border-radius: 999px;
+    background: var(--color-chalk);
+    border: 1.5px solid transparent;
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-obsidian);
+    outline: none;
+    transition: border-color 150ms ease;
+  }
+  .admin-input::placeholder {
+    color: rgb(7 6 7 / 0.35);
+  }
+  .admin-input:focus {
+    border-color: var(--color-accent);
+  }
+  textarea.admin-input {
+    border-radius: 1.25rem;
+    resize: vertical;
+  }
+
+  .admin-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+  .admin-help {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: rgb(7 6 7 / 0.55);
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: var(--color-chalk);
+    padding: 0.75rem 1.5rem;
+    font-weight: 700;
+    transition: transform 150ms ease, opacity 150ms ease;
+  }
+  .admin-btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .admin-btn-primary:disabled {
+    opacity: 0.45;
+  }
+
+  .admin-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-obsidian);
+    padding: 0.7rem 1.4rem;
+    font-weight: 700;
+    transition: background-color 150ms ease;
+  }
+  @media (hover: hover) {
+    .admin-btn-secondary:hover {
+      background: rgb(7 6 7 / 0.05);
+    }
   }
 }

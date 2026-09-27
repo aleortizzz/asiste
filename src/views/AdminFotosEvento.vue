@@ -49,7 +49,7 @@ async function removePhoto(photo) {
 </script>
 
 <template>
-  <div class="pl-16">
+  <div class="admin-page">
     <AdminNav />
     <div class="mx-auto max-w-3xl p-8">
       <h1 class="text-2xl font-semibold">Fotos de los invitados</h1>

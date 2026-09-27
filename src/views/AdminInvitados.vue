@@ -303,7 +303,7 @@ async function copyLink(group) {
 </script>
 
 <template>
-  <div class="pl-16">
+  <div class="admin-page">
     <AdminNav />
     <div class="mx-auto max-w-2xl p-8">
       <h1 class="text-2xl font-semibold">Grupos de invitados</h1>

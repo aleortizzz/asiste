@@ -1,7 +1,10 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
+import { Cake, Heart, ChevronLeft, ChevronRight, Eye, X, Check } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import EnvelopeCover from '../components/EnvelopeCover.vue'
+import ColorPicker from '../components/ColorPicker.vue'
 import { useEvent } from '../composables/useEvent'
 import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
 import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
@@ -9,8 +12,88 @@ import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
 
-// Panel de la izquierda: datos del evento o gestión de fotos.
-const panel = ref('info')
+// El editor va por pasos, en el orden en que se arma una invitación. Todos
+// comparten un solo formulario y un solo «Guardar» — los pasos solo ordenan
+// la pantalla. `anchor`: parte de la vista previa a la que se desliza.
+const STEPS = [
+  { id: 'estilo', label: 'Estilo', title: 'Elegí el estilo', desc: 'El tipo de evento, el diseño y los colores de tu invitación.', anchor: 'hero' },
+  { id: 'portada', label: 'Portada', title: 'La portada', desc: 'Lo primero que ven tus invitados al abrir el link.', anchor: 'hero' },
+  { id: 'sobre', label: 'Sobre', title: 'El sobre', desc: 'Antes de ver la invitación, tus invitados abren un sobre animado. Acá elegís cómo se ve.', anchor: 'hero' },
+  { id: 'textos', label: 'Saludo', title: 'Saludo y cierre', desc: 'Unas palabras para tus invitados, al principio y al final.', anchor: 'saludo' },
+  { id: 'fiesta', label: 'La fiesta', title: 'La fiesta', desc: 'Cuándo, dónde y todo lo que tus invitados necesitan saber.', anchor: 'fiesta' },
+  { id: 'confirmacion', label: 'Confirmaciones', title: 'Confirmaciones', desc: 'Hasta cuándo pueden confirmar y cuántos invitados entran.', anchor: 'rsvp' },
+  { id: 'fotos', label: 'Fotos', title: 'Fotos', desc: 'Se guardan solas apenas las subís. Podés ocultar las secciones que no quieras usar.', anchor: 'hero' },
+]
+// ?paso=<id> abre directo en ese paso (lo usa el checklist del Inicio).
+const route = useRoute()
+const stepIndex = ref(Math.max(0, STEPS.findIndex((s) => s.id === route.query.paso)))
+const step = computed(() => STEPS[stepIndex.value])
+
+function goToStep(i) {
+  stepIndex.value = i
+  scrollPreviewTo(STEPS[i].anchor)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// Fila de pasos: no entra entera en pantallas angostas, así que se desliza de
+// costado. Al elegir un paso, la fila se corre para dejarlo centrado, y los
+// bordes se difuminan del lado donde quedan pasos ocultos.
+const stepsNav = ref(null)
+const stepsFade = ref({ left: false, right: false })
+
+function updateStepsFade() {
+  const el = stepsNav.value
+  if (!el) return
+  stepsFade.value = {
+    left: el.scrollLeft > 2,
+    right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+  }
+}
+
+function centerActiveStep() {
+  const el = stepsNav.value
+  const btn = el?.querySelector('[aria-current="step"]')
+  if (!btn) return
+  el.scrollTo({ left: btn.offsetLeft - (el.clientWidth - btn.offsetWidth) / 2, behavior: 'smooth' })
+}
+watch(stepIndex, () => nextTick(centerActiveStep))
+
+// Barra de guardado: cuando queda flotando encima de la tarjeta (mismo color)
+// se perdía, así que mientras flota pasa a blanco con sombra.
+const saveBar = ref(null)
+const saveBarStuck = ref(false)
+function updateSaveBarStuck() {
+  const el = saveBar.value
+  if (!el) return
+  const stickyTop = parseFloat(getComputedStyle(el).top) || 0
+  saveBarStuck.value = window.scrollY > 0 && el.getBoundingClientRect().top <= stickyTop + 1
+}
+
+// Flechitas de los costados: corren la fila más o menos media pantalla.
+function scrollSteps(dir) {
+  const el = stepsNav.value
+  if (el) el.scrollBy({ left: dir * el.clientWidth * 0.6, behavior: 'smooth' })
+}
+
+// Con mouse, la ruedita (vertical) mueve la fila de costado — solo mientras
+// le quede para dónde correrse; si no, deja scrollear la página normal.
+function onStepsWheel(e) {
+  const el = stepsNav.value
+  if (!el || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+  const atStart = el.scrollLeft <= 0 && e.deltaY < 0
+  const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 && e.deltaY > 0
+  if (atStart || atEnd) return
+  e.preventDefault()
+  el.scrollLeft += e.deltaY
+}
+
+const stepsMask = computed(() => {
+  // Transparente debajo de la flechita y difuminado justo después.
+  const l = stepsFade.value.left ? 'transparent 0, transparent 2rem, #000 4rem' : '#000 0'
+  const r = stepsFade.value.right ? '#000 calc(100% - 4rem), transparent calc(100% - 2rem), transparent 100%' : '#000 100%'
+  const g = `linear-gradient(to right, ${l}, ${r})`
+  return { maskImage: g, WebkitMaskImage: g }
+})
 // `optional`: se puede ocultar toda la sección en la invitación (la portada no).
 const photoSections = [
   { slot: 'banner', label: 'Portada', help: 'Foto de fondo de la portada y el hero.', single: true, optional: false },
@@ -78,7 +161,7 @@ function uploadErrorMessage(err) {
 
 function pickPhoto(slot) {
   if (!event.value) {
-    setPhotoError(slot, 'Guardá primero los datos en «Información» para poder subir fotos.')
+    setPhotoError(slot, 'Guardá tu invitación primero (botón «Guardar») para poder subir fotos.')
     return
   }
   setPhotoError(null, '')
@@ -117,6 +200,9 @@ async function onFilePicked(e) {
 
 async function removePhoto(slot, i) {
   const item = form.value[slot][i]
+  // Borra el archivo del servidor de verdad: sin confirmación, un toque de
+  // más en el celular la perdía para siempre.
+  if (!confirm('¿Eliminar esta foto? No se puede deshacer.')) return
   uploading.value = true
   try {
     await removeFile(item?.path)
@@ -264,40 +350,6 @@ function applyTemplate(newType) {
   eventType.value = newType
 }
 
-// Campo de hex: buffer local para poder escribir libremente y solo aplicar
-// cuando el valor es un color válido (#rrggbb).
-const hexInput = ref(form.value.bg_color)
-watch(
-  () => form.value.bg_color,
-  (v) => {
-    if (v !== hexInput.value) hexInput.value = v
-  },
-)
-watch(hexInput, (v) => {
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.bg_color = v.toLowerCase()
-})
-
-const primaryHexInput = ref(form.value.primary_color)
-watch(
-  () => form.value.primary_color,
-  (v) => {
-    if (v !== primaryHexInput.value) primaryHexInput.value = v
-  },
-)
-watch(primaryHexInput, (v) => {
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.primary_color = v.toLowerCase()
-})
-// Color propio del sobre ('' = derivado del color principal, como antes).
-const envelopeHexInput = ref(form.value.envelope_color)
-watch(
-  () => form.value.envelope_color,
-  (v) => {
-    if (v !== envelopeHexInput.value) envelopeHexInput.value = v
-  },
-)
-watch(envelopeHexInput, (v) => {
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) form.value.envelope_color = v.toLowerCase()
-})
 // Preview del sobre en la pestaña "Sobre": misma derivación que usa la
 // invitación real (ver src/lib/envelope.js), pero calculada acá en vivo a
 // partir del form, para no depender de guardar/recargar para verla.
@@ -318,7 +370,36 @@ const envelopePreviewFont = computed(() => TEMPLATE_FONTS[form.value.template] |
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
 const saving = ref(false)
-const message = ref('')
+const saveError = ref('')
+
+// --- Cambios sin guardar ---------------------------------------------------
+// Foto del formulario tal como quedó guardado, para avisar si hay cambios
+// pendientes y no perderlos al salir. Las fotos no cuentan: se guardan solas.
+function snapshot() {
+  // eslint-disable-next-line no-unused-vars
+  const { banner, retrato, detalle, momentos, galeria, hidden_sections, ...fields } = form.value
+  return JSON.stringify({
+    ...fields,
+    eventType: eventType.value,
+    hasGuestLimit: hasGuestLimit.value,
+    guestLimit: guestLimit.value,
+  })
+}
+const savedSnapshot = ref(null)
+const isDirty = computed(() => savedSnapshot.value !== null && snapshot() !== savedSnapshot.value)
+
+async function markSaved() {
+  await nextTick() // que los selectores de color terminen de normalizar el hex
+  savedSnapshot.value = snapshot()
+}
+
+onBeforeRouteLeave(() => {
+  if (isDirty.value && !confirm('Tenés cambios sin guardar. ¿Salir igual y perderlos?')) return false
+})
+
+function onBeforeUnload(e) {
+  if (isDirty.value) e.preventDefault()
+}
 
 onMounted(async () => {
   await loadEvent()
@@ -358,6 +439,7 @@ onMounted(async () => {
     hasGuestLimit.value = event.value.guest_limit != null
     guestLimit.value = event.value.guest_limit ?? 1
   }
+  await markSaved()
 })
 
 // Postgres no acepta '' para columnas date/time — hay que mandar null
@@ -366,7 +448,7 @@ const emptyAsNull = (value) => (value === '' ? null : value)
 
 async function onSubmit() {
   saving.value = true
-  message.value = ''
+  saveError.value = ''
   try {
     await saveEvent({
       ...form.value,
@@ -388,9 +470,9 @@ async function onSubmit() {
       rsvp_deadline: emptyAsNull(form.value.rsvp_deadline),
       guest_limit: hasGuestLimit.value ? guestLimit.value : null,
     })
-    message.value = 'Guardado ✅'
+    await markSaved()
   } catch (err) {
-    message.value = `Error: ${err.message}`
+    saveError.value = `No se pudo guardar: ${err.message}`
   } finally {
     saving.value = false
   }
@@ -457,7 +539,10 @@ function updateScale() {
 // modifica (data-preview en el input → data-anchor en la invitación).
 function onFieldFocus(e) {
   const anchor = e.target?.dataset?.preview
-  if (!anchor) return
+  if (anchor) scrollPreviewTo(anchor)
+}
+
+function scrollPreviewTo(anchor) {
   const msg = { type: 'invite-preview-scroll', anchor }
   frameDesktop.value?.contentWindow?.postMessage(msg, window.location.origin)
   frameMobile.value?.contentWindow?.postMessage(msg, window.location.origin)
@@ -470,600 +555,475 @@ onMounted(() => {
   updateScale()
   window.addEventListener('message', onFrameMessage)
   window.addEventListener('resize', updateScale)
+  window.addEventListener('beforeunload', onBeforeUnload)
+  window.addEventListener('resize', updateStepsFade)
+  window.addEventListener('scroll', updateSaveBarStuck, { passive: true })
+  updateStepsFade()
+  nextTick(centerActiveStep)
 })
 onUnmounted(() => {
   window.removeEventListener('message', onFrameMessage)
   window.removeEventListener('resize', updateScale)
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  window.removeEventListener('resize', updateStepsFade)
+  window.removeEventListener('scroll', updateSaveBarStuck)
 })
 </script>
 
 <template>
-  <div class="pl-16">
+  <div class="admin-page">
     <AdminNav />
-    <div class="mx-auto flex max-w-6xl justify-center gap-10 p-6 lg:p-8 xl:gap-16">
-      <!-- Formulario -->
-      <div class="w-full max-w-lg">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <h1 class="text-2xl font-semibold">Creá tu invitación</h1>
-          <div
-            v-show="panel === 'info'"
-            class="inline-flex rounded-full border border-gray-300 p-0.5 text-sm"
-          >
-            <button
-              type="button"
-              @click="applyTemplate('cumpleanos')"
-              :class="eventType === 'cumpleanos' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
-              class="rounded-full px-3 py-1 font-medium transition-colors"
-            >
-              Cumpleaños
-            </button>
-            <button
-              type="button"
-              @click="applyTemplate('casamiento')"
-              :class="eventType === 'casamiento' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
-              class="rounded-full px-3 py-1 font-medium transition-colors"
-            >
-              Casamiento
-            </button>
-          </div>
-        </div>
+    <div class="mx-auto flex max-w-[1200px] justify-center gap-10 px-4 pt-4 pb-32 lg:px-8 lg:pt-8 xl:gap-14">
+      <!-- ================= EDITOR ================= -->
+      <div class="w-full min-w-0 max-w-2xl">
+        <h1 class="admin-display text-5xl sm:text-6xl">Creá tu invitación</h1>
+        <p class="mt-3 max-w-md text-obsidian/60">
+          Completá los pasos en el orden que quieras. La vista previa se actualiza mientras
+          escribís.
+        </p>
 
-        <!-- Switch Información / Sobre / Fotos -->
-        <div class="mt-4 grid grid-cols-3 rounded-lg border border-gray-300 p-0.5 text-sm">
-          <button
-            type="button"
-            @click="panel = 'info'"
-            :class="panel === 'info' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
-            class="rounded-md py-1.5 font-medium transition-colors"
-          >
-            Información
-          </button>
-          <button
-            type="button"
-            @click="panel = 'sobre'"
-            :class="panel === 'sobre' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
-            class="rounded-md py-1.5 font-medium transition-colors"
-          >
-            Sobre
-          </button>
-          <button
-            type="button"
-            @click="panel = 'fotos'"
-            :class="panel === 'fotos' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'"
-            class="rounded-md py-1.5 font-medium transition-colors"
-          >
-            Fotos
-          </button>
-        </div>
-
-        <!-- ================= SOBRE ================= -->
-        <div v-if="panel === 'sobre'" class="mt-6 space-y-6" @focusin="onFieldFocus">
-          <p class="text-xs text-gray-500">
-            El sobre animado que se ve al abrir la invitación. La forma y la tipografía las define
-            la plantilla elegida en «Información»; acá elegís el sello, el texto y el color.
+        <!-- Barra de guardado: siempre a mano mientras se edita. -->
+        <div
+          ref="saveBar"
+          :class="
+            saveBarStuck
+              ? 'bg-chalk shadow-[0_14px_36px_-12px_rgba(7,6,7,0.35)] ring-1 ring-obsidian/10'
+              : 'bg-limestone'
+          "
+          class="sticky top-[4.5rem] z-30 mt-6 flex items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 transition-[background-color,box-shadow] duration-200 lg:top-4"
+        >
+          <p class="flex min-w-0 items-center gap-2 text-sm">
+            <span
+              class="h-2.5 w-2.5 shrink-0 rounded-full"
+              :class="saveError ? 'bg-red-600' : isDirty ? 'bg-accent' : 'bg-obsidian/25'"
+            ></span>
+            <span class="truncate" :class="saveError ? 'text-red-700' : ''">
+              <template v-if="saving">Guardando…</template>
+              <template v-else-if="saveError">{{ saveError }}</template>
+              <template v-else-if="isDirty">Tenés cambios sin guardar</template>
+              <template v-else-if="event">Todo guardado</template>
+              <template v-else>Todavía no guardaste tu invitación</template>
+            </span>
           </p>
-
-          <!-- Preview en vivo, contenido (no overlay a pantalla completa) -->
-          <div
-            class="flex justify-center overflow-hidden rounded-2xl ring-1 ring-gray-200"
-            :style="{ backgroundColor: form.bg_color }"
-          >
-            <EnvelopeCover
-              inline
-              :opening="envelopePreviewOpen"
-              :monogram-short="envelopePreviewMonogram.short"
-              :monogram-full="envelopePreviewMonogram.full"
-              :text="form.envelope_text?.trim() || ''"
-              :monogram-font="envelopePreviewFont"
-              v-bind="envelopePreviewPalette"
-            />
-          </div>
-          <button
-            type="button"
-            @click="envelopePreviewOpen = !envelopePreviewOpen"
-            class="-mt-3 w-full rounded border border-gray-300 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            {{ envelopePreviewOpen ? 'Cerrar sobre' : 'Abrir sobre para ver la carta' }}
+          <button type="button" @click="onSubmit" :disabled="saving || (!isDirty && !!event)" class="admin-btn-primary shrink-0">
+            <Check v-if="!isDirty && event && !saving" :size="18" />
+            {{ saving ? 'Guardando…' : !isDirty && event ? 'Guardado' : 'Guardar' }}
           </button>
+        </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Contenido del sello</label>
-            <p class="text-xs text-gray-500">
-              El texto o símbolo que aparece en el círculo del sobre (y arriba de la carta, adentro).
-              Opcional — si lo dejás vacío, usamos las iniciales del texto principal (ej. "Ana &amp;
-              Luis" → "A L"). Máximo 3 caracteres, también sirve para un emoji o símbolo (♥, ✦) en
-              vez de letras.
-            </p>
-            <input
-              v-model="form.monogram"
-              data-preview="hero"
-              maxlength="3"
-              placeholder="Ej. AL, XV, ♥"
-              class="mt-1 w-24 rounded border border-gray-300 px-3 py-2 text-center"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Texto de la carta</label>
-            <p class="text-xs text-gray-500">
-              Opcional. Una línea corta escrita en la carta que sale del sobre al abrirlo: un
-              nombre, «Mis XV», «Te invitamos»… Si lo dejás vacío, la carta muestra las iniciales
-              del sello.
-            </p>
-            <input
-              v-model="form.envelope_text"
-              maxlength="40"
-              placeholder="Ej. Mis XV, Te invitamos"
-              class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-            />
-            <p class="mt-1 text-right text-xs text-gray-400">
-              {{ form.envelope_text?.length || 0 }}/40
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Color del sobre</label>
-            <p class="text-xs text-gray-500">
-              Por defecto el sobre va en un tono claro del color principal de la invitación. Si
-              querés otro (ej. sobre negro con invitación lila), elegilo acá: el sello del centro
-              toma una versión más oscura del mismo color del sobre.
-            </p>
-            <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                :checked="!!form.envelope_color"
-                @change="form.envelope_color = $event.target.checked ? '#000000' : ''"
-              />
-              Usar un color diferente al de la invitación
-            </label>
-            <template v-if="form.envelope_color">
-              <div class="mt-3 grid grid-cols-10 gap-2">
+        <!-- Pasos -->
+        <div class="relative -mx-4 mt-5 lg:mx-0">
+          <nav
+            ref="stepsNav"
+            @scroll.passive="updateStepsFade"
+            @wheel="onStepsWheel"
+            :style="stepsMask"
+            class="relative overflow-x-auto px-4 [scrollbar-width:none] lg:px-0 [&::-webkit-scrollbar]:hidden"
+          >
+            <ol class="flex w-max gap-1.5">
+              <li v-for="(s, i) in STEPS" :key="s.id">
                 <button
-                  v-for="c in PRIMARY_PRESETS"
-                  :key="c"
                   type="button"
-                  @click="form.envelope_color = c"
-                  :style="{ backgroundColor: c }"
-                  :class="
-                    form.envelope_color.toLowerCase() === c
-                      ? 'ring-2 ring-gray-900 ring-offset-2'
-                      : 'ring-1 ring-gray-300'
-                  "
-                  :aria-label="`Color del sobre ${c}`"
-                  class="aspect-square w-full rounded-lg"
-                ></button>
+                  @click="goToStep(i)"
+                  :aria-current="stepIndex === i ? 'step' : undefined"
+                  :class="stepIndex === i ? 'bg-accent text-chalk' : 'bg-limestone/60 hover:bg-limestone'"
+                  class="flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-[0.8125rem] font-bold transition-colors"
+                >
+                  <span
+                    :class="stepIndex === i ? 'bg-chalk text-accent' : 'bg-chalk'"
+                    class="grid h-6 w-6 place-items-center rounded-full text-[0.6875rem]"
+                  >
+                    {{ i + 1 }}
+                  </span>
+                  {{ s.label }}
+                </button>
+              </li>
+            </ol>
+          </nav>
+
+          <!-- Flechitas: aparecen solo del lado donde quedan pasos ocultos. -->
+          <button
+            v-show="stepsFade.left"
+            type="button"
+            @click="scrollSteps(-1)"
+            aria-label="Ver pasos anteriores"
+            class="absolute top-1/2 left-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-obsidian text-chalk lg:left-0"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          <button
+            v-show="stepsFade.right"
+            type="button"
+            @click="scrollSteps(1)"
+            aria-label="Ver más pasos"
+            class="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-obsidian text-chalk lg:right-0"
+          >
+            <ChevronRight :size="16" />
+          </button>
+        </div>
+
+        <!-- Tarjeta del paso actual -->
+        <form
+          @submit.prevent="onSubmit"
+          @focusin="onFieldFocus"
+          class="mt-4 rounded-[2rem] bg-limestone p-6 sm:rounded-[2.5rem] sm:p-10"
+        >
+          <p class="text-xs font-bold tracking-[0.2em] text-obsidian/45 uppercase">
+            Paso {{ stepIndex + 1 }} de {{ STEPS.length }}
+          </p>
+          <h2 class="admin-display mt-2 text-4xl sm:text-5xl">{{ step.title }}</h2>
+          <p class="mt-2 text-obsidian/60">{{ step.desc }}</p>
+
+          <div class="mt-8 space-y-8">
+            <!-- ========== 1. ESTILO ========== -->
+            <template v-if="step.id === 'estilo'">
+              <div>
+                <p class="admin-label">¿Qué festejás?</p>
+                <p class="admin-help">Cambia los textos de ejemplo. Lo que ya escribiste no se toca.</p>
+                <div class="grid grid-cols-2 gap-3">
+                  <button
+                    v-for="t in [
+                      { id: 'cumpleanos', label: 'Cumpleaños', icon: Cake },
+                      { id: 'casamiento', label: 'Casamiento', icon: Heart },
+                    ]"
+                    :key="t.id"
+                    type="button"
+                    @click="applyTemplate(t.id)"
+                    :class="eventType === t.id ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                    class="flex items-center gap-3 rounded-[1.5rem] border-2 p-4 text-left font-bold transition-colors"
+                  >
+                    <span
+                      :class="eventType === t.id ? 'bg-accent text-chalk' : 'bg-pumice'"
+                      class="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                    >
+                      <component :is="t.icon" :size="18" />
+                    </span>
+                    {{ t.label }}
+                  </button>
+                </div>
               </div>
-              <div class="mt-3 flex items-center gap-2">
-                <span
-                  class="h-8 w-8 shrink-0 rounded-lg ring-1 ring-gray-300"
-                  :style="{ backgroundColor: form.envelope_color }"
-                ></span>
-                <input
-                  v-model="envelopeHexInput"
-                  maxlength="7"
-                  spellcheck="false"
-                  placeholder="#111111"
-                  class="w-28 rounded border border-gray-300 px-3 py-1.5 font-mono text-sm uppercase"
+
+              <div>
+                <p class="admin-label">Diseño</p>
+                <p class="admin-help">Cada diseño tiene su tipografía y su estilo. Los colores los elegís abajo.</p>
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <button
+                    v-for="t in INVITATION_TEMPLATES"
+                    :key="t.value"
+                    type="button"
+                    data-preview="hero"
+                    @click="form.template = t.value"
+                    :class="form.template === t.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                    class="relative rounded-[1.5rem] border-2 p-3 text-left transition-colors"
+                  >
+                    <span
+                      class="flex h-20 items-center justify-center rounded-[1rem] text-3xl"
+                      :style="{ fontFamily: t.font, backgroundColor: form.bg_color, color: form.primary_color }"
+                    >
+                      Aa
+                    </span>
+                    <span class="mt-3 block font-bold">{{ t.label }}</span>
+                    <span class="mt-0.5 block text-xs leading-snug text-obsidian/55">{{ t.help }}</span>
+                    <span
+                      v-if="form.template === t.value"
+                      class="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-accent text-chalk"
+                    >
+                      <Check :size="14" />
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p class="admin-label">Color de fondo</p>
+                <p class="admin-help">El fondo de toda la invitación.</p>
+                <ColorPicker v-model="form.bg_color" :presets="BG_PRESETS" preview="saludo" name="Color de fondo">
+                  <a href="https://colorhunt.co" target="_blank" rel="noopener" class="text-xs text-obsidian/55 underline">
+                    buscar más paletas
+                  </a>
+                </ColorPicker>
+              </div>
+
+              <div>
+                <p class="admin-label">Color principal</p>
+                <p class="admin-help">Botones, líneas y detalles. El sobre también lo usa, salvo que le elijas uno propio.</p>
+                <ColorPicker v-model="form.primary_color" :presets="PRIMARY_PRESETS" preview="saludo" name="Color principal" />
+              </div>
+            </template>
+
+            <!-- ========== 2. PORTADA ========== -->
+            <template v-else-if="step.id === 'portada'">
+              <div>
+                <label class="admin-label" for="f-kicker">Línea de arriba</label>
+                <input id="f-kicker" v-model="form.hero_kicker" data-preview="hero" placeholder="Ej. Te invito a mis · Nos casamos" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-title">Texto principal</label>
+                <p class="admin-help">El nombre grande de la portada.</p>
+                <input id="f-title" v-model="form.hero_title" data-preview="hero" placeholder="Ej. Antonella · Ana & Luis" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-subtitle">Línea de abajo</label>
+                <input id="f-subtitle" v-model="form.hero_subtitle" data-preview="hero" placeholder="Opcional" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-date">Fecha del evento</label>
+                <input id="f-date" v-model="form.event_date" type="date" data-preview="hero" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-music">Música</label>
+                <p class="admin-help">Pegá el link de una canción de YouTube. Suena cuando abren el sobre. Dejalo vacío si no querés música.</p>
+                <input id="f-music" v-model="form.music_url" type="url" data-preview="hero" placeholder="https://www.youtube.com/watch?v=…" class="admin-input" />
+              </div>
+            </template>
+
+            <!-- ========== 3. SOBRE ========== -->
+            <template v-else-if="step.id === 'sobre'">
+              <div>
+                <div class="flex justify-center overflow-hidden rounded-[1.5rem]" :style="{ backgroundColor: form.bg_color }">
+                  <EnvelopeCover
+                    inline
+                    :opening="envelopePreviewOpen"
+                    :monogram-short="envelopePreviewMonogram.short"
+                    :monogram-full="envelopePreviewMonogram.full"
+                    :text="form.envelope_text?.trim() || ''"
+                    :monogram-font="envelopePreviewFont"
+                    v-bind="envelopePreviewPalette"
+                  />
+                </div>
+                <button type="button" @click="envelopePreviewOpen = !envelopePreviewOpen" class="admin-btn-secondary mt-3 w-full">
+                  {{ envelopePreviewOpen ? 'Cerrar el sobre' : 'Abrir el sobre para ver la carta' }}
+                </button>
+              </div>
+
+              <div>
+                <label class="admin-label" for="f-seal">Sello</label>
+                <p class="admin-help">
+                  Lo que va en el círculo del sobre: hasta 3 letras o un símbolo (♥, ✦). Si lo dejás
+                  vacío, usamos las iniciales del texto principal.
+                </p>
+                <input id="f-seal" v-model="form.monogram" data-preview="hero" maxlength="3" placeholder="Ej. XV" class="admin-input !w-32 text-center" />
+              </div>
+
+              <div>
+                <label class="admin-label" for="f-letter">Texto de la carta</label>
+                <p class="admin-help">Una frase corta que se lee cuando la carta sale del sobre. Opcional.</p>
+                <input id="f-letter" v-model="form.envelope_text" maxlength="40" placeholder="Ej. Mis XV · Te invitamos" class="admin-input" />
+                <p class="mt-1.5 pr-4 text-right text-xs text-obsidian/45">{{ form.envelope_text?.length || 0 }}/40</p>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <p class="admin-label !mb-0">Color propio para el sobre</p>
+                    <p class="admin-help !mb-0">Si no, usa un tono claro del color principal.</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    :aria-checked="!!form.envelope_color"
+                    aria-label="Color propio para el sobre"
+                    @click="form.envelope_color = form.envelope_color ? '' : '#000000'"
+                    :class="form.envelope_color ? 'bg-accent' : 'bg-obsidian/20'"
+                    class="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+                  >
+                    <span
+                      class="absolute top-1 left-1 h-5 w-5 rounded-full bg-chalk transition-transform"
+                      :class="form.envelope_color ? 'translate-x-5' : ''"
+                    ></span>
+                  </button>
+                </div>
+                <ColorPicker
+                  v-if="form.envelope_color"
+                  v-model="form.envelope_color"
+                  :presets="PRIMARY_PRESETS"
+                  name="Color del sobre"
+                  class="mt-4"
                 />
               </div>
             </template>
-          </div>
 
-          <!-- Mismo guardado que «Información»: el form es uno solo (form.value),
-               así que guarda también lo que se haya tocado en la otra pestaña. -->
-          <p v-if="message" class="text-sm">{{ message }}</p>
-          <button
-            type="button"
-            @click="onSubmit"
-            :disabled="saving"
-            class="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-          >
-            {{ saving ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </div>
-
-        <!-- ================= FOTOS ================= -->
-        <div v-if="panel === 'fotos'" class="mt-6 space-y-6">
-          <p v-if="!event" class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            Guardá primero los datos en «Información» para poder subir fotos.
-          </p>
-          <p class="text-xs text-gray-500">
-            Las fotos se guardan solas al subirlas. Tocá el ✕ para eliminar una.
-          </p>
-
-          <div
-            v-for="s in photoSections"
-            :key="s.slot"
-            class="space-y-2 border-t border-gray-200 pt-4"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <h2 class="text-sm font-semibold text-gray-500 uppercase">{{ s.label }}</h2>
-              <button
-                v-if="s.optional"
-                type="button"
-                role="switch"
-                :aria-checked="!isHidden(s.slot)"
-                @click="toggleSection(s.slot)"
-                :class="isHidden(s.slot) ? 'bg-gray-300' : 'bg-gray-900'"
-                class="relative h-5 w-9 shrink-0 rounded-full transition-colors"
-              >
-                <span
-                  class="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all"
-                  :class="isHidden(s.slot) ? 'left-0.5' : 'left-4'"
-                ></span>
-              </button>
-            </div>
-            <p class="text-xs text-gray-500">
-              <template v-if="s.optional && isHidden(s.slot)">
-                Esta sección no se muestra en la invitación.
-              </template>
-              <template v-else>{{ s.help }}</template>
-            </p>
-            <div
-              class="grid grid-cols-4 gap-2 transition-opacity"
-              :class="{ 'pointer-events-none opacity-40': s.optional && isHidden(s.slot) }"
-            >
-              <div
-                v-for="(ph, i) in form[s.slot]"
-                :key="ph.path"
-                class="group relative aspect-square overflow-hidden rounded-lg ring-1 ring-gray-200"
-              >
-                <img :src="ph.url" alt="" class="h-full w-full object-cover" />
-                <button
-                  type="button"
-                  @click="removePhoto(s.slot, i)"
-                  :disabled="uploading"
-                  aria-label="Eliminar foto"
-                  class="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-sm text-white opacity-0 transition group-hover:opacity-100"
-                >
-                  ✕
-                </button>
+            <!-- ========== 4. SALUDO Y CIERRE ========== -->
+            <template v-else-if="step.id === 'textos'">
+              <div>
+                <label class="admin-label" for="f-intro">Saludo</label>
+                <p class="admin-help">El párrafo que aparece después de la portada.</p>
+                <textarea id="f-intro" v-model="form.intro_text" rows="4" data-preview="saludo" placeholder="Ej. Hay días que quedan guardados para siempre…" class="admin-input"></textarea>
               </div>
-              <button
-                v-if="canAdd(s)"
-                type="button"
-                @click="pickPhoto(s.slot)"
-                :disabled="uploading"
-                class="grid aspect-square place-items-center rounded-lg border-2 border-dashed border-gray-300 text-2xl text-gray-400 transition hover:border-gray-400 hover:text-gray-600 disabled:opacity-50"
-              >
-                +
-              </button>
-            </div>
-            <p v-if="uploading && uploadingSlot === s.slot" class="text-sm text-gray-500">Subiendo…</p>
-            <p
-              v-if="photoError && photoErrorSlot === s.slot"
-              class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-            >
-              {{ photoError }}
-            </p>
-          </div>
+              <div>
+                <label class="admin-label" for="f-closing">Frase de cierre</label>
+                <p class="admin-help">Lo último que leen, al final de la invitación.</p>
+                <input id="f-closing" v-model="form.closing_text" data-preview="cierre" placeholder="Ej. ¡Los esperamos!" class="admin-input" />
+              </div>
+            </template>
 
-          <p v-if="photoError && !photoErrorSlot" class="text-sm text-red-600">{{ photoError }}</p>
-        </div>
+            <!-- ========== 5. LA FIESTA ========== -->
+            <template v-else-if="step.id === 'fiesta'">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="admin-label" for="f-start">Empieza</label>
+                  <input id="f-start" v-model="form.reception_time" type="time" data-preview="fiesta" class="admin-input" />
+                </div>
+                <div>
+                  <label class="admin-label" for="f-end">Termina</label>
+                  <input id="f-end" v-model="form.end_time" type="time" data-preview="fiesta" class="admin-input" />
+                </div>
+              </div>
+              <div>
+                <label class="admin-label" for="f-venue">Nombre del lugar</label>
+                <input id="f-venue" v-model="form.venue_name" data-preview="fiesta" placeholder="Ej. Salón Los Álamos" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-address">Dirección</label>
+                <input id="f-address" v-model="form.venue_address" data-preview="fiesta" placeholder="Ej. Av. Siempre Viva 742" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-maps">Link de Google Maps</label>
+                <p class="admin-help">En Google Maps: buscá el lugar → Compartir → Copiar vínculo.</p>
+                <input id="f-maps" v-model="form.maps_url" type="url" data-preview="fiesta" placeholder="https://maps.app.goo.gl/…" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-dress">Código de vestimenta</label>
+                <input id="f-dress" v-model="form.dress_code" data-preview="fiesta" placeholder="Ej. Elegante sport" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-gift">Alias para regalos</label>
+                <p class="admin-help">Para que puedan hacer una transferencia. Opcional.</p>
+                <input id="f-gift" v-model="form.gift_alias" data-preview="regalos" placeholder="Ej. antonella.15" class="admin-input" />
+              </div>
+              <div>
+                <label class="admin-label" for="f-notes">Algo más que quieras contar</label>
+                <textarea id="f-notes" v-model="form.notes" rows="3" data-preview="fiesta" placeholder="Ej. Hay estacionamiento · Evento sin niños" class="admin-input"></textarea>
+              </div>
+            </template>
 
-        <input
-          ref="fileInput"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          class="hidden"
-          @change="onFilePicked"
-        />
+            <!-- ========== 6. CONFIRMACIONES ========== -->
+            <template v-else-if="step.id === 'confirmacion'">
+              <div>
+                <label class="admin-label" for="f-deadline">Fecha límite para confirmar</label>
+                <p class="admin-help">Se muestra en la invitación para que no se olviden de responder.</p>
+                <input id="f-deadline" v-model="form.rsvp_deadline" type="date" data-preview="rsvp" class="admin-input" />
+              </div>
+              <div>
+                <p class="admin-label">¿Hay un máximo de invitados?</p>
+                <p class="admin-help">Con un tope, no vas a poder repartir más invitaciones que ese número.</p>
+                <div class="grid grid-cols-2 gap-3">
+                  <button
+                    v-for="opt in [
+                      { value: false, label: 'Sin tope' },
+                      { value: true, label: 'Con tope' },
+                    ]"
+                    :key="opt.label"
+                    type="button"
+                    @click="hasGuestLimit = opt.value"
+                    :class="hasGuestLimit === opt.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                    class="rounded-full border-2 px-4 py-3 font-bold transition-colors"
+                  >
+                    {{ opt.label }}
+                  </button>
+                </div>
+                <div v-if="hasGuestLimit" class="mt-4">
+                  <label class="admin-label" for="f-limit">Cantidad máxima</label>
+                  <input id="f-limit" v-model.number="guestLimit" type="number" min="1" data-preview="rsvp" class="admin-input !w-40" />
+                </div>
+              </div>
+            </template>
 
-        <!-- ================= INFORMACIÓN ================= -->
-        <form
-          v-if="panel === 'info'"
-          @submit.prevent="onSubmit"
-          @focusin="onFieldFocus"
-          class="mt-6 space-y-6"
-        >
-          <p class="text-xs text-gray-500">
-            Los campos vienen precargados con textos genéricos según el tipo de evento: cambiá
-            solo lo que quieras. Siguen el orden de la invitación, y al tocar uno la vista previa
-            se desliza hasta esa parte.
-          </p>
-
-          <!-- 0. PLANTILLA -->
-          <div class="space-y-3">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">Plantilla</h2>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                v-for="t in INVITATION_TEMPLATES"
-                :key="t.value"
-                type="button"
-                data-preview="hero"
-                @click="form.template = t.value"
-                :class="
-                  form.template === t.value
-                    ? 'ring-2 ring-gray-900'
-                    : 'ring-1 ring-gray-300 hover:ring-gray-400'
-                "
-                class="rounded-xl p-3 text-left transition"
-              >
-                <span
-                  class="flex h-14 w-full items-center justify-center rounded-lg bg-gray-100 text-2xl text-gray-700"
-                  :style="{ fontFamily: t.font }"
-                >
-                  Aa
-                </span>
-                <span class="mt-2 block text-sm font-medium text-gray-800">{{ t.label }}</span>
-                <span class="block text-xs text-gray-500">{{ t.help }}</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 1. PORTADA -->
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">1 · Portada</h2>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Línea de arriba</label>
-              <input
-                v-model="form.hero_kicker"
-                data-preview="hero"
-                placeholder="Ej. Te invito a mis — Nos casamos"
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Texto principal</label>
-              <input
-                v-model="form.hero_title"
-                data-preview="hero"
-                placeholder="Ej. Antonella — Ana &amp; Luis"
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Línea de abajo</label>
-              <input
-                v-model="form.hero_subtitle"
-                data-preview="hero"
-                placeholder="Ej. Antonella — ¡Te esperamos!"
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Fecha</label>
-              <input v-model="form.event_date" type="date" data-preview="hero" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Canción (link de YouTube)</label>
-              <p class="text-xs text-gray-500">
-                Suena al tocar «Abrir invitación». Dejalo vacío para no poner música.
+            <!-- ========== 7. FOTOS ========== -->
+            <template v-else-if="step.id === 'fotos'">
+              <p v-if="!event" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                Guardá tu invitación primero (botón «Guardar», arriba) para poder subir fotos.
               </p>
-              <input
-                v-model="form.music_url"
-                type="url"
-                data-preview="hero"
-                placeholder="https://www.youtube.com/watch?v=..."
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-          </div>
 
-          <!-- 2. SALUDO -->
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">2 · Saludo</h2>
+              <div v-for="s in photoSections" :key="s.slot" class="rounded-[1.5rem] bg-chalk p-4 sm:p-5">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p class="font-bold">{{ s.label }}</p>
+                    <p class="text-sm text-obsidian/55">
+                      <template v-if="s.optional && isHidden(s.slot)">Oculta: no aparece en la invitación.</template>
+                      <template v-else>{{ s.help }}</template>
+                    </p>
+                  </div>
+                  <button
+                    v-if="s.optional"
+                    type="button"
+                    role="switch"
+                    :aria-checked="!isHidden(s.slot)"
+                    :aria-label="`Mostrar la sección ${s.label}`"
+                    @click="toggleSection(s.slot)"
+                    :class="isHidden(s.slot) ? 'bg-obsidian/20' : 'bg-accent'"
+                    class="relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition-colors"
+                  >
+                    <span
+                      class="absolute top-1 left-1 h-5 w-5 rounded-full bg-chalk transition-transform"
+                      :class="isHidden(s.slot) ? '' : 'translate-x-5'"
+                    ></span>
+                  </button>
+                </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Color de fondo</label>
-              <p class="text-xs text-gray-500">El color de toda la invitación (menos las fotos).</p>
-              <div class="mt-2 grid grid-cols-10 gap-2">
-                <button
-                  v-for="c in BG_PRESETS"
-                  :key="c"
-                  type="button"
-                  @click="form.bg_color = c"
-                  :style="{ backgroundColor: c }"
-                  :class="
-                    form.bg_color.toLowerCase() === c
-                      ? 'ring-2 ring-gray-900 ring-offset-2'
-                      : 'ring-1 ring-gray-300'
-                  "
-                  :aria-label="`Fondo ${c}`"
-                  class="aspect-square w-full rounded-lg"
-                ></button>
-              </div>
-              <div class="mt-3 flex items-center gap-2">
-                <span
-                  class="h-8 w-8 shrink-0 rounded-lg ring-1 ring-gray-300"
-                  :style="{ backgroundColor: form.bg_color }"
-                ></span>
-                <input
-                  v-model="hexInput"
-                  data-preview="saludo"
-                  maxlength="7"
-                  spellcheck="false"
-                  placeholder="#fdf7f1"
-                  class="w-28 rounded border border-gray-300 px-3 py-1.5 font-mono text-sm uppercase"
-                />
-                <a
-                  href="https://colorhunt.co"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-xs text-blue-600 underline"
+                <div
+                  class="mt-4 grid grid-cols-3 gap-2 transition-opacity sm:grid-cols-4"
+                  :class="{ 'pointer-events-none opacity-35': s.optional && isHidden(s.slot) }"
                 >
-                  buscar paletas y copiar el hex
-                </a>
+                  <div v-for="(ph, i) in form[s.slot]" :key="ph.path" class="relative aspect-square overflow-hidden rounded-[1rem] bg-pumice">
+                    <img :src="ph.url" alt="" class="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      @click="removePhoto(s.slot, i)"
+                      :disabled="uploading"
+                      aria-label="Eliminar foto"
+                      class="absolute top-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-full bg-obsidian/70 text-chalk"
+                    >
+                      <X :size="14" />
+                    </button>
+                  </div>
+                  <button
+                    v-if="canAdd(s)"
+                    type="button"
+                    @click="pickPhoto(s.slot)"
+                    :disabled="uploading"
+                    class="flex aspect-square flex-col items-center justify-center gap-1 rounded-[1rem] border-[1.5px] border-dashed border-obsidian/30 text-obsidian/55 transition-colors hover:border-obsidian hover:text-obsidian disabled:opacity-50"
+                  >
+                    <span class="text-2xl leading-none">+</span>
+                    <span class="text-xs font-bold">Subir</span>
+                  </button>
+                </div>
+                <p v-if="uploading && uploadingSlot === s.slot" class="mt-3 text-sm text-obsidian/55">Subiendo…</p>
+                <p v-if="photoError && photoErrorSlot === s.slot" class="mt-3 rounded-[1rem] bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {{ photoError }}
+                </p>
               </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Color principal</label>
-              <p class="text-xs text-gray-500">
-                El acento de la invitación: botones, rayitas y detalles. Es el mismo selector para
-                cualquier plantilla. El sobre también lo usa, salvo que le elijas un color propio
-                en la pestaña «Sobre».
-              </p>
-              <div class="mt-2 grid grid-cols-10 gap-2">
-                <button
-                  v-for="c in PRIMARY_PRESETS"
-                  :key="c"
-                  type="button"
-                  @click="form.primary_color = c"
-                  :style="{ backgroundColor: c }"
-                  :class="
-                    form.primary_color.toLowerCase() === c
-                      ? 'ring-2 ring-gray-900 ring-offset-2'
-                      : 'ring-1 ring-gray-300'
-                  "
-                  :aria-label="`Color principal ${c}`"
-                  class="aspect-square w-full rounded-lg"
-                ></button>
-              </div>
-              <div class="mt-3 flex items-center gap-2">
-                <span
-                  class="h-8 w-8 shrink-0 rounded-lg ring-1 ring-gray-300"
-                  :style="{ backgroundColor: form.primary_color }"
-                ></span>
-                <input
-                  v-model="primaryHexInput"
-                  data-preview="saludo"
-                  maxlength="7"
-                  spellcheck="false"
-                  placeholder="#9f1239"
-                  class="w-28 rounded border border-gray-300 px-3 py-1.5 font-mono text-sm uppercase"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Párrafo del saludo</label>
-              <textarea
-                v-model="form.intro_text"
-                rows="3"
-                data-preview="saludo"
-                placeholder="Ej. Hay días que quedan guardados para siempre. Nos encantaría compartir este con vos."
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              ></textarea>
-            </div>
+              <p v-if="photoError && !photoErrorSlot" class="text-sm text-red-700">{{ photoError }}</p>
+            </template>
           </div>
 
-          <!-- 3. LA FIESTA -->
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">3 · La fiesta</h2>
-            <div class="flex gap-4">
-              <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700">Hora de recepción</label>
-                <input v-model="form.reception_time" type="time" data-preview="fiesta" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
-              </div>
-              <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700">Hora de fin</label>
-                <input v-model="form.end_time" type="time" data-preview="fiesta" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Nombre del salón</label>
-              <input v-model="form.venue_name" data-preview="fiesta" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Dirección</label>
-              <input v-model="form.venue_address" data-preview="fiesta" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Link de Google Maps</label>
-              <input
-                v-model="form.maps_url"
-                type="url"
-                data-preview="fiesta"
-                placeholder="https://maps.app.goo.gl/..."
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Código de vestimenta</label>
-              <input
-                v-model="form.dress_code"
-                data-preview="fiesta"
-                placeholder="Ej. Elegante sport"
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Alias para regalos</label>
-              <input
-                v-model="form.gift_alias"
-                data-preview="regalos"
-                placeholder="Ej. antonella.15"
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Notas adicionales</label>
-              <textarea
-                v-model="form.notes"
-                rows="3"
-                data-preview="fiesta"
-                placeholder="Ej. hay estacionamiento, evento sin niños, etc."
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              ></textarea>
-            </div>
+          <!-- Anterior / Siguiente -->
+          <div class="mt-10 flex items-center justify-between gap-3 border-t-[1.5px] border-dotted border-obsidian/25 pt-6">
+            <button v-if="stepIndex > 0" type="button" @click="goToStep(stepIndex - 1)" class="admin-btn-secondary">
+              <ChevronLeft :size="18" />
+              <span class="hidden sm:inline">{{ STEPS[stepIndex - 1].label }}</span>
+              <span class="sm:hidden">Anterior</span>
+            </button>
+            <span v-else></span>
+            <button v-if="stepIndex < STEPS.length - 1" type="button" @click="goToStep(stepIndex + 1)" class="admin-btn-secondary">
+              Siguiente: {{ STEPS[stepIndex + 1].label }}
+              <ChevronRight :size="18" />
+            </button>
           </div>
-
-          <!-- 4. CONFIRMACIÓN -->
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">4 · Confirmación de asistencia</h2>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Fecha límite para confirmar</label>
-              <input v-model="form.rsvp_deadline" type="date" data-preview="rsvp" class="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
-            </div>
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Cantidad de invitados</label>
-              <div class="flex gap-4 text-sm text-gray-700">
-                <label class="flex items-center gap-1">
-                  <input type="radio" :value="false" v-model="hasGuestLimit" />
-                  Ilimitado
-                </label>
-                <label class="flex items-center gap-1">
-                  <input type="radio" :value="true" v-model="hasGuestLimit" />
-                  Con tope
-                </label>
-              </div>
-              <input
-                v-if="hasGuestLimit"
-                v-model.number="guestLimit"
-                type="number"
-                min="1"
-                data-preview="rsvp"
-                placeholder="Cantidad máxima de invitados"
-                class="w-48 rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-          </div>
-
-          <!-- 5. CIERRE -->
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">5 · Cierre</h2>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Frase de cierre</label>
-              <input
-                v-model="form.closing_text"
-                data-preview="cierre"
-                placeholder="Ej. ¡Los esperamos!"
-                class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-              />
-            </div>
-          </div>
-
-          <p v-if="message" class="text-sm">{{ message }}</p>
-          <button
-            type="submit"
-            :disabled="saving"
-            class="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-          >
-            {{ saving ? 'Guardando...' : 'Guardar' }}
-          </button>
         </form>
+
+        <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onFilePicked" />
       </div>
 
-      <!-- Vista previa (desktop) -->
+      <!-- ================= VISTA PREVIA (desktop) ================= -->
       <div class="hidden shrink-0 xl:block">
-        <div class="sticky top-6">
-          <p class="mb-2 text-xs font-semibold text-gray-500 uppercase">Vista previa en vivo</p>
+        <div class="sticky top-8">
+          <p class="mb-3 text-center text-xs font-bold tracking-[0.2em] text-obsidian/45 uppercase">Vista previa</p>
           <!-- Bisel: envuelve por afuera, no achica el área de contenido. -->
-          <div class="mx-auto inline-block rounded-[2.2rem] border-[10px] border-gray-900 shadow-xl">
+          <div class="mx-auto inline-block rounded-[2.4rem] border-[10px] border-obsidian">
             <!-- Caja de recorte: mide EXACTO lo que ocupa el iframe ya escalado. -->
             <div
-              class="overflow-hidden rounded-[1.4rem]"
+              class="overflow-hidden rounded-[1.6rem]"
               :style="{ width: `${PHONE_W * previewScale}px`, height: `${PHONE_H * previewScale}px` }"
             >
               <iframe
@@ -1085,34 +1045,24 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Vista previa (mobile): botón flotante + overlay -->
+    <!-- ================= VISTA PREVIA (celular/tablet) ================= -->
     <button
       type="button"
       @click="showMobilePreview = true"
-      class="fixed bottom-5 right-5 z-40 rounded-full bg-rose-700 px-5 py-3 text-sm font-medium text-white shadow-lg xl:hidden"
+      class="admin-btn-primary font-ui fixed right-4 bottom-5 z-40 xl:hidden"
     >
-      Vista previa
+      <Eye :size="18" />
+      Ver cómo queda
     </button>
 
-    <div
-      v-if="showMobilePreview"
-      class="fixed inset-0 z-50 flex flex-col bg-black/70 xl:hidden"
-    >
-      <div class="flex justify-end p-3">
-        <button
-          type="button"
-          @click="showMobilePreview = false"
-          class="rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow"
-        >
-          Cerrar
+    <div v-if="showMobilePreview" class="font-ui fixed inset-0 z-[70] flex flex-col bg-obsidian xl:hidden">
+      <div class="flex items-center justify-between px-4 py-3 text-chalk">
+        <span class="admin-display text-2xl">Vista previa</span>
+        <button type="button" @click="showMobilePreview = false" class="grid h-10 w-10 place-items-center rounded-full bg-chalk text-obsidian" aria-label="Cerrar vista previa">
+          <X :size="18" />
         </button>
       </div>
-      <iframe
-        ref="frameMobile"
-        :src="previewUrl"
-        title="Vista previa de la invitación"
-        class="w-full flex-1 bg-white"
-      ></iframe>
+      <iframe ref="frameMobile" :src="previewUrl" title="Vista previa de la invitación" class="w-full flex-1 bg-white"></iframe>
     </div>
   </div>
 </template>
