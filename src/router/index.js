@@ -5,7 +5,6 @@ import AdminNuevaContrasena from '../views/AdminNuevaContrasena.vue'
 import AdminDashboard from '../views/AdminDashboard.vue'
 import AdminSalon from '../views/AdminSalon.vue'
 import AdminMesas from '../views/AdminMesas.vue'
-import AdminAsignarMesas from '../views/AdminAsignarMesas.vue'
 import AdminInvitados from '../views/AdminInvitados.vue'
 import PreviewInvite from '../views/PreviewInvite.vue'
 import AdminSuperadmin from '../views/AdminSuperadmin.vue'
@@ -35,8 +34,8 @@ const router = createRouter({
     {
       path: '/admin/mesas/asignar',
       name: 'admin-asignar-mesas',
-      component: AdminAsignarMesas,
-      meta: { requiresAuth: true },
+      // Antes era una pantalla aparte; ahora se asigna desde Mesas.
+      redirect: { name: 'admin-mesas' },
     },
     { path: '/admin/invitados', name: 'admin-invitados', component: AdminInvitados, meta: { requiresAuth: true } },
     {

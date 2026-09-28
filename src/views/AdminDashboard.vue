@@ -691,7 +691,7 @@ async function copyLink(group) {
             <div class="flex items-center justify-between gap-3">
               <h2 class="admin-display text-3xl">Mesas</h2>
               <router-link
-                :to="{ name: 'admin-asignar-mesas' }"
+                :to="{ name: 'admin-mesas' }"
                 class="flex shrink-0 items-center gap-1 rounded-full border-[1.5px] border-obsidian px-3 py-1.5 text-sm font-bold"
               >
                 Asignar
@@ -701,7 +701,7 @@ async function copyLink(group) {
 
             <router-link
               v-if="unseatedGuests > 0"
-              :to="{ name: 'admin-asignar-mesas' }"
+              :to="{ name: 'admin-mesas' }"
               class="mt-5 flex items-center gap-3 rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent"
             >
               <Armchair :size="18" class="shrink-0" />
