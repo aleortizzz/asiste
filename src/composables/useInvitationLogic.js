@@ -551,6 +551,20 @@ export function useInvitationLogic(props, emit) {
     names.value.splice(i, 1)
   }
 
+  // Fecha límite para confirmar. `rsvpDeadlinePassed`: ya pasó (hoy en
+  // Argentina es posterior a la fecha). `rsvpClosed`: además el evento
+  // eligió cerrar las confirmaciones — el servidor rechaza respuestas nuevas,
+  // así que se oculta el formulario. Si solo es informativa, al pasar la
+  // fecha se deja de mostrar «Confirmá antes del…» y se puede responder igual.
+  const todayAR = () =>
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+  const rsvpDeadlinePassed = computed(
+    () => !!props.invite.rsvp_deadline && todayAR() > props.invite.rsvp_deadline,
+  )
+  const rsvpClosed = computed(
+    () => props.invite.rsvp_closed ?? (!!props.invite.rsvp_deadline_strict && rsvpDeadlinePassed.value),
+  )
+
   function formatDate(isoDate) {
     if (!isoDate) return ''
     const [year, month, day] = isoDate.split('-')
@@ -690,6 +704,8 @@ export function useInvitationLogic(props, emit) {
     formatDate,
     formatDateLong,
     formatTime,
+    rsvpDeadlinePassed,
+    rsvpClosed,
     confirmarGenerico,
     declinarGenerico,
     enviarRespuestasNominales,

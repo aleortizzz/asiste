@@ -109,6 +109,8 @@ const {
   addName,
   removeName,
   formatDate,
+  rsvpDeadlinePassed,
+  rsvpClosed,
   formatDateLong,
   formatTime,
   confirmarGenerico,
@@ -452,6 +454,11 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
           <p class="mt-2 text-sm text-[#645757]">Nos vemos muy pronto.</p>
         </div>
 
+        <div v-else-if="rsvpClosed" class="py-4">
+          <p class="craft-heading-sm">Las confirmaciones ya cerraron</p>
+          <p class="mt-2 text-sm text-[#645757]">La fecha límite era el {{ formatDate(invite.rsvp_deadline) }}.</p>
+        </div>
+
         <template v-else-if="invite.named_by_host">
           <p class="mt-4 text-sm text-[#645757]">Invitaciones para:</p>
           <ul class="mt-4 space-y-2 text-left">
@@ -516,7 +523,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
         </template>
       </div>
 
-      <p v-if="!submitted && invite.rsvp_deadline" class="mt-4 text-center text-xs tracking-widest text-[#645757] uppercase">
+      <p v-if="!submitted && invite.rsvp_deadline && !rsvpDeadlinePassed" class="mt-4 text-center text-xs tracking-widest text-[#645757] uppercase">
         Confirmá antes del {{ formatDate(invite.rsvp_deadline) }}
       </p>
     </section>

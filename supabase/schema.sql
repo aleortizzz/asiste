@@ -41,6 +41,8 @@ create table events (
   maps_url text,
   dress_code text,
   rsvp_deadline date,
+  -- true = pasada rsvp_deadline no se aceptan más respuestas (ver migrations/20260928_cierre_confirmaciones.sql).
+  rsvp_deadline_strict boolean not null default false,
   notes text,
   gift_alias text,
   guest_limit int,
@@ -797,3 +799,68 @@ create trigger invitation_groups_rsvp_log
   for each row
   execute function public.registrar_respuesta();
 
+
+
+-- Cierre opcional de confirmaciones (ver migrations/20260928_cierre_confirmaciones.sql).
+create or replace function public.confirmaciones_cerradas(p_event_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select e.rsvp_deadline_strict
+        and e.rsvp_deadline is not null
+        and (now() at time zone 'America/Argentina/Buenos_Aires')::date > e.rsvp_deadline
+     from events e
+     where e.id = p_event_id),
+    false
+  );
+$$;
+
+-- 3) Bloqueo del lado del servidor: las funciones de RSVP siempre terminan
+--    escribiendo el status del grupo; si el evento ya cerró, este trigger
+--    corta con un error y TODA la respuesta se deshace (los cambios a los
+--    invitados que la función hizo antes quedan revertidos, es una sola
+--    transacción). Con rsvp_deadline_strict = false nunca hace nada.
+create or replace function public.bloquear_respuesta_fuera_de_termino()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status <> 'pending' and public.confirmaciones_cerradas(new.event_id) then
+    raise exception 'Las confirmaciones para este evento ya cerraron.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists invitation_groups_cierre_confirmaciones on invitation_groups;
+create trigger invitation_groups_cierre_confirmaciones
+  before update of status on invitation_groups
+  for each row
+  execute function public.bloquear_respuesta_fuera_de_termino();
+
+-- 4) Para la invitación pública: si el evento cierra las confirmaciones y si
+--    ya cerraron. Función aparte (en vez de tocar obtener_invitacion) y que
+--    devuelve solo esto — nada de datos de otras familias.
+create or replace function public.estado_confirmaciones(p_slug text)
+returns json
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'rsvp_deadline_strict', e.rsvp_deadline_strict,
+    'rsvp_closed', public.confirmaciones_cerradas(e.id)
+  )
+  from invitation_groups ig
+  join events e on e.id = ig.event_id
+  where ig.slug = p_slug;
+$$;
+
+grant execute on function public.estado_confirmaciones(text) to anon, authenticated;

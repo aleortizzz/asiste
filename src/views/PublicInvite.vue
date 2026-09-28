@@ -19,7 +19,11 @@ onMounted(async () => {
   if (err || !data) {
     notFound.value = true
   } else {
-    invite.value = data
+    // Si el evento cierra las confirmaciones pasada la fecha límite (ver
+    // migrations/20260928_cierre_confirmaciones.sql). Si la función no
+    // existe o falla, la invitación se muestra igual que siempre.
+    const { data: cierre } = await supabase.rpc('estado_confirmaciones', { p_slug: route.params.slug })
+    invite.value = cierre ? { ...data, ...cierre } : data
   }
   loading.value = false
 })

@@ -106,6 +106,8 @@ const {
   addName,
   removeName,
   formatDate,
+  rsvpDeadlinePassed,
+  rsvpClosed,
   formatDateLong,
   formatTime,
   confirmarGenerico,
@@ -673,6 +675,14 @@ const {
           <p class="mt-2 text-sm text-stone-500">Nos vemos muy pronto.</p>
         </div>
 
+        <!-- Pasó la fecha límite y el evento eligió cerrar las confirmaciones -->
+        <div v-else-if="rsvpClosed" class="py-4 text-center">
+          <p class="pc-heading text-lg" style="font-family: 'Playfair Display', serif">
+            Las confirmaciones ya cerraron
+          </p>
+          <p class="mt-2 text-sm text-stone-500">La fecha límite era el {{ formatDate(invite.rsvp_deadline) }}.</p>
+        </div>
+
         <!-- Modo con nombres precargados por el anfitrión -->
         <template v-else-if="invite.named_by_host">
           <p class="text-center text-sm text-stone-500">Invitaciones para:</p>
@@ -776,7 +786,7 @@ const {
       </div>
 
       <p
-        v-if="!submitted && invite.rsvp_deadline"
+        v-if="!submitted && invite.rsvp_deadline && !rsvpDeadlinePassed"
         class="mt-4 text-center text-xs uppercase tracking-widest text-stone-400"
       >
         Confirmá antes del {{ formatDate(invite.rsvp_deadline) }}

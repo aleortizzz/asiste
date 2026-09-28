@@ -103,6 +103,8 @@ const {
   addName,
   removeName,
   formatDate,
+  rsvpDeadlinePassed,
+  rsvpClosed,
   formatDateLong,
   formatTime,
   confirmarGenerico,
@@ -443,6 +445,11 @@ const {
           <p class="mt-2 text-sm text-[#666666]">Nos vemos muy pronto.</p>
         </div>
 
+        <div v-else-if="rsvpClosed" class="py-4 text-center">
+          <p class="pf-heading-sm">Las confirmaciones ya cerraron</p>
+          <p class="mt-2 text-sm text-[#666666]">La fecha límite era el {{ formatDate(invite.rsvp_deadline) }}.</p>
+        </div>
+
         <template v-else-if="invite.named_by_host">
           <p class="mt-4 text-center text-sm text-[#666666]">Invitaciones para:</p>
           <ul class="mt-4 space-y-2">
@@ -507,7 +514,7 @@ const {
         </template>
       </div>
 
-      <p v-if="!submitted && invite.rsvp_deadline" class="mt-4 text-center text-xs uppercase tracking-widest text-[#999999]">
+      <p v-if="!submitted && invite.rsvp_deadline && !rsvpDeadlinePassed" class="mt-4 text-center text-xs uppercase tracking-widest text-[#999999]">
         Confirmá antes del {{ formatDate(invite.rsvp_deadline) }}
       </p>
     </section>
