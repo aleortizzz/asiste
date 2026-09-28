@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { nanoid } from 'nanoid'
 import { Search, UserPlus, X, Link2, Check, Pencil, Trash2, Plus } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
@@ -522,15 +523,13 @@ async function saveAdding(group, row) {
             <span v-if="declinedCount > 0"> · {{ declinedCount }} liberados por cancelaciones</span>
           </p>
         </div>
-        <button
-          v-if="event && !loading"
-          type="button"
-          @click="addPanel = addPanel ? null : 'invitacion'"
-          class="admin-btn-primary"
-        >
-          <UserPlus :size="18" />
-          Agregar invitados
-        </button>
+        <div v-if="event && !loading" class="flex flex-wrap gap-2">
+          <ExportEntryList />
+          <button type="button" @click="addPanel = addPanel ? null : 'invitacion'" class="admin-btn-primary">
+            <UserPlus :size="18" />
+            Agregar invitados
+          </button>
+        </div>
       </div>
 
       <p v-if="loading" class="mt-10 text-obsidian/55">Cargando…</p>

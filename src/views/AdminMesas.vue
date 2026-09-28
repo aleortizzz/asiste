@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { Plus, X, Pencil, Trash2, Search, Armchair, Check } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
@@ -330,10 +331,13 @@ async function removeTable(table) {
             {{ tables.length === 1 ? 'mesa' : 'mesas' }}
           </p>
         </div>
-        <button v-if="event && !loading" type="button" @click="addOpen = !addOpen" class="admin-btn-primary">
-          <Plus :size="18" />
-          Agregar mesas
-        </button>
+        <div v-if="event && !loading" class="flex flex-wrap gap-2">
+          <ExportEntryList />
+          <button type="button" @click="addOpen = !addOpen" class="admin-btn-primary">
+            <Plus :size="18" />
+            Agregar mesas
+          </button>
+        </div>
       </div>
 
       <p v-if="loading" class="mt-10 text-obsidian/55">Cargando…</p>
