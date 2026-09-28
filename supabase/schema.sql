@@ -927,3 +927,27 @@ as $$
 $$;
 
 grant execute on function public.vista_previa_fotos(uuid) to anon, authenticated;
+
+-- ============================================================
+-- Página pública de fotos (/fotos/:id): nombre, plantilla y colores del
+-- evento para que se vea como la invitación.
+-- ============================================================
+create or replace function public.info_fotos_evento(p_event_id uuid)
+returns json
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'event_name', e.name,
+    'hero_title', e.hero_title,
+    'template', e.template,
+    'primary_color', e.primary_color,
+    'bg_color', e.bg_color
+  )
+  from public.events e
+  where e.id = p_event_id;
+$$;
+
+grant execute on function public.info_fotos_evento(uuid) to anon, authenticated;

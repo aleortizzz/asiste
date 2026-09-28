@@ -3,12 +3,15 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/compressImage'
+import { lighten, contrastText, isDark } from '../lib/color'
 import { Camera, Heart, Download, X, ChevronLeft, ChevronRight } from '@lucide/vue'
 
 // Página pública sin login: la abre quien escanea el QR de las mesas.
+// Toma el estilo de la invitación (plantilla, color, nombre).
 const route = useRoute()
 const eventId = route.params.eventId
 
+const info = ref(null) // info_fotos_evento(): nombre, plantilla y colores
 const photos = ref([])
 const loading = ref(true)
 const uploading = ref(false)
@@ -17,6 +20,81 @@ const totalToUpload = ref(0)
 const error = ref('')
 const full = ref(false)
 const fileInput = ref(null)
+
+// --- Estilo según la plantilla de la invitación ---------------------------------
+// Las fuentes ya las carga index.html (son las mismas de las invitaciones).
+const THEMES = {
+  clasico: {
+    display: "'Dancing Script', cursive",
+    displayWeight: 700,
+    displaySize: '3.1rem',
+    kicker: "'Playfair Display', serif",
+    body: "'Playfair Display', serif",
+    radius: '1rem',
+  },
+  partiful: {
+    display: "'Space Grotesk', ui-sans-serif, sans-serif",
+    displayWeight: 700,
+    displaySize: '2.6rem',
+    kicker: "'Inter', ui-sans-serif, sans-serif",
+    body: "'Inter', ui-sans-serif, sans-serif",
+    radius: '1.25rem',
+    bg: '#ffffff',
+  },
+  craft: {
+    display: "'DM Serif Text', ui-serif, Georgia, serif",
+    displayWeight: 400,
+    displaySize: '2.8rem',
+    kicker: "'Bodoni Moda', ui-serif, Georgia, serif",
+    body: "'Inter', ui-sans-serif, sans-serif",
+    radius: '0.5rem',
+    bg: '#f7f3ea',
+  },
+}
+
+const theme = computed(() => {
+  const t = THEMES[info.value?.template] ?? THEMES.clasico
+  const accent = /^#[0-9a-f]{6}$/i.test(info.value?.primary_color || '') ? info.value.primary_color : '#9f1239'
+  const bg = t.bg ?? info.value?.bg_color ?? '#fdf7f1'
+  const dark = isDark(bg)
+  return {
+    ...t,
+    accent,
+    accentOn: contrastText(accent),
+    // Sobre fondo oscuro el color principal puede no leerse: lo aclaramos.
+    accentText: dark ? lighten(accent, 0.45) : accent,
+    tint: dark ? 'rgba(255,255,255,0.08)' : lighten(accent, 0.88),
+    bg,
+    ink: dark ? '#f5f3f0' : '#3a3431',
+    muted: dark ? 'rgba(245,243,240,0.6)' : 'rgba(58,52,49,0.6)',
+    field: dark ? 'rgba(255,255,255,0.08)' : '#ffffff',
+  }
+})
+
+const pageStyle = computed(() => ({
+  '--accent': theme.value.accent,
+  '--accent-on': theme.value.accentOn,
+  '--accent-text': theme.value.accentText,
+  '--tint': theme.value.tint,
+  '--ink': theme.value.ink,
+  '--muted': theme.value.muted,
+  '--field': theme.value.field,
+  '--radius': theme.value.radius,
+  background: theme.value.bg,
+  color: theme.value.ink,
+  fontFamily: theme.value.body,
+}))
+
+// Corazón "likeado" sobre las fotos (fondo oscuro): el color principal, aclarado.
+const lightenForPhoto = computed(() => lighten(theme.value.accent, 0.35))
+
+const eventTitle = computed(() => info.value?.hero_title || info.value?.event_name || '')
+
+// Si la función no está en la base o falla, la página usa el estilo Clásica.
+async function loadInfo() {
+  const { data, error: err } = await supabase.rpc('info_fotos_evento', { p_event_id: eventId })
+  if (!err && data) info.value = data
+}
 
 // Nombre de quien sube: se recuerda en este navegador para no re-tipearlo.
 const NAME_KEY = 'guest-photo-name'
@@ -65,10 +143,12 @@ async function loadPhotos() {
     p_event_id: eventId,
   })
   if (!err) photos.value = data ?? []
-  loading.value = false
 }
 
-onMounted(loadPhotos)
+onMounted(async () => {
+  await Promise.all([loadInfo(), loadPhotos()])
+  loading.value = false
+})
 
 function pick() {
   fileInput.value?.click()
@@ -157,9 +237,7 @@ async function downloadPhoto(photo) {
 // --- Lightbox (ver a pantalla completa, deslizar entre fotos) -----------
 const lightboxIndex = ref(-1)
 const lightboxOpen = computed(() => lightboxIndex.value >= 0)
-const currentPhoto = computed(() =>
-  lightboxOpen.value ? photos.value[lightboxIndex.value] : null,
-)
+const currentPhoto = computed(() => (lightboxOpen.value ? photos.value[lightboxIndex.value] : null))
 
 function openLightbox(i) {
   lightboxIndex.value = i
@@ -203,60 +281,64 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#fdf7f1] pb-24 text-stone-700">
-    <header class="px-6 pb-8 pt-14 text-center">
-      <p class="text-xs uppercase tracking-[0.35em] text-amber-700">Momentos de la fiesta</p>
-      <h1 class="mt-2 text-4xl text-rose-800" style="font-family: 'Dancing Script', cursive">
-        Compartí tus fotos
-      </h1>
-      <p class="mx-auto mt-3 max-w-sm text-sm text-stone-500">
-        Subí las fotos que saques durante el evento y quedan acá para que las vean todos.
-      </p>
-    </header>
+  <div class="min-h-screen pb-24" :style="pageStyle">
+    <!-- Mientras carga no mostramos el encabezado para no "saltar" de estilo. -->
+    <template v-if="!loading">
+      <header class="px-6 pt-14 pb-8 text-center">
+        <p
+          v-if="eventTitle"
+          class="text-xs tracking-[0.35em] uppercase"
+          :style="{ fontFamily: theme.kicker, color: 'var(--accent-text)' }"
+        >
+          {{ eventTitle }}
+        </p>
+        <h1
+          class="mt-2 leading-tight"
+          :style="{ fontFamily: theme.display, fontWeight: theme.displayWeight, fontSize: theme.displaySize, color: 'var(--accent-text)' }"
+        >
+          Compartí tus fotos
+        </h1>
+        <p class="mx-auto mt-3 max-w-sm text-sm" style="color: var(--muted)">
+          Subí las fotos que saques durante el evento y quedan acá para que las vean todos.
+        </p>
+      </header>
 
-    <div class="px-6">
-      <input
-        v-model="uploaderName"
-        type="text"
-        placeholder="Tu nombre (para saber quién compartió cada foto)"
-        class="mx-auto mb-3 block w-full max-w-sm rounded-full border border-amber-200 bg-white px-4 py-2.5 text-center text-sm focus:border-rose-400 focus:outline-none"
-      />
+      <div class="px-6">
+        <input
+          v-model="uploaderName"
+          type="text"
+          placeholder="Tu nombre, para firmar tus fotos"
+          class="guest-field mx-auto mb-3 block w-full max-w-sm px-4 py-3 text-center text-sm"
+        />
+        <button
+          type="button"
+          @click="pick"
+          :disabled="uploading || full"
+          class="guest-btn mx-auto flex w-full max-w-sm items-center justify-center gap-2 px-6 py-4 font-semibold shadow-lg transition disabled:opacity-50"
+        >
+          <Camera :size="20" />
+          {{ uploading ? `Subiendo ${uploadedCount}/${totalToUpload}…` : 'Subir fotos' }}
+        </button>
+        <input ref="fileInput" type="file" accept="image/*" multiple class="hidden" @change="onFilesPicked" />
 
-      <button
-        type="button"
-        @click="pick"
-        :disabled="uploading || full"
-        class="mx-auto flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-linear-to-r from-rose-700 to-rose-800 px-6 py-4 font-medium text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"
-      >
-        <Camera :size="20" />
-        {{ uploading ? `Subiendo ${uploadedCount}/${totalToUpload}…` : 'Subir fotos' }}
-      </button>
-      <input
-        ref="fileInput"
-        type="file"
-        accept="image/*"
-        multiple
-        class="hidden"
-        @change="onFilesPicked"
-      />
-
-      <p v-if="full" class="mt-3 text-center text-sm text-amber-700">
-        La galería llegó al máximo de fotos. ¡Gracias por compartir tantos momentos!
-      </p>
-      <p v-if="error" class="mt-3 text-center text-sm text-red-600">{{ error }}</p>
-    </div>
+        <p v-if="full" class="mt-3 text-center text-sm" style="color: var(--muted)">
+          La galería llegó al máximo de fotos. ¡Gracias por compartir tantos momentos!
+        </p>
+        <p v-if="error" class="mt-3 text-center text-sm text-red-600">{{ error }}</p>
+      </div>
+    </template>
 
     <div class="mt-10 px-4">
-      <p v-if="loading" class="text-center text-sm text-stone-400">Cargando…</p>
-      <p v-else-if="!photos.length" class="text-center text-sm text-stone-400">
+      <p v-if="loading" class="pt-24 text-center text-sm opacity-50">Cargando…</p>
+      <p v-else-if="!photos.length" class="text-center text-sm" style="color: var(--muted)">
         Todavía no hay fotos. ¡Subí la primera!
       </p>
       <div v-else class="columns-2 gap-2 sm:columns-3">
         <div
           v-for="(photo, i) in photos"
           :key="photo.id"
-          class="relative mb-2 overflow-hidden rounded-xl shadow"
-          style="break-inside: avoid"
+          class="relative mb-2 overflow-hidden shadow"
+          style="break-inside: avoid; border-radius: var(--radius)"
         >
           <img
             :src="photo.url"
@@ -276,10 +358,13 @@ onUnmounted(() => {
               type="button"
               @click.stop="like(photo)"
               class="flex shrink-0 items-center gap-1 text-xs text-white"
-              :class="{ 'text-rose-400': likedIds.has(photo.id) }"
               aria-label="Me gusta"
             >
-              <Heart :size="14" :fill="likedIds.has(photo.id) ? 'currentColor' : 'none'" />
+              <Heart
+                :size="14"
+                :fill="likedIds.has(photo.id) ? 'currentColor' : 'none'"
+                :style="likedIds.has(photo.id) ? { color: lightenForPhoto } : null"
+              />
               {{ photo.likes_count || 0 }}
             </button>
           </div>
@@ -318,11 +403,7 @@ onUnmounted(() => {
             <ChevronLeft :size="24" />
           </button>
 
-          <img
-            :src="currentPhoto.url"
-            alt=""
-            class="max-h-full max-w-full object-contain"
-          />
+          <img :src="currentPhoto.url" alt="" class="max-h-full max-w-full object-contain" />
 
           <button
             v-if="lightboxIndex < photos.length - 1"
@@ -340,9 +421,12 @@ onUnmounted(() => {
             type="button"
             @click="like(currentPhoto)"
             class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-sm text-white"
-            :class="{ 'text-rose-400': likedIds.has(currentPhoto.id) }"
           >
-            <Heart :size="18" :fill="likedIds.has(currentPhoto.id) ? 'currentColor' : 'none'" />
+            <Heart
+              :size="18"
+              :fill="likedIds.has(currentPhoto.id) ? 'currentColor' : 'none'"
+              :style="likedIds.has(currentPhoto.id) ? { color: lightenForPhoto } : null"
+            />
             {{ currentPhoto.likes_count || 0 }}
           </button>
           <button
@@ -358,3 +442,28 @@ onUnmounted(() => {
     </transition>
   </div>
 </template>
+
+<style scoped>
+.guest-field {
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--ink);
+  border: 1.5px solid var(--tint);
+  outline: none;
+  transition: border-color 150ms ease;
+}
+.guest-field::placeholder {
+  color: var(--muted);
+}
+.guest-field:focus {
+  border-color: var(--accent);
+}
+.guest-btn {
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-on);
+}
+.guest-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+</style>
