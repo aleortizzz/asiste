@@ -7,7 +7,6 @@ import AdminSalon from '../views/AdminSalon.vue'
 import AdminMesas from '../views/AdminMesas.vue'
 import AdminAsignarMesas from '../views/AdminAsignarMesas.vue'
 import AdminInvitados from '../views/AdminInvitados.vue'
-import AdminInvitadosDetalle from '../views/AdminInvitadosDetalle.vue'
 import PreviewInvite from '../views/PreviewInvite.vue'
 import AdminSuperadmin from '../views/AdminSuperadmin.vue'
 import AdminFotosEvento from '../views/AdminFotosEvento.vue'
@@ -43,8 +42,8 @@ const router = createRouter({
     {
       path: '/admin/invitados/detalle',
       name: 'admin-invitados-detalle',
-      component: AdminInvitadosDetalle,
-      meta: { requiresAuth: true },
+      // Antes era una pantalla aparte; ahora todo vive en Invitados.
+      redirect: { name: 'admin-invitados' },
     },
     {
       path: '/admin/superadmin',

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { useEvent } from '../composables/useEvent'
@@ -20,6 +20,13 @@ const route = useRoute()
 const router = useRouter()
 const { user, logout, isSuperadmin } = useAuth()
 const { viewing, setViewingEvent } = useEvent()
+
+// Alto del cartel de superadmin como variable CSS (--banner-h): la usan el
+// padding de .admin-page, la barra de arriba, el menú y los elementos sticky
+// de cada pantalla, para que nada quede tapado cuando el cartel está visible.
+watchEffect(() => {
+  document.documentElement.style.setProperty('--banner-h', viewing.value ? '2.25rem' : '0px')
+})
 
 // Menú desplegable en celular (en desktop la barra está siempre visible).
 const mobileOpen = ref(false)
@@ -100,11 +107,12 @@ async function onLogout() {
   <!-- Aviso: el superadmin está viendo/editando el panel de otro cliente. -->
   <div
     v-if="viewing"
-    class="font-ui fixed inset-x-0 top-0 z-[60] flex h-9 items-center justify-center gap-3 bg-sulfur px-4 text-sm font-medium text-obsidian"
+    class="font-ui fixed inset-x-0 top-0 z-[60] flex h-9 items-center justify-center gap-2 bg-sulfur px-3 text-xs font-medium text-obsidian sm:gap-3 sm:px-4 sm:text-sm"
   >
     <ShieldCheck :size="16" class="shrink-0" />
-    <span class="truncate">
-      Estás viendo el panel de <strong>{{ viewing.owner_email }}</strong> ({{ viewing.name }})
+    <span class="min-w-0 truncate">
+      <span class="hidden sm:inline">Estás viendo el panel de </span><strong>{{ viewing.owner_email }}</strong>
+      <span class="hidden sm:inline">({{ viewing.name }})</span>
     </span>
     <button
       type="button"
@@ -117,7 +125,7 @@ async function onLogout() {
 
   <!-- Barra de arriba (solo celular) -->
   <header
-    :class="viewing ? 'top-9' : 'top-0'"
+    style="top: var(--banner-h, 0px)"
     class="font-ui fixed inset-x-0 z-40 flex h-16 items-center justify-between bg-pumice px-4 lg:hidden"
   >
     <span class="admin-display text-3xl">Asiste</span>
@@ -142,9 +150,9 @@ async function onLogout() {
 
   <nav
     :class="[
-      viewing ? 'top-9' : 'top-0',
       mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
     ]"
+    style="top: var(--banner-h, 0px)"
     class="font-ui fixed bottom-0 left-0 z-50 flex w-[16.5rem] flex-col p-3 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:z-40"
   >
     <div class="flex h-full flex-col rounded-[2rem] bg-limestone p-3">
@@ -193,8 +201,4 @@ async function onLogout() {
     </div>
   </nav>
 
-  <!-- Ocupa espacio en el flujo normal (a diferencia del nav/banner, que son
-       fixed) para empujar hacia abajo el contenido de la página cuando el
-       banner está arriba — sin tener que tocar cada vista una por una. -->
-  <div v-if="viewing" class="h-9"></div>
 </template>

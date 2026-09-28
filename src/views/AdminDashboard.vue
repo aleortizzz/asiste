@@ -199,8 +199,11 @@ const deadline = computed(() => {
   if (!date) return null
   const days = daysUntil(date)
   const label = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+  // Solo se avisa cuando la fecha cambia algo: si cierra las confirmaciones.
+  // Si la fecha es orientativa (solo de referencia), en el panel no se muestra.
+  if (!event.value.rsvp_deadline_strict) return null
   let text
-  if (days < 0) text = `Las confirmaciones cerraron el ${label}`
+  if (days < 0) text = `Las confirmaciones cerraron el ${label} · ya no se aceptan respuestas`
   else if (days === 0) text = 'Las confirmaciones cierran hoy'
   else text = `Las confirmaciones cierran en ${days} ${days === 1 ? 'día' : 'días'} · ${label}`
   // Amarillo cuando falta una semana o menos y todavía hay gente sin responder.
@@ -216,11 +219,11 @@ const checklist = computed(() => {
   return [
     { label: 'Fecha del evento', done: !!e.event_date, to: salon('portada') },
     { label: 'Lugar y dirección', done: !!(e.venue_name && e.venue_address), to: salon('fiesta') },
-    { label: 'Link de Google Maps', done: !!e.maps_url, to: salon('fiesta') },
+    { label: 'Link de Maps', done: !!e.maps_url, to: salon('fiesta') },
     { label: 'Foto de portada', done: !!e.banner?.length, to: salon('fotos') },
     { label: 'Música', done: !!e.music_url, to: salon('portada') },
-    { label: 'Fecha límite para confirmar', done: !!e.rsvp_deadline, to: salon('confirmacion') },
-    { label: 'Invitados cargados', done: groups.value.length > 0, to: { name: 'admin-invitados' } },
+    { label: 'Fecha límite', done: !!e.rsvp_deadline, to: salon('confirmacion') },
+    { label: 'Invitados', done: groups.value.length > 0, to: { name: 'admin-invitados' } },
   ]
 })
 const checklistDone = computed(() => checklist.value.filter((i) => i.done).length)
@@ -389,45 +392,64 @@ async function copyLink(group) {
         </div>
 
         <!-- ============ CHECKLIST ============ -->
-        <section v-if="!checklistComplete" class="mt-3 rounded-[2rem] bg-limestone p-6 sm:p-8">
-          <div class="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 class="admin-display text-3xl">Completá tu invitación</h2>
-              <p class="mt-1 text-sm text-obsidian/55">Tocá lo que falta para cargarlo.</p>
+        <section v-if="!checklistComplete" class="mt-3 rounded-[1.75rem] bg-limestone p-5">
+          <div class="flex items-center gap-4">
+            <h2 class="shrink-0 text-sm font-bold">Completá tu invitación</h2>
+            <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-chalk">
+              <div
+                class="h-full rounded-full bg-accent transition-[width] duration-500"
+                :style="{ width: (checklistDone / checklist.length) * 100 + '%' }"
+              ></div>
             </div>
-            <p class="text-sm font-bold">{{ checklistDone }} de {{ checklist.length }}</p>
+            <p class="shrink-0 text-xs font-bold text-obsidian/55">{{ checklistDone }} de {{ checklist.length }}</p>
           </div>
-          <div class="mt-4 h-2 overflow-hidden rounded-full bg-chalk">
-            <div
-              class="h-full rounded-full bg-accent transition-[width] duration-500"
-              :style="{ width: (checklistDone / checklist.length) * 100 + '%' }"
-            ></div>
-          </div>
-          <ul class="mt-5 grid gap-2 sm:grid-cols-2">
+          <ul class="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
             <li v-for="item in checklist" :key="item.label">
-              <p v-if="item.done" class="flex items-center gap-2.5 rounded-full px-3 py-2 text-sm text-obsidian/45 line-through">
-                <CheckCircle2 :size="18" class="shrink-0 text-accent" />
-                {{ item.label }}
+              <p v-if="item.done" class="flex items-center gap-1.5 px-2 py-1.5 text-[0.8125rem] text-obsidian/40">
+                <CheckCircle2 :size="15" class="shrink-0 text-accent" />
+                <span class="truncate line-through">{{ item.label }}</span>
               </p>
               <router-link
                 v-else
                 :to="item.to"
-                class="group flex items-center gap-2.5 rounded-full bg-chalk px-3 py-2 text-sm font-bold transition-colors hover:bg-accent hover:text-chalk"
+                class="group flex items-center gap-1.5 rounded-full bg-chalk px-2.5 py-1.5 text-[0.8125rem] font-bold transition-colors hover:bg-accent hover:text-chalk"
               >
-                <Circle :size="18" class="shrink-0 text-obsidian/30 group-hover:text-chalk" />
-                {{ item.label }}
-                <ArrowRight :size="15" class="ml-auto opacity-40 group-hover:opacity-100" />
+                <Circle :size="15" class="shrink-0 text-obsidian/30 group-hover:text-chalk" />
+                <span class="truncate">{{ item.label }}</span>
               </router-link>
             </li>
           </ul>
         </section>
 
+        <!-- Todo cargado: queda solo una línea de confirmación. -->
+        <div
+          v-else
+          :class="deadline ? 'mt-3' : 'mt-8'"
+          class="flex items-center justify-between gap-3 rounded-full bg-limestone py-2.5 pr-2.5 pl-4"
+        >
+          <p class="flex items-center gap-2 text-sm font-bold">
+            <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-go text-obsidian">
+              <Check :size="14" :stroke-width="3" />
+            </span>
+            Tu invitación está completa
+          </p>
+          <router-link
+            :to="{ name: 'admin-salon' }"
+            class="shrink-0 rounded-full px-3 py-1 text-sm font-bold text-obsidian/55 transition-colors hover:bg-chalk hover:text-obsidian"
+          >
+            Editar
+          </router-link>
+        </div>
+
         <!-- ============ MÉTRICAS ============ -->
-        <div :class="deadline || !checklistComplete ? 'mt-3' : 'mt-8'" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <!-- Principal: confirmados -->
           <div class="col-span-2 flex flex-col justify-between rounded-[2rem] bg-accent p-6 text-chalk sm:p-8 lg:row-span-2">
             <div>
-              <p class="text-sm font-bold text-chalk/70">Confirmaron que van</p>
+              <p class="flex items-center gap-2 text-sm font-bold text-chalk/70">
+                <span class="h-2 w-2 rounded-full bg-go"></span>
+                Confirmaron que van
+              </p>
               <p class="admin-display mt-3 text-[5.5rem] leading-[0.9] sm:text-[7rem]">{{ confirmedGuests }}</p>
               <p class="mt-2 text-chalk/70">
                 de {{ totalGuests }} invitados
@@ -437,17 +459,17 @@ async function copyLink(group) {
 
             <div class="mt-8">
               <div v-if="totalGuests > 0" class="flex h-3 gap-0.5 overflow-hidden rounded-full">
-                <div v-if="rsvpBar.confirmed" class="rounded-full bg-chalk" :style="{ width: rsvpBar.confirmed + '%' }"></div>
+                <div v-if="rsvpBar.confirmed" class="rounded-full bg-go" :style="{ width: rsvpBar.confirmed + '%' }"></div>
                 <div v-if="rsvpBar.pending" class="rounded-full bg-chalk/50" :style="{ width: rsvpBar.pending + '%' }"></div>
-                <div v-if="rsvpBar.declined" class="rounded-full bg-chalk/25" :style="{ width: rsvpBar.declined + '%' }"></div>
+                <div v-if="rsvpBar.declined" class="rounded-full bg-nogo" :style="{ width: rsvpBar.declined + '%' }"></div>
               </div>
               <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-chalk/80">
-                <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-chalk"></span>Van</span>
+                <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-go"></span>Van</span>
                 <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-chalk/50"></span>Sin responder</span>
-                <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-chalk/25"></span>No van</span>
+                <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-nogo"></span>No van</span>
               </div>
               <router-link
-                :to="{ name: 'admin-invitados-detalle' }"
+                :to="{ name: 'admin-invitados' }"
                 class="mt-6 inline-flex items-center gap-1.5 text-sm font-bold underline-offset-4 hover:underline"
               >
                 Ver la lista completa
@@ -458,14 +480,14 @@ async function copyLink(group) {
 
           <div class="rounded-[1.75rem] bg-limestone p-5">
             <p class="flex items-center gap-2 text-sm font-bold text-obsidian/55">
-              <span class="h-2 w-2 rounded-full bg-accent/45"></span>
+              <span class="h-2 w-2 rounded-full bg-chalk ring-1 ring-obsidian/25"></span>
               Sin responder
             </p>
             <p class="admin-display mt-3 text-5xl">{{ pendingGuests }}</p>
           </div>
           <div class="rounded-[1.75rem] bg-limestone p-5">
             <p class="flex items-center gap-2 text-sm font-bold text-obsidian/55">
-              <span class="h-2 w-2 rounded-full bg-obsidian/25"></span>
+              <span class="h-2 w-2 rounded-full bg-nogo"></span>
               No van
             </p>
             <p class="admin-display mt-3 text-5xl">{{ declinedGuests }}</p>

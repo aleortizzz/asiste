@@ -2,6 +2,7 @@
 import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from './composables/useAuth'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 
 const router = useRouter()
 const { recovering } = useAuth()
@@ -21,4 +22,5 @@ watch(
 
 <template>
   <router-view />
+  <ConfirmDialog />
 </template>

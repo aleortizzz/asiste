@@ -8,6 +8,7 @@ import ColorPicker from '../components/ColorPicker.vue'
 import { useEvent } from '../composables/useEvent'
 import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
 import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
+import { confirmDialog } from '../composables/useConfirm'
 
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
@@ -202,7 +203,13 @@ async function removePhoto(slot, i) {
   const item = form.value[slot][i]
   // Borra el archivo del servidor de verdad: sin confirmación, un toque de
   // más en el celular la perdía para siempre.
-  if (!confirm('¿Eliminar esta foto? No se puede deshacer.')) return
+  const ok = await confirmDialog({
+    title: '¿Eliminar esta foto?',
+    message: 'Se borra de la invitación y del servidor. No se puede deshacer.',
+    confirmText: 'Eliminar',
+    tone: 'danger',
+  })
+  if (!ok) return
   uploading.value = true
   try {
     await removeFile(item?.path)
@@ -309,6 +316,7 @@ const EMPTY = {
   maps_url: '',
   dress_code: '',
   rsvp_deadline: '',
+  rsvp_deadline_strict: false,
   notes: '',
   gift_alias: '',
 }
@@ -367,6 +375,10 @@ const TEMPLATE_FONTS = {
 const envelopePreviewOpen = ref(false)
 const envelopePreviewFont = computed(() => TEMPLATE_FONTS[form.value.template] || 'inherit')
 
+// La opción de cerrar confirmaciones solo aparece si la base ya tiene la
+// columna (ver onSubmit) — hasta correr la migración, la fecha es informativa.
+const strictAvailable = computed(() => !!event.value && 'rsvp_deadline_strict' in event.value)
+
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
 const saving = ref(false)
@@ -393,8 +405,16 @@ async function markSaved() {
   savedSnapshot.value = snapshot()
 }
 
-onBeforeRouteLeave(() => {
-  if (isDirty.value && !confirm('Tenés cambios sin guardar. ¿Salir igual y perderlos?')) return false
+onBeforeRouteLeave(async () => {
+  if (!isDirty.value) return
+  const leave = await confirmDialog({
+    title: 'Cambios sin guardar',
+    message: 'Si salís ahora, se pierden los cambios que hiciste en tu invitación.',
+    confirmText: 'Salir sin guardar',
+    cancelText: 'Seguir editando',
+    tone: 'danger',
+  })
+  if (!leave) return false
 })
 
 function onBeforeUnload(e) {
@@ -433,6 +453,7 @@ onMounted(async () => {
       maps_url: event.value.maps_url ?? '',
       dress_code: event.value.dress_code ?? '',
       rsvp_deadline: event.value.rsvp_deadline ?? '',
+      rsvp_deadline_strict: event.value.rsvp_deadline_strict ?? false,
       notes: event.value.notes ?? '',
       gift_alias: event.value.gift_alias ?? '',
     }
@@ -450,8 +471,15 @@ async function onSubmit() {
   saving.value = true
   saveError.value = ''
   try {
+    const fields = { ...form.value }
+    // rsvp_deadline_strict es una columna nueva (20260928_cierre_confirmaciones.sql):
+    // si la base todavía no la tiene, mandarla haría fallar TODO el guardado.
+    // Solo se manda si el evento cargado ya la trae.
+    if (!event.value || !('rsvp_deadline_strict' in event.value)) delete fields.rsvp_deadline_strict
+    // Sin fecha límite no hay nada que cerrar.
+    else if (!form.value.rsvp_deadline) fields.rsvp_deadline_strict = false
     await saveEvent({
-      ...form.value,
+      ...fields,
       event_type: eventType.value,
       // `events.name` es NOT NULL y solo se usa internamente: lo derivamos del texto principal.
       name: form.value.hero_title?.trim() || 'Mi evento',
@@ -531,7 +559,10 @@ const PHONE_H = 844
 const previewScale = ref(1)
 
 function updateScale() {
-  const available = window.innerHeight - 170 // nav + paddings + label
+  // El cartel de superadmin (si está) también come altura: --banner-h.
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--banner-h').trim()
+  const bannerPx = raw.endsWith('rem') ? parseFloat(raw) * 16 : parseFloat(raw) || 0
+  const available = window.innerHeight - 170 - bannerPx // nav + paddings + label
   previewScale.value = Math.min(1, Math.max(0.4, available / PHONE_H))
 }
 
@@ -590,7 +621,7 @@ onUnmounted(() => {
               ? 'bg-chalk shadow-[0_14px_36px_-12px_rgba(7,6,7,0.35)] ring-1 ring-obsidian/10'
               : 'bg-limestone'
           "
-          class="sticky top-[4.5rem] z-30 mt-6 flex items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 transition-[background-color,box-shadow] duration-200 lg:top-4"
+          class="sticky top-[calc(4.5rem+var(--banner-h,0px))] z-30 mt-6 flex items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 transition-[background-color,box-shadow] duration-200 lg:top-[calc(1rem+var(--banner-h,0px))]"
         >
           <p class="flex min-w-0 items-center gap-2 text-sm">
             <span
@@ -904,6 +935,29 @@ onUnmounted(() => {
                 <p class="admin-help">Se muestra en la invitación para que no se olviden de responder.</p>
                 <input id="f-deadline" v-model="form.rsvp_deadline" type="date" data-preview="rsvp" class="admin-input" />
               </div>
+              <div v-if="form.rsvp_deadline">
+                <p class="admin-label">Tipo de fecha límite</p>
+                <p v-if="!strictAvailable" class="admin-help">
+                  La fecha se muestra como referencia: las confirmaciones siguen abiertas después.
+                </p>
+                <div v-else class="grid gap-3 sm:grid-cols-2">
+                  <button
+                    v-for="opt in [
+                      { value: false, label: 'Fecha orientativa', help: 'Se muestra como referencia. Las confirmaciones siguen abiertas después de esa fecha.' },
+                      { value: true, label: 'Fecha de cierre', help: 'Pasada esa fecha, no se aceptan nuevas confirmaciones ni cambios.' },
+                    ]"
+                    :key="opt.label"
+                    type="button"
+                    data-preview="rsvp"
+                    @click="form.rsvp_deadline_strict = opt.value"
+                    :class="form.rsvp_deadline_strict === opt.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                    class="rounded-[1.5rem] border-2 p-4 text-left transition-colors"
+                  >
+                    <span class="block font-bold">{{ opt.label }}</span>
+                    <span class="mt-0.5 block text-sm leading-snug text-obsidian/55">{{ opt.help }}</span>
+                  </button>
+                </div>
+              </div>
               <div>
                 <p class="admin-label">¿Hay un máximo de invitados?</p>
                 <p class="admin-help">Con un tope, no vas a poder repartir más invitaciones que ese número.</p>
@@ -1017,7 +1071,7 @@ onUnmounted(() => {
 
       <!-- ================= VISTA PREVIA (desktop) ================= -->
       <div class="hidden shrink-0 xl:block">
-        <div class="sticky top-8">
+        <div class="sticky top-[calc(2rem+var(--banner-h,0px))]">
           <p class="mb-3 text-center text-xs font-bold tracking-[0.2em] text-obsidian/45 uppercase">Vista previa</p>
           <!-- Bisel: envuelve por afuera, no achica el área de contenido. -->
           <div class="mx-auto inline-block rounded-[2.4rem] border-[10px] border-obsidian">

@@ -8,6 +8,9 @@
 @theme {
   --color-accent: #4e1f6e;
   --color-accent-soft: #ebe3f1;
+  /* Estados de respuesta en gráficos: van / no van. */
+  --color-go: #3fcb7f;
+  --color-nogo: #f2685c;
   --color-plasma: #524ae9;
   --color-sulfur: #f5f28e;
   --color-limestone: #f7f6f2;
@@ -43,11 +46,11 @@
     background: var(--color-pumice);
     color: var(--color-obsidian);
     font-family: var(--font-ui);
-    padding-top: 4rem;
+    padding-top: calc(4rem + var(--banner-h, 0px));
   }
   @media (width >= 64rem) {
     .admin-page {
-      padding-top: 0;
+      padding-top: var(--banner-h, 0px);
       padding-left: 16.5rem;
     }
   }
