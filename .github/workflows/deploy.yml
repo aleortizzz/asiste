@@ -27,6 +27,16 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_YOUTUBE_API_KEY: ${{ secrets.VITE_YOUTUBE_API_KEY }}
 
+      # Config para public/og.php (vista previa de links en WhatsApp): la URL
+      # y la anon key de Supabase, las mismas que ya van dentro del JS.
+      - name: Config de la vista previa de links
+        run: |
+          printf "<?php\nconst OG_SUPABASE_URL = '%s';\nconst OG_SUPABASE_KEY = '%s';\n" \
+            "$VITE_SUPABASE_URL" "$VITE_SUPABASE_ANON_KEY" > dist/og-config.php
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Instalar lftp
         run: sudo apt-get update -qq && sudo apt-get install -y lftp
 

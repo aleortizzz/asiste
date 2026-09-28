@@ -2,6 +2,18 @@
   RewriteEngine On
   RewriteBase /
   RewriteRule ^index\.html$ - [L]
+
+  # Vista previa de los links (ver og.php): solo los robots que arman la
+  # tarjeta al compartir un link pasan por PHP. Las personas siguen de largo
+  # y reciben la app directo.
+  RewriteCond %{HTTP_USER_AGENT} (whatsapp|facebookexternalhit|facebot|meta-externalagent|twitterbot|telegrambot|slackbot|discordbot|linkedinbot|pinterest|skypeuripreview|viber|applebot|googlebot|bingbot|redditbot|embedly|iframely|vkshare|mastodon|signal) [NC]
+  RewriteRule ^i/([A-Za-z0-9_-]+)/?$ og.php?t=i&s=$1 [L,QSA]
+  RewriteCond %{HTTP_USER_AGENT} (whatsapp|facebookexternalhit|facebot|meta-externalagent|twitterbot|telegrambot|slackbot|discordbot|linkedinbot|pinterest|skypeuripreview|viber|applebot|googlebot|bingbot|redditbot|embedly|iframely|vkshare|mastodon|signal) [NC]
+  RewriteRule ^fotos/([0-9a-fA-F-]{36})/?$ og.php?t=f&e=$1 [L,QSA]
+
+  # Archivos internos de la vista previa: no se sirven directo.
+  RewriteRule ^og-(config|lib)\.php$ - [F,L]
+
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
