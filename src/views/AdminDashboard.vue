@@ -9,6 +9,8 @@ import { timeAgo } from '../lib/timeAgo'
 const { event, loadEvent } = useEvent()
 const groups = ref([])
 const tables = ref([])
+// Lugares de invitados sorpresa por mesa (ver fetchReserved en AdminMesas.vue).
+const reserved = ref({})
 const loading = ref(true)
 const refreshing = ref(false)
 const updatedAt = ref(null)
@@ -21,7 +23,7 @@ onMounted(async () => {
 })
 
 async function fetchAll() {
-  await Promise.all([fetchGroups(), fetchTables(), fetchSongs(), fetchPhotos(), fetchActivity()])
+  await Promise.all([fetchGroups(), fetchTables(), fetchReserved(), fetchSongs(), fetchPhotos(), fetchActivity()])
   updatedAt.value = new Date()
 }
 
@@ -85,6 +87,11 @@ async function fetchTables() {
     .eq('guests.rsvp_status', 'attending')
     .order('created_at')
   if (!error) tables.value = data
+}
+
+async function fetchReserved() {
+  const { data, error } = await supabase.rpc('lugares_reservados', { p_event_id: event.value.id })
+  reserved.value = error ? {} : Object.fromEntries(data.map((r) => [r.table_id, r.cantidad]))
 }
 
 // Canciones y fotos: solo el total y las últimas, para las tarjetas de
@@ -283,7 +290,7 @@ const confirmedPct = computed(() =>
 const respondedGroups = computed(() => groups.value.filter((g) => g.status !== 'pending').length)
 
 function tableOccupancy(table) {
-  return table.guests?.[0]?.count ?? 0
+  return (table.guests?.[0]?.count ?? 0) + (reserved.value[table.id] ?? 0)
 }
 
 function tableOccupancyPct(table) {

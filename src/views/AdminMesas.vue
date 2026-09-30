@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { Plus, X, Pencil, Trash2, Search, Armchair, Check } from '@lucide/vue'
+import { Plus, X, Pencil, Trash2, Search, Armchair, Check, EyeOff } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
@@ -16,13 +16,17 @@ import { confirmDialog } from '../composables/useConfirm'
 const { event, loadEvent } = useEvent()
 const tables = ref([])
 const guests = ref([])
+// { [table_id]: cantidad } de invitados sorpresa sentados, que esta cuenta no
+// ve (ver migrations/20260930_invitaciones_sorpresa.sql). Para el superadmin
+// siempre viene vacío: a esos invitados los ve con nombre.
+const reserved = ref({})
 const loading = ref(true)
 const error = ref('')
 const savingKey = ref(null)
 
 onMounted(async () => {
   if (!event.value) await loadEvent()
-  if (event.value) await Promise.all([fetchTables(), fetchGuests()])
+  if (event.value) await Promise.all([fetchTables(), fetchGuests(), fetchReserved()])
   loading.value = false
 })
 
@@ -39,7 +43,7 @@ async function fetchGuests() {
   // Solo se sienta a quien confirmó que asiste.
   const { data, error: err } = await supabase
     .from('guests')
-    .select('id, full_name, table_id, created_at, invitation_groups!inner(id, family_name, event_id)')
+    .select('id, full_name, table_id, created_at, invitation_groups!inner(id, family_name, event_id, sorpresa)')
     .eq('invitation_groups.event_id', event.value.id)
     .eq('rsvp_status', 'attending')
   if (!err) {
@@ -49,6 +53,11 @@ async function fetchGuests() {
         (a.created_at < b.created_at ? -1 : 1),
     )
   }
+}
+
+async function fetchReserved() {
+  const { data, error: err } = await supabase.rpc('lugares_reservados', { p_event_id: event.value.id })
+  if (!err) reserved.value = Object.fromEntries(data.map((r) => [r.table_id, r.cantidad]))
 }
 
 // --- Ocupación ---------------------------------------------------------------
@@ -62,7 +71,9 @@ const guestsByTable = computed(() => {
 })
 
 const seatedAt = (table) => guestsByTable.value[table.id] ?? []
-const freeSeats = (table) => table.capacity - seatedAt(table).length
+const reservedAt = (table) => reserved.value[table.id] ?? 0
+const occupied = (table) => seatedAt(table).length + reservedAt(table)
+const freeSeats = (table) => table.capacity - occupied(table)
 
 const unseated = computed(() => guests.value.filter((g) => !g.table_id || !tables.value.some((t) => t.id === g.table_id)))
 const totalCapacity = computed(() => tables.value.reduce((s, t) => s + t.capacity, 0))
@@ -283,7 +294,7 @@ async function saveEdit(table) {
   const capacity = editForm.value.capacity
   if (!name) return void (editError.value = 'El nombre no puede quedar vacío.')
   if (!Number.isInteger(capacity) || capacity < 1) return void (editError.value = 'Tiene que tener al menos 1 lugar.')
-  const seated = seatedAt(table).length
+  const seated = occupied(table)
   if (capacity < seated) {
     editError.value = `Ya hay ${seated} personas sentadas. Levantá a alguien antes de achicar la mesa.`
     return
@@ -299,7 +310,7 @@ async function saveEdit(table) {
 }
 
 async function removeTable(table) {
-  const seated = seatedAt(table).length
+  const seated = occupied(table)
   const ok = await confirmDialog({
     title: `¿Eliminar ${table.name}?`,
     message: seated
@@ -314,7 +325,7 @@ async function removeTable(table) {
   const { error: err } = await supabase.from('tables').delete().eq('id', table.id)
   if (err) error.value = `No se pudo eliminar: ${err.message}`
   if (editingId.value === table.id) cancelEdit()
-  await Promise.all([fetchTables(), fetchGuests()])
+  await Promise.all([fetchTables(), fetchGuests(), fetchReserved()])
 }
 </script>
 
@@ -499,7 +510,7 @@ async function removeTable(table) {
                   <div class="min-w-0">
                     <h3 class="truncate text-lg font-bold">{{ table.name }}</h3>
                     <p class="text-xs font-bold text-obsidian/45">
-                      {{ seatedAt(table).length }} / {{ table.capacity }}
+                      {{ occupied(table) }} / {{ table.capacity }}
                       <template v-if="freeSeats(table) <= 0"> · llena</template>
                       <template v-else> · {{ freeSeats(table) === 1 ? 'queda 1 lugar' : `quedan ${freeSeats(table)} lugares` }}</template>
                     </p>
@@ -522,12 +533,12 @@ async function removeTable(table) {
                 <div class="mt-3 h-2 overflow-hidden rounded-full bg-chalk">
                   <div
                     class="h-full rounded-full bg-accent transition-[width]"
-                    :style="{ width: Math.min(100, table.capacity ? (seatedAt(table).length / table.capacity) * 100 : 0) + '%' }"
+                    :style="{ width: Math.min(100, table.capacity ? (occupied(table) / table.capacity) * 100 : 0) + '%' }"
                   ></div>
                 </div>
 
                 <!-- Sentados -->
-                <ul v-if="seatedAt(table).length" class="mt-4 flex flex-wrap gap-1.5">
+                <ul v-if="occupied(table)" class="mt-4 flex flex-wrap gap-1.5">
                   <li
                     v-for="guest in seatedAt(table)"
                     :key="guest.id"
@@ -545,6 +556,7 @@ async function removeTable(table) {
                       class="cursor-grab py-1.5 pl-3 active:cursor-grabbing"
                     >
                       {{ guest.full_name }}
+                      <EyeOff v-if="guest.invitation_groups.sorpresa" :size="12" class="ml-1 inline align-[-1px] opacity-60" aria-label="sorpresa" />
                     </button>
                     <button
                       type="button"
@@ -555,6 +567,10 @@ async function removeTable(table) {
                     >
                       <X :size="13" />
                     </button>
+                  </li>
+                  <!-- Invitados que esta cuenta no ve: ocupan lugar, sin nombre. -->
+                  <li v-if="reservedAt(table)" class="rounded-full border-[1.5px] border-dashed border-obsidian/25 px-3 py-1.5 text-sm font-bold text-obsidian/50">
+                    {{ reservedAt(table) === 1 ? '1 lugar reservado' : `${reservedAt(table)} lugares reservados` }}
                   </li>
                 </ul>
                 <p v-else class="mt-4 text-sm text-obsidian/45">Mesa vacía.</p>

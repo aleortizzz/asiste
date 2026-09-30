@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { nanoid } from 'nanoid'
-import { Search, UserPlus, X, Link2, Check, Pencil, Trash2, Plus } from '@lucide/vue'
+import { Search, UserPlus, X, Link2, Check, Pencil, Trash2, Plus, EyeOff, Eye } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
+import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
 
@@ -12,6 +13,7 @@ import { confirmDialog } from '../composables/useConfirm'
 // (solo antes de que respondan), eliminar, y ver/corregir la respuesta de
 // cada persona. Antes eran dos pantallas (Invitados + Detalle de invitados).
 const { event, loadEvent } = useEvent()
+const { isSuperadmin } = useAuth()
 const groups = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -150,7 +152,7 @@ async function copyLink(group) {
 const addPanel = ref(null) // null | 'invitacion' | 'persona'
 const addError = ref('')
 
-const newGroup = ref({ family_name: '', allowed_guests: 1 })
+const newGroup = ref({ family_name: '', allowed_guests: 1, sorpresa: false })
 const useNames = ref(false)
 const newNames = ref([''])
 
@@ -189,6 +191,8 @@ async function addGroup() {
         allowed_guests: requested,
         named_by_host: useNames.value,
         slug: nanoid(10),
+        // Solo el superadmin la puede crear así (la base se lo impide a la cuenta del evento).
+        sorpresa: isSuperadmin.value && newGroup.value.sorpresa,
       })
       .select()
       .single()
@@ -201,7 +205,7 @@ async function addGroup() {
       if (guestsErr) throw guestsErr
     }
 
-    newGroup.value = { family_name: '', allowed_guests: 1 }
+    newGroup.value = { family_name: '', allowed_guests: 1, sorpresa: false }
     newNames.value = ['']
     useNames.value = false
     addPanel.value = null
@@ -277,6 +281,35 @@ async function removeGroup(group) {
   const { error: err } = await supabase.from('invitation_groups').delete().eq('id', group.id)
   if (err) error.value = `No se pudo eliminar: ${err.message}`
   await fetchGroups()
+}
+
+// --- Sorpresa (solo superadmin) ------------------------------------------------
+// Una invitación sorpresa desaparece del panel de la cuenta del evento: no la
+// ve en Invitados, ni en la actividad, ni en las canciones; en Mesas sus
+// lugares figuran como «reservados». Lo resuelve la base (RLS), acá solo se
+// prende o apaga la marca.
+async function toggleSorpresa(group) {
+  const ok = await confirmDialog(
+    group.sorpresa
+      ? {
+          title: `¿Revelar a ${group.family_name}?`,
+          message: 'Va a aparecer en el panel de la cuenta del evento, con sus respuestas y su mesa.',
+          confirmText: 'Revelar',
+        }
+      : {
+          title: `¿Ocultar a ${group.family_name}?`,
+          message:
+            'Deja de aparecer en el panel de la cuenta del evento (invitados, actividad, canciones, lista de la entrada). El link sigue funcionando igual. Solo la ves vos como superadmin.',
+          confirmText: 'Ocultar',
+        },
+  )
+  if (!ok) return
+  error.value = ''
+  savingKey.value = `sorpresa-${group.id}`
+  const { error: err } = await supabase.from('invitation_groups').update({ sorpresa: !group.sorpresa }).eq('id', group.id)
+  if (err) error.value = `No se pudo guardar: ${err.message}`
+  await fetchGroups()
+  savingKey.value = null
 }
 
 // --- Editar la invitación ------------------------------------------------------
@@ -591,6 +624,14 @@ async function saveAdding(group, row) {
               </button>
             </div>
 
+            <label v-if="isSuperadmin" class="flex items-start gap-2 rounded-[1.25rem] bg-chalk/60 px-4 py-3 text-sm">
+              <input type="checkbox" v-model="newGroup.sorpresa" class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]" />
+              <span>
+                <span class="font-bold">Invitación sorpresa</span>
+                <span class="block text-obsidian/55">La cuenta del evento no la ve. Solo vos, como superadmin.</span>
+              </span>
+            </label>
+
             <div v-if="!useNames">
               <label class="admin-label" for="n-count">Cantidad de invitaciones</label>
               <input id="n-count" v-model.number="newGroup.allowed_guests" type="number" min="1" class="admin-input !w-40" />
@@ -686,7 +727,12 @@ async function saveAdding(group, row) {
             <!-- Encabezado de la familia -->
             <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
               <div class="min-w-0">
-                <h2 class="truncate text-lg font-bold">{{ group.family_name }}</h2>
+                <h2 class="flex min-w-0 items-center gap-2 text-lg font-bold">
+                  <span class="truncate">{{ group.family_name }}</span>
+                  <span v-if="group.sorpresa" class="flex shrink-0 items-center gap-1 rounded-full bg-obsidian px-2.5 py-0.5 text-xs text-chalk">
+                    <EyeOff :size="12" /> Sorpresa
+                  </span>
+                </h2>
                 <p class="text-xs font-bold text-obsidian/45">
                   {{ groupSummary(group) }}
                   <template v-if="group.status === 'pending'">
@@ -706,6 +752,18 @@ async function saveAdding(group, row) {
                   <Check v-if="copiedId === group.id" :size="15" />
                   <Link2 v-else :size="15" />
                   {{ copiedId === group.id ? 'Copiado' : 'Copiar link' }}
+                </button>
+                <button
+                  v-if="isSuperadmin"
+                  type="button"
+                  @click="toggleSorpresa(group)"
+                  :disabled="savingKey === `sorpresa-${group.id}`"
+                  :aria-label="group.sorpresa ? `Revelar a ${group.family_name}` : `Ocultar a ${group.family_name} (sorpresa)`"
+                  :title="group.sorpresa ? 'Revelar: que la vea la cuenta del evento' : 'Sorpresa: ocultarla de la cuenta del evento'"
+                  class="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-chalk"
+                >
+                  <Eye v-if="group.sorpresa" :size="16" />
+                  <EyeOff v-else :size="16" />
                 </button>
                 <span class="group/lock relative">
                   <button

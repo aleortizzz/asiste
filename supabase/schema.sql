@@ -94,6 +94,9 @@ create table invitation_groups (
   status text not null default 'pending' check (status in ('pending', 'confirmed', 'declined')),
   -- Hora de la última respuesta (la completa el trigger invitation_groups_responded_at).
   responded_at timestamptz,
+  -- Invitación sorpresa: la cuenta del evento no la ve, solo el superadmin
+  -- (ver migrations/20260930_invitaciones_sorpresa.sql).
+  sorpresa boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -166,19 +169,26 @@ create policy "admin gestiona mesas de sus eventos"
     and events.owner_user_id = auth.uid()
   ));
 
--- invitation_groups: mismo patrón, vía event_id.
+-- invitation_groups: mismo patrón, vía event_id. Las sorpresa quedan
+-- afuera: el dueño no las ve ni puede crearlas/marcarlas.
 create policy "admin gestiona grupos de sus eventos"
   on invitation_groups for all
-  using (exists (
-    select 1 from events
-    where events.id = invitation_groups.event_id
-    and events.owner_user_id = auth.uid()
-  ))
-  with check (exists (
-    select 1 from events
-    where events.id = invitation_groups.event_id
-    and events.owner_user_id = auth.uid()
-  ));
+  using (
+    not sorpresa
+    and exists (
+      select 1 from events
+      where events.id = invitation_groups.event_id
+      and events.owner_user_id = auth.uid()
+    )
+  )
+  with check (
+    not sorpresa
+    and exists (
+      select 1 from events
+      where events.id = invitation_groups.event_id
+      and events.owner_user_id = auth.uid()
+    )
+  );
 
 -- guests: vía group_id -> event_id.
 create policy "admin gestiona invitados de sus eventos"
@@ -187,12 +197,14 @@ create policy "admin gestiona invitados de sus eventos"
     select 1 from invitation_groups
     join events on events.id = invitation_groups.event_id
     where invitation_groups.id = guests.group_id
+    and not invitation_groups.sorpresa
     and events.owner_user_id = auth.uid()
   ))
   with check (exists (
     select 1 from invitation_groups
     join events on events.id = invitation_groups.event_id
     where invitation_groups.id = guests.group_id
+    and not invitation_groups.sorpresa
     and events.owner_user_id = auth.uid()
   ));
 
@@ -204,6 +216,7 @@ create policy "admin ve las vistas de sus invitados"
     select 1 from invitation_groups
     join events on events.id = invitation_groups.event_id
     where invitation_groups.id = invitation_views.group_id
+    and not invitation_groups.sorpresa
     and events.owner_user_id = auth.uid()
   ));
 
@@ -631,6 +644,8 @@ grant execute on function public.listar_fotos_invitados(uuid) to anon, authentic
 create table song_requests (
   id uuid primary key default gen_random_uuid(),
   event_id uuid references events(id) on delete cascade not null,
+  -- De qué invitación vino (para ocultar las de invitaciones sorpresa).
+  group_id uuid references invitation_groups(id) on delete set null,
   song_title text not null,
   artist text,
   youtube_video_id text,
@@ -645,11 +660,18 @@ alter table song_requests enable row level security;
 
 create policy "admin gestiona canciones de su evento"
   on song_requests for all
-  using (exists (
-    select 1 from events
-    where events.id = song_requests.event_id
-    and events.owner_user_id = auth.uid()
-  ))
+  using (
+    exists (
+      select 1 from events
+      where events.id = song_requests.event_id
+      and events.owner_user_id = auth.uid()
+    )
+    and not exists (
+      select 1 from invitation_groups
+      where invitation_groups.id = song_requests.group_id
+      and invitation_groups.sorpresa
+    )
+  )
   with check (exists (
     select 1 from events
     where events.id = song_requests.event_id
@@ -679,9 +701,10 @@ set search_path = public
 as $$
 declare
   v_event_id uuid;
+  v_group_id uuid;
   v_plan text;
 begin
-  select e.id, e.plan into v_event_id, v_plan
+  select e.id, ig.id, e.plan into v_event_id, v_group_id, v_plan
   from invitation_groups ig
   join events e on e.id = ig.event_id
   where ig.slug = p_slug;
@@ -702,9 +725,10 @@ begin
     raise exception 'Falta tu nombre';
   end if;
 
-  insert into song_requests (event_id, song_title, artist, youtube_video_id, requested_by)
+  insert into song_requests (event_id, group_id, song_title, artist, youtube_video_id, requested_by)
   values (
     v_event_id,
+    v_group_id,
     trim(p_song_title),
     nullif(trim(coalesce(p_artist, '')), ''),
     nullif(trim(coalesce(p_youtube_video_id, '')), ''),
@@ -761,6 +785,7 @@ create policy "admin ve el historial de sus invitados"
     select 1 from invitation_groups
     join events on events.id = invitation_groups.event_id
     where invitation_groups.id = rsvp_log.group_id
+      and not invitation_groups.sorpresa
       and events.owner_user_id = auth.uid()
   ));
 
@@ -982,3 +1007,33 @@ end;
 $$;
 
 grant execute on function public.quitar_like_foto(uuid) to anon, authenticated;
+
+
+-- Lugares de invitados sorpresa por mesa (ver migrations/20260930_invitaciones_sorpresa.sql).
+create or replace function public.lugares_reservados(p_event_id uuid)
+returns table (table_id uuid, cantidad int)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if exists (select 1 from superadmins where user_id = auth.uid()) then
+    return;
+  end if;
+  if not exists (select 1 from events where id = p_event_id and owner_user_id = auth.uid()) then
+    raise exception 'No autorizado';
+  end if;
+
+  return query
+    select g.table_id, count(*)::int
+    from guests g
+    join invitation_groups ig on ig.id = g.group_id
+    where ig.event_id = p_event_id
+      and ig.sorpresa
+      and g.rsvp_status = 'attending'
+      and g.table_id is not null
+    group by g.table_id;
+end;
+$$;
+
+grant execute on function public.lugares_reservados(uuid) to authenticated;
