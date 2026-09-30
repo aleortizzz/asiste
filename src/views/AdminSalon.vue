@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
-import { Cake, Heart, ChevronLeft, ChevronRight, Eye, X, Check } from '@lucide/vue'
+import { Cake, Heart, Briefcase, ChevronLeft, ChevronRight, Eye, X, Check } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import EnvelopeCover from '../components/EnvelopeCover.vue'
 import ColorPicker from '../components/ColorPicker.vue'
@@ -341,19 +341,47 @@ const TEMPLATES = {
       'Con toda la ilusión queremos compartir con ustedes el día en que unimos nuestras vidas.',
     closing_text: '¡Los esperamos!',
   },
+  empresarial: {
+    hero_kicker: 'Te invitamos a',
+    hero_title: 'Encuentro Anual',
+    hero_subtitle: '',
+    intro_text:
+      'Queremos compartir con ustedes un encuentro para celebrar lo logrado juntos y todo lo que viene.',
+    closing_text: '¡Los esperamos!',
+  },
 }
+
+const TYPE_LABELS = { cumpleanos: 'Cumpleaños', casamiento: 'Casamiento', empresarial: 'Empresarial' }
 
 const eventType = ref('cumpleanos')
 const form = ref({ ...EMPTY, ...TEMPLATES.cumpleanos })
 
-function applyTemplate(newType) {
+// Los textos que siguen vacíos o iguales a un ejemplo (de cualquier tipo) se
+// cambian solos. Si hay textos propios, se pregunta antes de pisarlos: sin
+// preguntar, en una invitación ya escrita el cambio de tipo no hacía nada
+// visible y parecía roto.
+async function applyTemplate(newType) {
   if (newType === eventType.value) return
-  const prev = TEMPLATES[eventType.value]
   const next = TEMPLATES[newType]
-  for (const key of Object.keys(next)) {
-    if (form.value[key] === prev[key] || form.value[key] === '') {
-      form.value[key] = next[key]
-    }
+  const keys = Object.keys(next)
+  const isExample = (key) => {
+    const value = (form.value[key] ?? '').trim()
+    return value === '' || Object.values(TEMPLATES).some((t) => t[key] === value)
+  }
+  const custom = keys.filter((key) => !isExample(key) && form.value[key] !== next[key])
+
+  let replaceCustom = false
+  if (custom.length) {
+    replaceCustom = await confirmDialog({
+      title: '¿Usar los textos de ejemplo?',
+      message: `Ya escribiste textos propios (título, saludo o cierre). ¿Los reemplazamos por los de ejemplo de «${TYPE_LABELS[newType]}»? Si decís que no, se cambia el tipo y tus textos quedan como están.`,
+      confirmText: 'Reemplazar textos',
+      cancelText: 'Mantener los míos',
+    })
+  }
+
+  for (const key of keys) {
+    if (replaceCustom || isExample(key)) form.value[key] = next[key]
   }
   eventType.value = newType
 }
@@ -709,13 +737,14 @@ onUnmounted(() => {
             <!-- ========== 1. ESTILO ========== -->
             <template v-if="step.id === 'estilo'">
               <div>
-                <p class="admin-label">¿Qué festejás?</p>
+                <p class="admin-label">¿Qué tipo de evento es?</p>
                 <p class="admin-help">Cambia los textos de ejemplo. Lo que ya escribiste no se toca.</p>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <button
                     v-for="t in [
                       { id: 'cumpleanos', label: 'Cumpleaños', icon: Cake },
                       { id: 'casamiento', label: 'Casamiento', icon: Heart },
+                      { id: 'empresarial', label: 'Empresarial', icon: Briefcase },
                     ]"
                     :key="t.id"
                     type="button"

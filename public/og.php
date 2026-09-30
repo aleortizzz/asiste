@@ -35,14 +35,15 @@ $fecha = og_fecha($data['event_date'] ?? null);
 $fechaTxt = $fecha ? ucfirst($fecha) . ' · ' : '';
 
 if ($type === 'i') {
-  $suffix = ['cumpleanos' => 'Mi invitación', 'casamiento' => 'Nuestra invitación'][$data['event_type'] ?? ''] ?? 'Invitación';
+  $suffix = ['cumpleanos' => 'Mi invitación', 'casamiento' => 'Nuestra invitación', 'empresarial' => 'Invitación'][$data['event_type'] ?? ''] ?? 'Invitación';
   $title = "$name · $suffix";
   $family = trim($data['family_name'] ?? '');
   $description = ($family ? "Para $family · " : '') . $fechaTxt . 'Tocá para ver la invitación y confirmar tu asistencia.';
   $path = '/i/' . $key;
 } else {
   $title = "Compartí tus fotos · $name";
-  $description = $fechaTxt . 'Subí las fotos que saques en la fiesta y mirá las de todos.';
+  $lugar = ($data['event_type'] ?? '') === 'empresarial' ? 'en el evento' : 'en la fiesta';
+  $description = $fechaTxt . "Subí las fotos que saques $lugar y mirá las de todos.";
   $path = '/fotos/' . $key;
 }
 

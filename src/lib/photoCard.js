@@ -240,7 +240,7 @@ function fitText(ctx, str, x, y, maxWidth, opts) {
   text(ctx, str, x, y, { ...opts, size })
 }
 
-const EVENT_WORD = { cumpleanos: 'del cumple', casamiento: 'de la boda' }
+const EVENT_WORD = { cumpleanos: 'del cumple', casamiento: 'de la boda', empresarial: 'del evento' }
 
 /**
  * Dibuja el cartel y devuelve el canvas.
@@ -248,7 +248,7 @@ const EVENT_WORD = { cumpleanos: 'del cumple', casamiento: 'de la boda' }
  * @param {string} o.url        link de /fotos/:id que va en el QR
  * @param {string} o.color      color principal de la invitación
  * @param {string} [o.photoUrl] foto para la polaroid (opcional)
- * @param {string} [o.eventType] 'cumpleanos' | 'casamiento' | …
+ * @param {string} [o.eventType] 'cumpleanos' | 'casamiento' | 'empresarial'
  * @param {number} [o.pxPerMm]  resolución (11.8 ≈ 300 dpi, para imprimir)
  */
 export async function renderPhotoCard({ url, color, photoUrl, eventType, pxPerMm = 11.8 }) {

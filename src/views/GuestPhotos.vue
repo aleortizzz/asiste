@@ -74,6 +74,10 @@ const pageStyle = computed(() => ({
   fontFamily: theme.value.body,
 }))
 
+// Para no decir «la fiesta» en un evento de empresa.
+const eventType = ref(null)
+const whereText = computed(() => (eventType.value === 'empresarial' ? 'en el evento' : 'en la fiesta'))
+
 const eventTitle = computed(() => info.value?.hero_title || info.value?.event_name || 'Fotos de la fiesta')
 
 // --- Datos ------------------------------------------------------------------------
@@ -85,6 +89,7 @@ async function loadInfo() {
   ])
   if (!a.error && a.data) info.value = a.data
   if (!b.error && b.data?.image) cover.value = b.data.image
+  if (!b.error && b.data?.event_type) eventType.value = b.data.event_type
 }
 
 async function fetchPhotos() {
@@ -420,7 +425,7 @@ watch(tab, () => {
         {{ eventTitle }}
       </h1>
       <p class="mt-2 text-sm" style="color: var(--muted)">
-        Compartí las fotos que saques en la fiesta. Tocá dos veces una foto para darle me gusta ❤️
+        Compartí las fotos que saques {{ whereText }}. Tocá dos veces una foto para darle me gusta ❤️
       </p>
       <button
         v-if="nameAsked"

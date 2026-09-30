@@ -28,7 +28,7 @@ _Última actualización: 2026-09-28._
 
 ### Panel admin (`/admin`, barra lateral en `AdminNav.vue`)
 - **Inicio**: resumen de respuestas, checklist de la invitación, actividad reciente; **Movimientos** (`/admin/actividad`) con el historial `rsvp_log`.
-- **Creá tu invitación** (`AdminSalon.vue`): editor por pasos con vista previa en vivo (tipo de evento, plantilla, colores, textos, sobre, fotos por sección, datos del salón, fecha límite).
+- **Creá tu invitación** (`AdminSalon.vue`): editor por pasos con vista previa en vivo (tipo de evento: cumpleaños / casamiento / empresarial; plantilla, colores, textos, sobre, fotos por sección, datos del salón, fecha límite).
 - **Invitados** (una sola pantalla): crear invitaciones (cantidad o con nombres), persona sin link, copiar link, editar mientras no respondieron, eliminar, corregir respuestas, filtros y buscador, cupo del evento (`guest_limit`) que se libera con las cancelaciones, «entró hoy a las…» (`invitation_views`).
 - **Invitaciones sorpresa** (solo superadmin, ícono del ojo en Invitados): la cuenta del evento no las ve en ningún lado (RLS: invitados, actividad, canciones, lista de la entrada). En Mesas figuran como «N lugares reservados», sin nombres (RPC `lugares_reservados`). Caso: Familia Salto Ruiz, sorpresa para Anto. La lista de la entrada con ellos la tiene que exportar el superadmin.
 - **Mesas** (una sola pantalla): crear una o varias mesas de una, editar/eliminar, columna «Sin mesa» con los confirmados; sentar tocando personas + «Sentar acá», o **arrastrando** (una persona, la selección o la familia entera). Tope de capacidad al sentar y al achicar una mesa.

@@ -15,7 +15,7 @@ create table events (
   name text not null,
   -- Tipo de evento — solo lo usa el panel para precargar textos genéricos.
   event_type text not null default 'cumpleanos'
-    check (event_type in ('cumpleanos', 'casamiento')),
+    check (event_type in ('cumpleanos', 'casamiento', 'empresarial')),
   -- Textos editables del hero/saludo/cierre de la invitación pública.
   -- Opcionales: si quedan en null, la landing usa un default genérico.
   hero_kicker text,
