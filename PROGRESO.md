@@ -6,7 +6,7 @@ Plan original (modelo de datos, rutas, roadmap): `C:\Users\aleor\.claude\plans\p
 
 Modo de trabajo: **aprender haciendo** — explicar el porqué de cada decisión, no solo tirar código hecho. El usuario viene de HTML/CSS/Tailwind fuerte, está aprendiendo JS/Vue. El usuario prueba cada cosa y recién ahí pide commit/push.
 
-_Última actualización: 2026-09-28._
+_Última actualización: 2026-09-30._
 
 ## Stack
 
@@ -36,9 +36,9 @@ _Última actualización: 2026-09-28._
 - **Fotos del evento**:
   - **Cartel «¡Sacá tus fotos!»** para las mesas (`src/lib/photoCard.js`): A5 dibujado en canvas con foto tipo polaroid elegible, QR, pasos y el color de la invitación; vista previa en el panel, descarga en PDF (2 por A4) o PNG a 300 dpi. El QR se genera en el navegador y no vence: apunta a `/fotos/<id del evento>`.
   - Galería: recientes / más votadas, se actualiza sola cada 30 s, visor a pantalla completa, selección múltiple para descargar o borrar, «Descargar todas» en .zip. Tope de 500 fotos por evento.
-- **Canciones**: pedidos de los invitados (plan Plus).
-- **Superadmin**: ver todos los eventos y entrar al panel de un cliente (cartel amarillo arriba).
-- Registro público de clientes (`/admin/registro`) y recuperar contraseña.
+- **Canciones**: pedidos de los invitados (plan Plus), del más reciente al más viejo, con buscador y miniatura de YouTube. «Lista para el DJ»: copiar (para WhatsApp), PDF o Excel.
+- **Superadmin** («Clientes»): todos los eventos con filtro por plan, cuánto falta para cada uno, selector Básico | Plus y «Entrar» al panel de un cliente (cartel amarillo arriba).
+- Ingresar / Registro público (`/admin/registro`) / recuperar y nueva contraseña: foto de fiesta a pantalla completa al azar (`public/fondos/`: `pc-N` horizontales para compu, `cel-N` verticales para celular; lista en `AuthLayout.vue`). Validación propia por campo (`useFormValidation.js` + `FormField.vue`) y errores de Supabase traducidos (`lib/authErrors.js`).
 
 ### Página de fotos para invitados (`/fotos/:eventId`, la del QR)
 Sin login. Toma el estilo de la invitación (plantilla, color, nombre) vía `info_fotos_evento` y permite subir (el navegador comprime cada foto antes), dar like y descargar.
