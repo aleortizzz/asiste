@@ -11,6 +11,8 @@
   /* Estados de respuesta en gráficos: van / no van. */
   --color-go: #3fcb7f;
   --color-nogo: #f2685c;
+  /* Texto de error: el mismo rojo, más oscuro para que se lea sobre fondo claro. */
+  --color-nogo-ink: #b23a2f;
   --color-plasma: #524ae9;
   --color-sulfur: #f5f28e;
   --color-limestone: #f7f6f2;
@@ -81,6 +83,11 @@
   }
   .admin-input:focus {
     border-color: var(--color-accent);
+  }
+  /* Campo con error de validación (aria-invalid lo pone FormField). */
+  .admin-input[aria-invalid='true'] {
+    border-color: var(--color-nogo);
+    background: color-mix(in srgb, var(--color-nogo) 6%, var(--color-chalk));
   }
   textarea.admin-input {
     border-radius: 1.25rem;

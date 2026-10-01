@@ -1,7 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { MailCheck, ArrowLeft } from '@lucide/vue'
+import AuthLayout from '../components/AuthLayout.vue'
+import FormField from '../components/FormField.vue'
+import PasswordInput from '../components/PasswordInput.vue'
 import { useAuth } from '../composables/useAuth'
+import { useFormValidation, emailError } from '../composables/useFormValidation'
+import { authErrorMessage } from '../lib/authErrors'
 
 const router = useRouter()
 const { login, sendPasswordReset } = useAuth()
@@ -9,18 +15,30 @@ const { login, sendPasswordReset } = useAuth()
 const mode = ref('login') // 'login' | 'reset'
 const email = ref('')
 const password = ref('')
-const error = ref('')
+const error = ref('') // errores del servidor (mail o contraseña incorrectos, etc.)
 const loading = ref(false)
 const resetSent = ref(false)
 
+// Ingresar: la contraseña solo tiene que estar; el largo mínimo se valida al
+// crearla, no acá (si no, alguien con una contraseña vieja no podría entrar).
+const loginForm = useFormValidation({
+  email: { id: 'login-email', check: () => emailError(email.value) },
+  password: { id: 'login-password', check: () => (password.value ? '' : 'Escribí tu contraseña.') },
+})
+
+const resetForm = useFormValidation({
+  email: { id: 'reset-email', check: () => emailError(email.value) },
+})
+
 async function onSubmit() {
   error.value = ''
+  if (!loginForm.validate()) return
   loading.value = true
   try {
-    await login(email.value, password.value)
+    await login(email.value.trim(), password.value)
     router.push({ name: 'admin-dashboard' })
   } catch (err) {
-    error.value = 'Email o contraseña incorrectos'
+    error.value = authErrorMessage(err, 'Mail o contraseña incorrectos.')
   } finally {
     loading.value = false
   }
@@ -28,12 +46,13 @@ async function onSubmit() {
 
 async function onReset() {
   error.value = ''
+  if (!resetForm.validate()) return
   loading.value = true
   try {
-    await sendPasswordReset(email.value)
+    await sendPasswordReset(email.value.trim())
     resetSent.value = true
   } catch (err) {
-    error.value = err.message || 'No se pudo enviar el email'
+    error.value = authErrorMessage(err, 'No se pudo mandar el mail. Probá de nuevo en un rato.')
   } finally {
     loading.value = false
   }
@@ -43,108 +62,98 @@ function showReset() {
   mode.value = 'reset'
   error.value = ''
   resetSent.value = false
+  resetForm.reset()
 }
 
 function showLogin() {
   mode.value = 'login'
   error.value = ''
+  loginForm.reset()
 }
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50">
-    <form
-      v-if="mode === 'login'"
-      @submit.prevent="onSubmit"
-      class="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow"
-    >
-      <h1 class="text-2xl font-semibold">Ingresar</h1>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Email</label>
+  <!-- Ingresar -->
+  <AuthLayout v-if="mode === 'login'" title="Ingresar" subtitle="Entrá para armar tu invitación y ver quién confirma.">
+    <form @submit.prevent="onSubmit" novalidate class="space-y-5">
+      <FormField id="login-email" label="Mail" :error="loginForm.errorFor('email')" v-slot="{ a11y }">
         <input
+          v-bind="a11y"
           v-model="email"
           type="email"
-          required
-          class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+          inputmode="email"
+          autocomplete="email"
+          placeholder="nombre@gmail.com"
+          @blur="loginForm.touch('email', email)"
+          class="admin-input"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Contraseña</label>
-        <input
-          v-model="password"
-          type="password"
-          required
-          class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-        />
-      </div>
+      <FormField id="login-password" label="Contraseña" :error="loginForm.errorFor('password')">
+        <template #aside>
+          <button type="button" @click="showReset" class="text-sm font-bold text-accent underline-offset-4 hover:underline">
+            ¿Te la olvidaste?
+          </button>
+        </template>
+        <template #default="{ a11y }">
+          <PasswordInput v-bind="a11y" v-model="password" autocomplete="current-password" />
+        </template>
+      </FormField>
 
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="rounded-[1.25rem] bg-nogo/15 px-4 py-3 text-sm font-bold" role="alert">{{ error }}</p>
 
-      <button
-        type="submit"
-        :disabled="loading"
-        class="w-full rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-      >
-        {{ loading ? 'Ingresando...' : 'Ingresar' }}
+      <button type="submit" :disabled="loading" class="admin-btn-primary w-full">
+        {{ loading ? 'Ingresando…' : 'Ingresar' }}
       </button>
-
-      <button
-        type="button"
-        @click="showReset"
-        class="w-full text-center text-sm text-blue-600 underline"
-      >
-        ¿Olvidaste tu contraseña?
-      </button>
-
-      <p class="text-center text-sm text-gray-500">
-        ¿No tenés cuenta?
-        <router-link :to="{ name: 'admin-signup' }" class="text-blue-600 underline">Registrate</router-link>
-      </p>
     </form>
 
-    <div v-else class="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow">
-      <h1 class="text-2xl font-semibold">Recuperar contraseña</h1>
+    <template #footer>
+      ¿No tenés cuenta?
+      <router-link :to="{ name: 'admin-signup' }" class="font-bold text-chalk underline underline-offset-4">Registrate</router-link>
+    </template>
+  </AuthLayout>
 
-      <div v-if="resetSent" class="text-sm text-gray-700">
-        Si el email está registrado, te mandamos un link para restablecer la contraseña.
-        Revisá tu casilla (y el spam).
-      </div>
-
-      <form v-else @submit.prevent="onReset" class="space-y-4">
-        <p class="text-sm text-gray-500">
-          Ingresá tu email y te mandamos un link para crear una contraseña nueva.
-        </p>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            required
-            class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-          />
-        </div>
-
-        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-        >
-          {{ loading ? 'Enviando...' : 'Enviar link' }}
-        </button>
-      </form>
-
-      <button
-        type="button"
-        @click="showLogin"
-        class="w-full text-center text-sm text-blue-600 underline"
-      >
-        Volver a ingresar
-      </button>
+  <!-- Recuperar contraseña -->
+  <AuthLayout
+    v-else
+    title="Recuperar contraseña"
+    :subtitle="resetSent ? '' : 'Escribí tu mail y te mandamos un link para crear una contraseña nueva.'"
+  >
+    <div v-if="resetSent" class="flex items-start gap-4 rounded-[1.5rem] bg-chalk p-5">
+      <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-go/25">
+        <MailCheck :size="20" />
+      </span>
+      <p class="text-sm leading-relaxed">
+        Si <strong>{{ email.trim() }}</strong> tiene una cuenta, te llega un mail con el link. Revisá también la carpeta de
+        spam.
+      </p>
     </div>
-  </div>
+
+    <form v-else @submit.prevent="onReset" novalidate class="space-y-5">
+      <FormField id="reset-email" label="Mail" :error="resetForm.errorFor('email')" v-slot="{ a11y }">
+        <input
+          v-bind="a11y"
+          v-model="email"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          placeholder="nombre@gmail.com"
+          @blur="resetForm.touch('email', email)"
+          class="admin-input"
+        />
+      </FormField>
+
+      <p v-if="error" class="rounded-[1.25rem] bg-nogo/15 px-4 py-3 text-sm font-bold" role="alert">{{ error }}</p>
+
+      <button type="submit" :disabled="loading" class="admin-btn-primary w-full">
+        {{ loading ? 'Enviando…' : 'Mandarme el link' }}
+      </button>
+    </form>
+
+    <template #footer>
+      <button type="button" @click="showLogin" class="inline-flex items-center gap-1.5 font-bold text-chalk">
+        <ArrowLeft :size="15" /> Volver a ingresar
+      </button>
+    </template>
+  </AuthLayout>
 </template>
