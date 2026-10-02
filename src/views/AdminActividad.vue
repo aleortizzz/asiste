@@ -3,12 +3,14 @@ import { ref, computed, onMounted } from 'vue'
 import { ArrowLeft, Check, Eye, Search } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
+import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
 import { timeAgo } from '../lib/timeAgo'
 
 // Registro completo de movimientos: cada vez que alguien abrió su link
 // (invitation_views) y cada respuesta (rsvp_log, ver fetchResponses).
 const { event, loadEvent } = useEvent()
+const { w } = useWording()
 const loading = ref(true)
 const responses = ref([])
 const views = ref([])
@@ -199,7 +201,7 @@ const FILTERS = [
         </button>
         <label class="relative ml-auto w-full sm:w-64">
           <Search :size="16" class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-obsidian/40" />
-          <input v-model="search" type="search" placeholder="Buscar familia" class="admin-input !py-2 !pl-10 text-sm" />
+          <input v-model="search" type="search" :placeholder="w.searchGroup" class="admin-input !py-2 !pl-10 text-sm" />
         </label>
       </div>
 

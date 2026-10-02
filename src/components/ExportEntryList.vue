@@ -21,7 +21,8 @@ const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' })
 async function fetchRows() {
   const { data, error: err } = await supabase
     .from('guests')
-    .select('full_name, tables(name), invitation_groups!inner(family_name, event_id)')
+    // *: incluye los datos extra al confirmar (empresa, cargo…) si la base ya los tiene.
+    .select('*, tables(name), invitation_groups!inner(family_name, event_id)')
     .eq('invitation_groups.event_id', event.value.id)
     .eq('rsvp_status', 'attending')
   if (err) throw err
@@ -29,6 +30,11 @@ async function fetchRows() {
     name: g.full_name,
     family: g.invitation_groups.family_name,
     table: g.tables?.name ?? '',
+    company: (g.company || '').trim(),
+    job_title: (g.job_title || '').trim(),
+    email: (g.email || '').trim(),
+    phone: (g.phone || '').trim(),
+    dietary: (g.dietary || '').trim(),
   }))
   // Por mesa: agrupados por mesa («Mesa 2» antes que «Mesa 10») y los sin
   // mesa al final. Por nombre: alfabético, que es como se busca en la puerta.
@@ -58,6 +64,16 @@ function eventDateLabel() {
   return new Date(y, m - 1, d).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+// Datos extra que dejaron al confirmar: solo las columnas que alguien completó.
+const EXTRA_COLUMNS = [
+  { key: 'company', label: 'Empresa', pdf: true, width: 24 },
+  { key: 'job_title', label: 'Cargo', pdf: true, width: 22 },
+  { key: 'email', label: 'Mail', pdf: false, width: 30 },
+  { key: 'phone', label: 'Teléfono', pdf: false, width: 18 },
+  { key: 'dietary', label: 'Restricciones alimentarias', pdf: false, width: 30 },
+]
+const extraColumns = (rows) => EXTRA_COLUMNS.filter((c) => rows.some((r) => r[c.key]))
+
 async function run(kind, fn) {
   error.value = ''
   busy.value = kind
@@ -79,10 +95,20 @@ async function run(kind, fn) {
 const exportXlsx = () =>
   run('xlsx', async (rows) => {
     const { default: writeExcelFile } = await import('write-excel-file/browser')
-    const header = ['Llegó', 'Nombre', 'Invitación', 'Mesa'].map((value) => ({ value, fontWeight: 'bold' }))
-    const sheetData = [header, ...rows.map((r) => [{ value: '' }, { value: r.name }, { value: r.family }, { value: r.table || 'Sin mesa' }])]
+    const extra = extraColumns(rows)
+    const header = ['Llegó', 'Nombre', 'Invitación', ...extra.map((c) => c.label), 'Mesa'].map((value) => ({ value, fontWeight: 'bold' }))
+    const sheetData = [
+      header,
+      ...rows.map((r) => [
+        { value: '' },
+        { value: r.name },
+        { value: r.family },
+        ...extra.map((c) => ({ value: r[c.key] })),
+        { value: r.table || 'Sin mesa' },
+      ]),
+    ]
     await writeExcelFile(sheetData, {
-      columns: [{ width: 7 }, { width: 32 }, { width: 28 }, { width: 14 }],
+      columns: [{ width: 7 }, { width: 32 }, { width: 28 }, ...extra.map((c) => ({ width: c.width })), { width: 14 }],
       stickyRowsCount: 1,
     }).toFile(`${baseFileName()}.xlsx`)
   })
@@ -106,15 +132,17 @@ const exportPdf = () =>
       27,
     )
 
+    // En el PDF (para la puerta) van empresa y cargo, si los hay; el resto, solo en Excel.
+    const extra = extraColumns(rows).filter((c) => c.pdf)
     autoTable(doc, {
       startY: 33,
       margin: { left: margin, right: margin, bottom: 18 },
-      head: [['', 'Nombre', 'Invitación', 'Mesa']],
-      body: rows.map((r) => ['', r.name, r.family, r.table || 'Sin mesa']),
+      head: [['', 'Nombre', 'Invitación', ...extra.map((c) => c.label), 'Mesa']],
+      body: rows.map((r) => ['', r.name, r.family, ...extra.map((c) => r[c.key]), r.table || 'Sin mesa']),
       styles: { font: 'helvetica', fontSize: 10, cellPadding: 2.4, textColor: 20, lineColor: 220, lineWidth: 0.1 },
       headStyles: { fillColor: [78, 31, 110], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [247, 246, 242] },
-      columnStyles: { 0: { cellWidth: 9 }, 1: { fontStyle: 'bold' }, 3: { cellWidth: 26 } },
+      columnStyles: { 0: { cellWidth: 9 }, 1: { fontStyle: 'bold' }, [3 + extra.length]: { cellWidth: 26 } },
       // Casillero vacío para tachar a mano en la primera columna.
       didDrawCell: (data) => {
         if (data.section !== 'body' || data.column.index !== 0) return
@@ -152,7 +180,10 @@ const exportPdf = () =>
       v-if="open"
       class="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-[1.5rem] bg-chalk p-3 shadow-xl ring-1 ring-obsidian/5"
     >
-      <p class="px-2 pt-1 text-xs text-obsidian/55">Quienes confirmaron que asisten, con su mesa y un casillero para marcar la llegada.</p>
+      <p class="px-2 pt-1 text-xs text-obsidian/55">
+        Quienes confirmaron que asisten, con su mesa y un casillero para marcar la llegada. Si dejaron datos al confirmar, van
+        también (empresa y cargo en el PDF; todo en el Excel).
+      </p>
 
       <div class="mt-3 flex items-center justify-between gap-2 px-2">
         <span class="text-sm font-bold">Ordenar por</span>

@@ -4,6 +4,7 @@ import { Plus, X, Pencil, Trash2, Search, Armchair, Check, EyeOff } from '@lucid
 import AdminNav from '../components/AdminNav.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
+import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
 
@@ -14,6 +15,7 @@ import { confirmDialog } from '../composables/useConfirm'
 // seleccionarlas, y después «Sentar acá» en la mesa elegida. Funciona igual
 // en celular y en desktop, sin arrastrar.
 const { event, loadEvent } = useEvent()
+const { w } = useWording()
 const tables = ref([])
 const guests = ref([])
 // { [table_id]: cantidad } de invitados sorpresa sentados, que esta cuenta no
@@ -405,7 +407,7 @@ async function removeTable(table) {
               <span class="rounded-full bg-chalk px-2.5 py-0.5 text-sm">{{ unseated.length }}</span>
             </h2>
             <p class="mt-1 text-xs text-obsidian/50">
-              Confirmados que asisten. Arrastralos a una mesa, o tocalos y elegí la mesa. El nombre de la familia mueve a todos.
+              Confirmados que asisten. Arrastralos a una mesa, o tocalos y elegí la mesa. {{ w.groupMovesAll }}
             </p>
 
             <label v-if="unseated.length > 6" class="relative mt-4 block">

@@ -5,6 +5,7 @@ import { Search, UserPlus, X, Link2, Check, Pencil, Trash2, Plus, EyeOff, Eye } 
 import AdminNav from '../components/AdminNav.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
+import { useWording } from '../composables/useWording'
 import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
@@ -13,6 +14,7 @@ import { confirmDialog } from '../composables/useConfirm'
 // (solo antes de que respondan), eliminar, y ver/corregir la respuesta de
 // cada persona. Antes eran dos pantallas (Invitados + Detalle de invitados).
 const { event, loadEvent } = useEvent()
+const { w } = useWording()
 const { isSuperadmin } = useAuth()
 const groups = ref([])
 const loading = ref(true)
@@ -532,7 +534,7 @@ async function saveAdding(group, row) {
     return
   }
   if (names.length > row.count) {
-    error.value = `Esta familia tiene ${row.count} ${row.count === 1 ? 'lugar' : 'lugares'} sin nombre.`
+    error.value = `${w.value.thisGroupHas} ${row.count} ${row.count === 1 ? 'lugar' : 'lugares'} sin nombre.`
     return
   }
   error.value = ''
@@ -611,10 +613,10 @@ async function saveAdding(group, row) {
 
           <!-- Nueva invitación (con link) -->
           <form v-if="addPanel === 'invitacion'" @submit.prevent="addGroup" class="mt-6 space-y-5">
-            <p class="text-sm text-obsidian/55">Se crea un link para mandarle a esta familia o persona.</p>
+            <p class="text-sm text-obsidian/55">{{ w.linkFor }}</p>
             <div>
               <label class="admin-label" for="n-family">Nombre de la invitación</label>
-              <input id="n-family" v-model="newGroup.family_name" placeholder="Ej. Familia Pérez · Juan y Ana · Sofía" class="admin-input" />
+              <input id="n-family" v-model="newGroup.family_name" :placeholder="w.namePlaceholder" class="admin-input" />
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -682,9 +684,9 @@ async function saveAdding(group, row) {
                 <input id="m-name" v-model="manualName" placeholder="Ej. Abuela Rosa" class="admin-input" />
               </div>
               <div>
-                <label class="admin-label" for="m-group">Familia</label>
+                <label class="admin-label" for="m-group">{{ w.groupLabel }}</label>
                 <select id="m-group" v-model="manualGroupId" class="admin-input appearance-none">
-                  <option value="">Sin familia (invitado individual)</option>
+                  <option value="">{{ w.noGroup }}</option>
                   <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.family_name }}</option>
                 </select>
               </div>
@@ -717,7 +719,7 @@ async function saveAdding(group, row) {
           </button>
           <label class="relative ml-auto w-full sm:w-64">
             <Search :size="16" class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-obsidian/40" />
-            <input v-model="search" type="search" placeholder="Buscar persona o familia" class="admin-input !py-2 !pl-10 text-sm" />
+            <input v-model="search" type="search" :placeholder="w.searchPeople" class="admin-input !py-2 !pl-10 text-sm" />
           </label>
         </div>
 

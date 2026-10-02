@@ -3,10 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { RefreshCw, ArrowRight, Link2, Check, PenSquare, Music2, Camera, Eye, ExternalLink, CalendarClock, Circle, CheckCircle2, Armchair } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
+import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
 import { timeAgo } from '../lib/timeAgo'
 
 const { event, loadEvent } = useEvent()
+const { w } = useWording()
 const groups = ref([])
 const tables = ref([])
 // Lugares de invitados sorpresa por mesa (ver fetchReserved en AdminMesas.vue).
@@ -386,7 +388,7 @@ async function copyLink(group) {
             <CalendarClock :size="17" class="shrink-0" />
             {{ deadline.text }}
             <span v-if="pendingReminders.length" class="font-medium opacity-70">
-              · {{ pendingReminders.length }} {{ pendingReminders.length === 1 ? 'familia' : 'familias' }} sin responder
+              · {{ pendingReminders.length }} {{ pendingReminders.length === 1 ? w.unit : w.units }} sin responder
             </span>
           </p>
           <a
@@ -507,7 +509,7 @@ async function copyLink(group) {
             </p>
           </div>
           <div class="rounded-[1.75rem] bg-limestone p-5">
-            <p class="text-sm font-bold text-obsidian/55">Familias que respondieron</p>
+            <p class="text-sm font-bold text-obsidian/55">{{ w.Units }} que respondieron</p>
             <p class="admin-display mt-3 text-5xl">
               {{ respondedGroups }}<span class="text-2xl text-obsidian/35"> / {{ groups.length }}</span>
             </p>
@@ -590,10 +592,10 @@ async function copyLink(group) {
             <p class="mt-3 text-sm text-obsidian/55">
               <template v-if="openedNotAnswered > 0">
                 <span class="font-bold text-obsidian">{{ openedNotAnswered }}</span>
-                {{ openedNotAnswered === 1 ? 'familia la abrió' : 'familias la abrieron' }} pero todavía no
+                {{ openedNotAnswered === 1 ? w.openedOne : w.openedMany }} pero todavía no
                 {{ openedNotAnswered === 1 ? 'respondió' : 'respondieron' }}.
               </template>
-              <template v-else>familias que entraron al link al menos una vez.</template>
+              <template v-else>{{ w.enteredLink }}</template>
             </p>
           </router-link>
         </div>
@@ -605,13 +607,13 @@ async function copyLink(group) {
             <div class="flex items-center justify-between gap-3">
               <h2 class="admin-display text-3xl">Falta que respondan</h2>
               <span v-if="pendingReminders.length" class="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-accent">
-                {{ pendingReminders.length }} {{ pendingReminders.length === 1 ? 'familia' : 'familias' }}
+                {{ pendingReminders.length }} {{ pendingReminders.length === 1 ? w.unit : w.units }}
               </span>
             </div>
             <p class="mt-2 text-sm text-obsidian/55">Copiá el link y mandáselo de nuevo para recordarles.</p>
 
             <p v-if="pendingReminders.length === 0" class="mt-6 rounded-[1.25rem] bg-chalk px-4 py-5 text-center font-bold">
-              Todas las familias ya respondieron 🎉
+              Todas las {{ w.units }} ya respondieron 🎉
             </p>
             <ul v-else class="mt-5 space-y-2">
               <li
