@@ -74,12 +74,12 @@ Esos robots no ejecutan JS, así que `.htaccess` manda **solo a los robots** (po
 ## Próximos pasos
 
 Plan de la invitación empresarial (acordado el 2026-10-02; la Parte 1, plantilla Ejecutiva, está hecha):
-- [ ] Parte 2 · Secciones opcionales en todas las plantillas (ocultar canciones, regalos, cuenta regresiva, música).
-- [ ] Parte 3 · Itinerario y «Agregar al calendario» en todas las plantillas (también los 15).
+- [x] Parte 2 · Secciones opcionales en todas las plantillas: interruptores para cuenta regresiva, música, regalos, canciones, saludo, cierre y (Ejecutiva) «personal e intransferible». Van en `hidden_sections` (`shows()` / `showGifts` / `showSongs`… en useInvitationLogic). Saludo y cierre vacíos usan textos de ejemplo según el tipo de evento.
 - [ ] Parte 4 · Secciones empresariales: oradores, cómo llegar (estacionamiento/acceso), vestimenta con opciones, contacto del organizador, programa en PDF, cupo visible, redes y hashtag.
 - [ ] Parte 5 · Confirmación completa (empresa, cargo, mail, teléfono, restricciones alimentarias, acompañante) + panel con «Invitado / Empresa» y lista de la entrada con empresa y cargo.
 - [ ] Parte 6 · Bilingüe ES/EN (botón para el invitado).
 - [ ] Parte 7 · Vista previa de WhatsApp con el logo de la empresa.
+- [ ] **Al final, junto con los 15** · Parte 3: itinerario y «Agregar al calendario» en Clásica, Partiful y Craft (`lib/calendar.js` ya está hecho; la Ejecutiva ya lo tiene). Prioridad ahora: terminar la empresarial para Cinthia.
 
 Otros:
 

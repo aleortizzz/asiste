@@ -97,9 +97,30 @@ export function useInvitationLogic(props, emit) {
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 
-  // Textos del hero/saludo/cierre: los define cada evento desde el admin.
-  const defaultIntro =
-    'Hay días que quedan guardados para siempre en el corazón. Nos encantaría compartir este con ustedes.'
+  // Textos del hero/saludo/cierre: los define cada evento desde el admin. Si
+  // quedan vacíos se usa uno de ejemplo según el tipo de evento (y, en los
+  // empresariales, el tono). Sin tipo (eventos viejos): los de cumpleaños.
+  const usted = computed(() => props.invite?.tono === 'usted')
+  const defaultIntro = computed(() => {
+    switch (props.invite?.event_type) {
+      case 'casamiento':
+        return 'Con toda la ilusión queremos compartir con ustedes el día en que unimos nuestras vidas.'
+      case 'empresarial':
+        return usted.value
+          ? 'Será un honor contar con su presencia en una noche dedicada a lo que viene.'
+          : 'Va a ser un honor que nos acompañes en una noche dedicada a lo que viene.'
+      default:
+        return 'Hay días que quedan guardados para siempre en el corazón. Nos encantaría compartir este con ustedes.'
+    }
+  })
+  // Cumpleaños y casamiento quedan con el de siempre: cambiarlo alteraría
+  // invitaciones ya mandadas que tenían el cierre vacío.
+  const defaultClosing = computed(() => {
+    if (props.invite?.event_type === 'empresarial') {
+      return usted.value ? 'Esperamos contar con su presencia.' : 'Los esperamos.'
+    }
+    return '¡Los esperamos!'
+  })
   const heroTitle = computed(
     () => props.invite?.hero_title || props.invite?.event_name || 'Nuestro festejo',
   )
@@ -123,11 +144,19 @@ export function useInvitationLogic(props, emit) {
     deriveEnvelopeMonogram(props.invite?.monogram, heroTitle.value),
   )
 
-  // Secciones de fotos que el cliente ocultó desde el editor.
+  // Secciones que el cliente ocultó desde el editor: las de fotos (por su
+  // slot) y además 'musica', 'cuenta' (cuenta regresiva), 'regalos' y
+  // 'canciones'. Todo en la misma columna hidden_sections.
   const hiddenSections = computed(() =>
     Array.isArray(props.invite?.hidden_sections) ? props.invite.hidden_sections : [],
   )
   const shows = (slot) => !hiddenSections.value.includes(slot)
+  const showGifts = computed(() => !!props.invite?.gift_alias && shows('regalos'))
+  // Saludo, frase de cierre y (Ejecutiva) «Invitación personal e intransferible».
+  const showIntro = computed(() => shows('saludo'))
+  const showClosing = computed(() => shows('cierre'))
+  const showFinePrint = computed(() => shows('intransferible'))
+  const showSongs = computed(() => props.invite?.plan === 'plus' && shows('canciones'))
 
   // --- Portada (sobre) + música ---------------------------------------------
   // `entered` = ya se abrió el sobre. En preview arranca abierto para no tapar
@@ -147,7 +176,7 @@ export function useInvitationLogic(props, emit) {
   // Saca el id del video de cualquier forma de link de YouTube.
   const musicId = computed(() => {
     const url = props.invite?.music_url?.trim()
-    if (!url) return ''
+    if (!url || !shows('musica')) return ''
     const m = url.match(
       /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/,
     )
@@ -511,7 +540,7 @@ export function useInvitationLogic(props, emit) {
 
   // Cuenta regresiva hasta la fecha/hora del evento.
   const countdown = computed(() => {
-    if (!props.invite?.event_date) return null
+    if (!props.invite?.event_date || !shows('cuenta')) return null
     const time = props.invite.reception_time ?? '00:00:00'
     const target = new Date(`${props.invite.event_date}T${time}`)
     const diff = target.getTime() - now.value.getTime()
@@ -626,6 +655,7 @@ export function useInvitationLogic(props, emit) {
     galeriaGrid,
     reducedMotion,
     defaultIntro,
+    defaultClosing,
     heroTitle,
     bgColor,
     primaryColor,
@@ -637,6 +667,11 @@ export function useInvitationLogic(props, emit) {
     envelopeMonogram,
     hiddenSections,
     shows,
+    showGifts,
+    showSongs,
+    showIntro,
+    showClosing,
+    showFinePrint,
     entered,
     musicPlaying,
     ytFrame,

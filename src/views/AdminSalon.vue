@@ -5,6 +5,7 @@ import { Cake, Heart, Briefcase, ChevronLeft, ChevronRight, Eye, X, Check } from
 import AdminNav from '../components/AdminNav.vue'
 import EnvelopeCover from '../components/EnvelopeCover.vue'
 import ColorPicker from '../components/ColorPicker.vue'
+import SectionSwitch from '../components/SectionSwitch.vue'
 import { useEvent } from '../composables/useEvent'
 import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
 import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
@@ -1084,6 +1085,14 @@ onUnmounted(() => {
                 <label class="admin-label" for="f-date">Fecha del evento</label>
                 <input id="f-date" v-model="form.event_date" type="date" data-preview="hero" class="admin-input" />
               </div>
+              <!-- En la Ejecutiva la fecha ya se elige abajo (destacada, discreta o regresiva). -->
+              <SectionSwitch
+                v-if="form.template !== 'ejecutiva'"
+                label="Cuenta regresiva"
+                help="Los días, horas y minutos que faltan para el evento."
+                :on="!isHidden('cuenta')"
+                @toggle="toggleSection('cuenta')"
+              />
               <template v-if="form.template === 'ejecutiva'">
                 <div>
                   <p class="admin-label">Cómo se muestra la fecha</p>
@@ -1132,6 +1141,14 @@ onUnmounted(() => {
                   Dejalo vacío si no querés música.
                 </p>
                 <input id="f-music" v-model="form.music_url" type="url" data-preview="hero" placeholder="https://www.youtube.com/watch?v=…" class="admin-input" />
+                <SectionSwitch
+                  v-if="form.music_url"
+                  class="mt-3"
+                  label="Música en la invitación"
+                  help="Apagala para que no suene, sin perder el link."
+                  :on="!isHidden('musica')"
+                  @toggle="toggleSection('musica')"
+                />
               </div>
             </template>
 
@@ -1205,14 +1222,23 @@ onUnmounted(() => {
             <template v-else-if="step.id === 'textos'">
               <div>
                 <label class="admin-label" for="f-intro">Saludo</label>
-                <p class="admin-help">El párrafo que aparece después de la portada.</p>
+                <p class="admin-help">El párrafo que aparece después de la portada. Si lo dejás vacío, se usa uno de ejemplo.</p>
                 <textarea id="f-intro" v-model="form.intro_text" rows="4" data-preview="saludo" placeholder="Ej. Hay días que quedan guardados para siempre…" class="admin-input"></textarea>
+                <SectionSwitch class="mt-3" label="Mostrar el saludo" :on="!isHidden('saludo')" @toggle="toggleSection('saludo')" />
               </div>
               <div>
                 <label class="admin-label" for="f-closing">Frase de cierre</label>
-                <p class="admin-help">Lo último que leen, al final de la invitación.</p>
+                <p class="admin-help">Lo último que leen, al final de la invitación. Si la dejás vacía, se usa una de ejemplo.</p>
                 <input id="f-closing" v-model="form.closing_text" data-preview="cierre" placeholder="Ej. ¡Los esperamos!" class="admin-input" />
+                <SectionSwitch class="mt-3" label="Mostrar la frase de cierre" :on="!isHidden('cierre')" @toggle="toggleSection('cierre')" />
               </div>
+              <SectionSwitch
+                v-if="form.template === 'ejecutiva'"
+                label="«Invitación personal e intransferible»"
+                help="La leyenda de la portada y del pie. Apagala si es un evento abierto."
+                :on="!isHidden('intransferible')"
+                @toggle="toggleSection('intransferible')"
+              />
             </template>
 
             <!-- ========== 5. LA FIESTA ========== -->
@@ -1248,6 +1274,14 @@ onUnmounted(() => {
                 <label class="admin-label" for="f-gift">Alias para regalos</label>
                 <p class="admin-help">Para que puedan hacer una transferencia. Opcional.</p>
                 <input id="f-gift" v-model="form.gift_alias" data-preview="regalos" placeholder="Ej. antonella.15" class="admin-input" />
+                <SectionSwitch
+                  v-if="form.gift_alias"
+                  class="mt-3"
+                  label="Mostrar regalos"
+                  help="Apagalo para ocultar la sección sin borrar el alias."
+                  :on="!isHidden('regalos')"
+                  @toggle="toggleSection('regalos')"
+                />
               </div>
               <div>
                 <label class="admin-label" for="f-notes">Algo más que quieras contar</label>
@@ -1308,6 +1342,17 @@ onUnmounted(() => {
                   <input id="f-limit" v-model.number="guestLimit" type="number" min="1" data-preview="rsvp" class="admin-input !w-40" />
                 </div>
               </div>
+              <SectionSwitch
+                label="Pedido de canciones"
+                :help="
+                  event?.plan === 'plus'
+                    ? 'Tus invitados sugieren canciones desde la invitación.'
+                    : 'Viene con el plan Plus, que todavía no está activado para tu evento.'
+                "
+                :disabled="event?.plan !== 'plus'"
+                :on="event?.plan === 'plus' && !isHidden('canciones')"
+                @toggle="toggleSection('canciones')"
+              />
             </template>
 
             <!-- ========== 7. FOTOS ========== -->

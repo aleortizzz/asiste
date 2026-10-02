@@ -40,6 +40,12 @@ const {
   primaryColor,
   bgColor,
   shows,
+  showGifts,
+  showSongs,
+  showIntro,
+  showClosing,
+  showFinePrint,
+  defaultIntro,
   entered,
   musicPlaying,
   ytFrame,
@@ -285,7 +291,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
           </div>
         </div>
 
-        <p class="ej-fine ej-in mt-11" style="--d: 2.8s">Invitación personal e intransferible</p>
+        <p v-if="showFinePrint" class="ej-fine ej-in mt-11" style="--d: 2.8s">Invitación personal e intransferible</p>
       </div>
     </header>
 
@@ -297,12 +303,12 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
     </div>
 
     <!-- ============ SALUDO ============ -->
-    <section v-if="invite.intro_text || saludoPhotos.length" v-reveal data-anchor="saludo" class="mx-auto max-w-[620px] px-6 py-16 text-center">
-      <template v-if="invite.intro_text">
+    <section v-if="showIntro || saludoPhotos.length" v-reveal data-anchor="saludo" class="mx-auto max-w-[620px] px-6 py-16 text-center">
+      <template v-if="showIntro">
         <p class="ej-label">Bienvenida</p>
-        <p class="ej-lead mt-5 whitespace-pre-line">{{ invite.intro_text }}</p>
+        <p class="ej-lead mt-5 whitespace-pre-line">{{ invite.intro_text || defaultIntro }}</p>
       </template>
-      <EjecutivaCarousel v-if="saludoPhotos.length" :photos="saludoPhotos" aspect="4 / 5" label="Bienvenida" :class="invite.intro_text ? 'mt-12' : ''" />
+      <EjecutivaCarousel v-if="saludoPhotos.length" :photos="saludoPhotos" aspect="4 / 5" label="Bienvenida" :class="showIntro ? 'mt-12' : ''" />
     </section>
 
     <!-- ============ DETALLES ============ -->
@@ -376,7 +382,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
     </section>
 
     <!-- ============ OBSEQUIOS ============ -->
-    <section v-if="invite.gift_alias" v-reveal data-anchor="regalos" class="mx-auto max-w-[520px] px-6 py-14 text-center">
+    <section v-if="showGifts" v-reveal data-anchor="regalos" class="mx-auto max-w-[520px] px-6 py-14 text-center">
       <p class="ej-label">Obsequios</p>
       <p class="ej-muted mt-5 leading-relaxed">{{ t.gift }}</p>
       <button type="button" class="ej-btn ej-btn-ghost mt-5 inline-flex items-center gap-2 normal-case tracking-normal" @click="copyAlias">
@@ -387,7 +393,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
     </section>
 
     <!-- ============ CANCIONES (plan Plus) ============ -->
-    <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-[620px] px-6 py-16 text-center">
+    <section v-if="showSongs" v-reveal data-anchor="canciones" class="mx-auto max-w-[620px] px-6 py-16 text-center">
       <p class="ej-label">Sugerencias musicales</p>
       <div class="ej-rule mx-auto mt-5"></div>
 
@@ -505,7 +511,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ CIERRE ============ -->
     <footer data-anchor="cierre" class="mx-auto max-w-[620px] px-6 pt-6 pb-20 text-center">
-      <p class="ej-closing">{{ invite.closing_text || t.closing }}</p>
+      <p v-if="showClosing" class="ej-closing">{{ invite.closing_text || t.closing }}</p>
 
       <div v-if="sponsorUrls.length" class="mt-16 border-t pt-10">
         <p class="ej-label">Con el apoyo de</p>
@@ -531,7 +537,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
         class="mx-auto mt-14 block max-h-8 max-w-[140px] object-contain opacity-70"
         :class="{ 'ej-white': invite.logo_white }"
       />
-      <p class="ej-fine mt-6">Invitación personal e intransferible</p>
+      <p v-if="showFinePrint" class="ej-fine mt-6">Invitación personal e intransferible</p>
     </footer>
 
     <button

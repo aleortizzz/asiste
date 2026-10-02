@@ -39,6 +39,9 @@ const {
   momentosFotos,
   galeriaGrid,
   defaultIntro,
+  defaultClosing,
+  showIntro,
+  showClosing,
   heroTitle,
   bgColor,
   primaryColor,
@@ -48,6 +51,8 @@ const {
   envelopePalette,
   envelopeMonogram,
   shows,
+  showGifts,
+  showSongs,
   entered,
   musicPlaying,
   ytFrame,
@@ -209,6 +214,7 @@ const {
           {{ invite.family_name }}
         </p>
         <p
+          v-if="showIntro"
           class="mt-6 text-lg leading-relaxed whitespace-pre-line text-stone-600"
           style="font-family: 'Playfair Display', serif"
         >
@@ -422,7 +428,7 @@ const {
 
     <!-- ============ REGALOS ============ -->
     <section
-      v-if="invite.gift_alias"
+      v-if="showGifts"
       v-reveal
       data-anchor="regalos"
       class="mx-auto max-w-md px-6 pb-8 text-center"
@@ -453,7 +459,7 @@ const {
     </section>
 
     <!-- ============ CANCIONES (plan "plus") ============ -->
-    <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-xl px-6 py-20">
+    <section v-if="showSongs" v-reveal data-anchor="canciones" class="mx-auto max-w-xl px-6 py-20">
       <p class="pc-eyebrow text-center text-[0.7rem] uppercase tracking-[0.45em]">
         Ayudanos con la playlist
       </p>
@@ -784,10 +790,10 @@ const {
     </section>
 
     <!-- ============ CIERRE ============ -->
-    <footer data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
+    <footer v-if="showClosing" data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
       <div class="divider">✦</div>
       <p class="pc-heading text-4xl" style="font-family: 'Dancing Script', cursive">
-        {{ invite.closing_text || '¡Los esperamos!' }}
+        {{ invite.closing_text || defaultClosing }}
       </p>
     </footer>
 

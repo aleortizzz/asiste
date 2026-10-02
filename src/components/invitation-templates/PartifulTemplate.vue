@@ -41,6 +41,9 @@ const {
   momentosFotos,
   galeriaGrid,
   defaultIntro,
+  defaultClosing,
+  showIntro,
+  showClosing,
   heroTitle,
   bgColor,
   primaryColor,
@@ -51,6 +54,8 @@ const {
   envelopePalette,
   envelopeMonogram,
   shows,
+  showGifts,
+  showSongs,
   entered,
   musicPlaying,
   ytFrame,
@@ -174,7 +179,7 @@ const {
     <section v-reveal data-anchor="saludo" class="py-20 text-center">
       <div class="mx-auto max-w-xl px-6">
         <span v-if="invite.family_name" class="pf-pill">{{ invite.family_name }}</span>
-        <p class="pf-body mt-6 leading-relaxed whitespace-pre-line text-[#333333]">
+        <p v-if="showIntro" class="pf-body mt-6 leading-relaxed whitespace-pre-line text-[#333333]">
           {{ invite.intro_text || defaultIntro }}
         </p>
       </div>
@@ -295,7 +300,7 @@ const {
     </section>
 
     <!-- ============ REGALOS ============ -->
-    <section v-if="invite.gift_alias" v-reveal data-anchor="regalos" class="mx-auto max-w-md px-6 pb-8 text-center">
+    <section v-if="showGifts" v-reveal data-anchor="regalos" class="mx-auto max-w-md px-6 pb-8 text-center">
       <span class="pf-icon-circle mx-auto"><Gift :size="20" :stroke-width="1.75" /></span>
       <p class="pf-body mt-4 italic text-[#333333]">El mejor regalo que podés hacerme es tu presencia.</p>
       <p class="mt-3 text-sm text-[#999999]">Pero si querés acercarme un presente, te dejo mi alias:</p>
@@ -307,7 +312,7 @@ const {
     </section>
 
     <!-- ============ CANCIONES (plan "plus") ============ -->
-    <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="pf-wash px-6 py-20">
+    <section v-if="showSongs" v-reveal data-anchor="canciones" class="pf-wash px-6 py-20">
       <div class="mx-auto max-w-xl">
         <p class="pf-label text-center text-black/50">Ayudanos con la playlist</p>
         <h2 class="pf-display mt-2 text-center text-3xl sm:text-4xl">¿Qué canción no puede faltar?</h2>
@@ -511,8 +516,8 @@ const {
     </section>
 
     <!-- ============ CIERRE ============ -->
-    <footer data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
-      <p class="pf-display text-2xl sm:text-3xl">{{ invite.closing_text || '¡Los esperamos!' }}</p>
+    <footer v-if="showClosing" data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
+      <p class="pf-display text-2xl sm:text-3xl">{{ invite.closing_text || defaultClosing }}</p>
     </footer>
 
     <button

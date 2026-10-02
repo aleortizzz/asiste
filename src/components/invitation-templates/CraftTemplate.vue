@@ -47,6 +47,9 @@ const {
   momentosFotos,
   galeriaGrid,
   defaultIntro,
+  defaultClosing,
+  showIntro,
+  showClosing,
   heroTitle,
   bgColor,
   primaryColor,
@@ -57,6 +60,8 @@ const {
   envelopePalette,
   envelopeMonogram,
   shows,
+  showGifts,
+  showSongs,
   entered,
   musicPlaying,
   ytFrame,
@@ -193,7 +198,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
     <section v-reveal data-anchor="saludo" class="py-16">
       <div class="mx-auto max-w-[720px] px-6 text-center">
         <p v-if="invite.family_name" class="craft-label text-[var(--pc)]">{{ invite.family_name }}</p>
-        <p class="craft-display-sm mt-4 whitespace-pre-line text-[#2a1a1d]">
+        <p v-if="showIntro" class="craft-display-sm mt-4 whitespace-pre-line text-[#2a1a1d]">
           {{ invite.intro_text || defaultIntro }}
         </p>
       </div>
@@ -305,7 +310,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
     </section>
 
     <!-- ============ REGALOS ============ -->
-    <section v-if="invite.gift_alias" v-reveal data-anchor="regalos" class="mx-auto max-w-md px-6 pb-8 text-center">
+    <section v-if="showGifts" v-reveal data-anchor="regalos" class="mx-auto max-w-md px-6 pb-8 text-center">
       <span class="craft-icon-circle mx-auto"><Gift :size="20" :stroke-width="1.5" /></span>
       <p class="craft-body mt-4 text-[#2a1a1d] italic">El mejor regalo que podés hacerme es tu presencia.</p>
       <p class="mt-3 text-sm text-[#645757]">Pero si querés acercarme un presente, te dejo mi alias:</p>
@@ -317,7 +322,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
     </section>
 
     <!-- ============ CANCIONES (plan "plus") ============ -->
-    <section v-if="invite.plan === 'plus'" v-reveal data-anchor="canciones" class="mx-auto max-w-[720px] px-6 py-16 text-center">
+    <section v-if="showSongs" v-reveal data-anchor="canciones" class="mx-auto max-w-[720px] px-6 py-16 text-center">
       <h2 class="craft-display-sm">¿Qué canción no puede faltar?</h2>
       <div class="craft-rule"></div>
 
@@ -520,8 +525,8 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
     </section>
 
     <!-- ============ CIERRE ============ -->
-    <footer data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
-      <p class="craft-display-sm">{{ invite.closing_text || '¡Los esperamos!' }}</p>
+    <footer v-if="showClosing" data-anchor="cierre" class="px-6 pb-16 pt-4 text-center">
+      <p class="craft-display-sm">{{ invite.closing_text || defaultClosing }}</p>
     </footer>
 
     <button
