@@ -33,6 +33,8 @@ const emit = defineEmits(['submit-generic', 'submit-named', 'submit-song'])
 
 const {
   names,
+  details,
+  rsvpFields,
   namedGuests,
   displayError,
   slotUrls,
@@ -515,16 +517,32 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
         <template v-else-if="invite.named_by_host">
           <p class="ej-muted text-sm">{{ t.rsvpLead }}</p>
           <ul class="mt-6 divide-y border-y text-left">
-            <li v-for="guest in namedGuests" :key="guest.id" class="flex items-center justify-between gap-3 py-3">
-              <span class="ej-ink min-w-0">{{ guest.full_name }}</span>
-              <span class="flex shrink-0 gap-1.5">
-                <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': guest.attending }" @click="guest.attending = true">
-                  Asiste
-                </button>
-                <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': !guest.attending }" @click="guest.attending = false">
-                  No asiste
-                </button>
-              </span>
+            <li v-for="guest in namedGuests" :key="guest.id" class="py-3">
+              <div class="flex items-center justify-between gap-3">
+                <span class="ej-ink min-w-0">{{ guest.full_name }}</span>
+                <span class="flex shrink-0 gap-1.5">
+                  <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': guest.attending }" @click="guest.attending = true">
+                    Asiste
+                  </button>
+                  <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': !guest.attending }" @click="guest.attending = false">
+                    No asiste
+                  </button>
+                </span>
+              </div>
+              <!-- Datos extra: solo para quienes asisten. -->
+              <div v-if="guest.attending && rsvpFields.length" class="mt-3 grid gap-2 sm:grid-cols-2">
+                <input
+                  v-for="f in rsvpFields"
+                  :key="f.key"
+                  v-model="guest[f.key]"
+                  :type="f.type || 'text'"
+                  :autocomplete="f.autocomplete || 'off'"
+                  :placeholder="f.placeholder || f.label"
+                  :aria-label="`${f.label} de ${guest.full_name}`"
+                  class="ej-input"
+                  :class="{ 'sm:col-span-2': f.key === 'dietary' }"
+                />
+              </div>
             </li>
           </ul>
           <p v-if="displayError" class="ej-error mt-4 text-sm">{{ displayError }}</p>
@@ -539,9 +557,25 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
             <template v-if="invite.allowed_guests > 1"> Invitación para {{ invite.allowed_guests }} personas.</template>
           </p>
           <form class="mt-6 space-y-3 text-left" @submit.prevent="confirmarGenerico">
-            <div v-for="(name, i) in names" :key="i" class="flex gap-2">
-              <input v-model="names[i]" placeholder="Nombre y apellido" class="ej-input flex-1" />
-              <button v-if="names.length > 1" type="button" aria-label="Quitar invitado" class="px-2" @click="removeName(i)"><X :size="15" /></button>
+            <div v-for="(name, i) in names" :key="i" :class="{ 'ej-person': rsvpFields.length && names.length > 1 }">
+              <div class="flex gap-2">
+                <input v-model="names[i]" placeholder="Nombre y apellido" autocomplete="name" class="ej-input flex-1" />
+                <button v-if="names.length > 1" type="button" aria-label="Quitar invitado" class="px-2" @click="removeName(i)"><X :size="15" /></button>
+              </div>
+              <!-- Datos extra que pide el evento (empresa, cargo, mail…). -->
+              <div v-if="rsvpFields.length" class="mt-2 grid gap-2 sm:grid-cols-2">
+                <input
+                  v-for="f in rsvpFields"
+                  :key="f.key"
+                  v-model="details[i][f.key]"
+                  :type="f.type || 'text'"
+                  :autocomplete="i === 0 ? f.autocomplete || 'off' : 'off'"
+                  :placeholder="f.placeholder || f.label"
+                  :aria-label="names.length > 1 ? `${f.label} de la persona ${i + 1}` : f.label"
+                  class="ej-input"
+                  :class="{ 'sm:col-span-2': f.key === 'dietary' }"
+                />
+              </div>
             </div>
             <button v-if="names.length < invite.allowed_guests" type="button" class="ej-link" @click="addName">+ Agregar otra persona</button>
             <p v-if="displayError" class="ej-error text-sm">{{ displayError }}</p>
@@ -800,6 +834,11 @@ section .ej-rule {
   text-decoration: underline;
   text-decoration-color: var(--line);
   text-underline-offset: 5px;
+}
+
+.ej-person {
+  padding: 12px;
+  border: 1px solid var(--frame);
 }
 
 .ej-panel {

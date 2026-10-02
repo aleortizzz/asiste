@@ -28,12 +28,15 @@ onMounted(async () => {
   loading.value = false
 })
 
-async function enviarGenerico(guestNames) {
+async function enviarGenerico(guestNames, detalles) {
   submitting.value = true
   error.value = ''
+  // p_detalles solo si el evento pide datos extra (20261002_confirmacion_completa.sql):
+  // así las invitaciones de siempre llaman a la función igual que antes.
   const { error: err } = await supabase.rpc('confirmar_asistencia', {
     p_slug: route.params.slug,
     p_guest_names: guestNames,
+    ...(detalles?.length ? { p_detalles: detalles } : {}),
   })
   if (err) error.value = err.message
   else submitted.value = true

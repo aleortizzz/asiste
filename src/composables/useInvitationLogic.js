@@ -9,12 +9,28 @@ import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 // obtener el mismo comportamiento: RSVP, countdown, carruseles, sobre +
 // música, pedido de canciones, galería con parallax, etc. Así agregar una
 // plantilla nueva no implica reescribir ni duplicar toda esta lógica.
+// Datos extra que el evento puede pedir al confirmar (events.rsvp_fields).
+// El nombre se pide siempre; las restricciones alimentarias son opcionales
+// para el invitado, el resto obligatorio.
+export const RSVP_FIELDS = {
+  company: { label: 'Empresa', required: true, autocomplete: 'organization' },
+  job_title: { label: 'Cargo', required: true, autocomplete: 'organization-title' },
+  email: { label: 'Mail', required: true, type: 'email', autocomplete: 'email' },
+  phone: { label: 'Teléfono', required: true, type: 'tel', autocomplete: 'tel' },
+  dietary: { label: 'Restricciones alimentarias', required: false, placeholder: 'Restricciones alimentarias (opcional)' },
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function useInvitationLogic(props, emit) {
   const now = ref(new Date())
   let clockTimer = null
 
   // Modo "genérico" (sin nombres precargados): la familia tipea los nombres.
   const names = ref([''])
+  // Datos extra de cada nombre, en el mismo orden que `names`.
+  const details = ref([{}])
+  // Datos extra de un invitado (o vacíos, para uno nuevo).
+  const detailsOf = (g = {}) => Object.fromEntries(Object.keys(RSVP_FIELDS).map((k) => [k, g[k] ?? '']))
   // Modo "con nombres" (named_by_host): lista fija de {id, full_name, attending}.
   const namedGuests = ref([])
   const localError = ref('')
@@ -31,11 +47,14 @@ export function useInvitationLogic(props, emit) {
           id: g.id,
           full_name: g.full_name,
           attending: g.rsvp_status !== 'not_attending',
+          ...detailsOf(g),
         }))
       } else if (data.guests?.length) {
         names.value = data.guests.map((g) => g.full_name)
+        details.value = data.guests.map(detailsOf)
       } else {
         names.value = ['']
+        details.value = [detailsOf()]
       }
     },
     { immediate: true, deep: true },
@@ -567,11 +586,34 @@ export function useInvitationLogic(props, emit) {
   function addName() {
     if (names.value.length < props.invite.allowed_guests) {
       names.value.push('')
+      details.value.push(detailsOf())
     }
   }
 
   function removeName(i) {
     names.value.splice(i, 1)
+    details.value.splice(i, 1)
+  }
+
+  // --- Datos extra al confirmar -------------------------------------------------
+  const rsvpFields = computed(() =>
+    (Array.isArray(props.invite?.rsvp_fields) ? props.invite.rsvp_fields : [])
+      .filter((key) => RSVP_FIELDS[key])
+      .map((key) => ({ key, ...RSVP_FIELDS[key] })),
+  )
+
+  // Solo los datos que pide el evento, sin espacios de más.
+  const pick = (row) => Object.fromEntries(rsvpFields.value.map(({ key }) => [key, (row?.[key] ?? '').trim()]))
+
+  // Primer dato que falta o está mal, con el nombre de la persona, o ''.
+  function detailsError(row, who) {
+    for (const f of rsvpFields.value) {
+      const v = (row?.[f.key] ?? '').trim()
+      const de = who ? ` de ${who}` : ''
+      if (f.required && !v) return `Completá ${f.label.toLowerCase()}${de}.`
+      if (f.key === 'email' && v && !EMAIL_RE.test(v)) return `Revisá el mail${de}: tiene que tener @ y un punto.`
+    }
+    return ''
   }
 
   // Fecha límite para confirmar. `rsvpDeadlinePassed`: ya pasó (hoy en
@@ -623,7 +665,20 @@ export function useInvitationLogic(props, emit) {
       localError.value = 'Completá el nombre en todos los campos, o quitá los que no vayas a usar.'
       return
     }
-    emit('submit-generic', names.value.map((n) => n.trim()))
+    // Sin datos extra pedidos: igual que siempre (solo los nombres).
+    if (!rsvpFields.value.length) {
+      emit('submit-generic', names.value.map((n) => n.trim()))
+      return
+    }
+    for (let i = 0; i < names.value.length; i++) {
+      const err = detailsError(details.value[i], names.value.length > 1 ? names.value[i].trim() : '')
+      if (err) return void (localError.value = err)
+    }
+    emit(
+      'submit-generic',
+      names.value.map((n) => n.trim()),
+      details.value.slice(0, names.value.length).map(pick),
+    )
   }
 
   function declinarGenerico() {
@@ -635,15 +690,28 @@ export function useInvitationLogic(props, emit) {
   function enviarRespuestasNominales() {
     localError.value = ''
     if (props.preview) return
+    // Los datos extra se piden solo a quienes asisten.
+    const many = namedGuests.value.filter((g) => g.attending).length > 1
+    for (const g of namedGuests.value) {
+      if (!g.attending) continue
+      const err = detailsError(g, many ? g.full_name : '')
+      if (err) return void (localError.value = err)
+    }
     emit(
       'submit-named',
-      namedGuests.value.map((g) => ({ id: g.id, attending: g.attending })),
+      namedGuests.value.map((g) => ({
+        id: g.id,
+        attending: g.attending,
+        ...(g.attending && rsvpFields.value.length ? pick(g) : {}),
+      })),
     )
   }
 
   return {
     now,
     names,
+    details,
+    rsvpFields,
     namedGuests,
     localError,
     displayError,

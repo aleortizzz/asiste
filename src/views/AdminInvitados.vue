@@ -32,7 +32,9 @@ async function fetchGroups() {
   // entró cada familia al link por última vez.
   const { data, error: err } = await supabase
     .from('invitation_groups')
-    .select('*, guests(id, full_name, rsvp_status, created_at), invitation_views(viewed_at)')
+    // guests(*): incluye los datos extra al confirmar (empresa, cargo…) si la
+    // base ya los tiene (20261002_confirmacion_completa.sql), sin romper si no.
+    .select('*, guests(*), invitation_views(viewed_at)')
     .eq('event_id', event.value.id)
   if (!err) groups.value = data.sort((a, b) => a.family_name.localeCompare(b.family_name, 'es'))
 }
@@ -56,6 +58,14 @@ const declinedCount = computed(() =>
 // Lo que cuenta contra el tope del evento: repartido menos lo liberado.
 const activeAllowed = computed(() => totalAllowed.value - declinedCount.value)
 
+// Datos extra que dejó al confirmar (empresa, cargo, mail, teléfono,
+// restricciones), en una línea. Vacío si no dejó ninguno.
+function guestInfo(g) {
+  const parts = [g.company, g.job_title, g.email, g.phone].map((x) => (x || '').trim()).filter(Boolean)
+  if (g.dietary?.trim()) parts.push(`Restricciones: ${g.dietary.trim()}`)
+  return parts.join(' · ')
+}
+
 // --- Filas por persona --------------------------------------------------------
 // Si el grupo tiene invitados con nombre, una fila por persona. Si no tiene
 // ninguno (flujo genérico sin responder, o que declinó sin cargar nombres),
@@ -65,7 +75,7 @@ function rowsFor(group) {
   if (group.guests.length > 0) {
     const guests = [...group.guests].sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
     for (const guest of guests) {
-      rows.push({ key: guest.id, id: guest.id, name: guest.full_name, status: guest.rsvp_status })
+      rows.push({ key: guest.id, id: guest.id, name: guest.full_name, status: guest.rsvp_status, info: guestInfo(guest) })
     }
     const unclaimed = group.allowed_guests - group.guests.length
     if (unclaimed > 0) rows.push({ key: `${group.id}-rest`, id: null, name: null, status: 'not_attending', count: unclaimed })
@@ -851,7 +861,10 @@ async function saveAdding(group, row) {
                         'bg-chalk ring-1 ring-obsidian/25': row.status === 'invited',
                       }"
                     ></span>
-                    <span v-if="row.name" class="truncate font-bold">{{ row.name }}</span>
+                    <span v-if="row.name" class="min-w-0">
+                      <span class="block truncate font-bold">{{ row.name }}</span>
+                      <span v-if="row.info" class="block text-xs leading-snug break-words text-obsidian/55">{{ row.info }}</span>
+                    </span>
                     <span v-else class="text-sm text-obsidian/55">
                       {{ row.count }} {{ row.count === 1 ? 'lugar' : 'lugares' }} sin nombre ·
                       {{ row.status === 'invited' ? 'sin responder' : 'no asiste' }}

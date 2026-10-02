@@ -45,7 +45,7 @@ const templateComponent = computed(() => TEMPLATES[props.invite?.template] || Cl
     :error="error"
     :song-submitting="songSubmitting"
     :song-error="songError"
-    @submit-generic="$emit('submit-generic', $event)"
+    @submit-generic="(...args) => $emit('submit-generic', ...args)"
     @submit-named="$emit('submit-named', $event)"
     @submit-song="$emit('submit-song', $event)"
   />

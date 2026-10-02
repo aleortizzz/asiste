@@ -11,6 +11,7 @@ import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
 import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 import { confirmDialog } from '../composables/useConfirm'
 import { trimImage } from '../lib/trimImage'
+import { RSVP_FIELDS } from '../composables/useInvitationLogic'
 
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
@@ -438,6 +439,15 @@ const EMPTY = {
   contact_email: '',
   contact_phone: '',
   social_links: { linkedin: '', instagram: '', web: '' },
+  rsvp_fields: [],
+}
+
+// Datos extra al confirmar (20261002_confirmacion_completa.sql).
+function toggleRsvpField(key) {
+  const f = form.value.rsvp_fields
+  // Se guarda en el orden de RSVP_FIELDS, no en el que se tocaron.
+  const next = f.includes(key) ? f.filter((k) => k !== key) : [...f, key]
+  form.value.rsvp_fields = Object.keys(RSVP_FIELDS).filter((k) => next.includes(k))
 }
 
 // Vestimenta: opciones rápidas (también se puede escribir otra).
@@ -581,6 +591,7 @@ const logosWhiteAvailable = computed(() => !!event.value && 'logo_white' in even
 // Secciones empresariales (20261002_secciones_empresariales.sql).
 const BUSINESS_COLUMNS = ['agenda', 'access_info', 'contact_name', 'contact_email', 'contact_phone', 'social_links']
 const businessAvailable = computed(() => !event.value || 'agenda' in event.value)
+const rsvpFieldsAvailable = computed(() => !event.value || 'rsvp_fields' in event.value)
 
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
@@ -674,6 +685,7 @@ onMounted(async () => {
       contact_email: event.value.contact_email ?? '',
       contact_phone: event.value.contact_phone ?? '',
       social_links: { linkedin: '', instagram: '', web: '', ...(event.value.social_links ?? {}) },
+      rsvp_fields: event.value.rsvp_fields ?? [],
     }
     hasGuestLimit.value = event.value.guest_limit != null
     guestLimit.value = event.value.guest_limit ?? 1
@@ -714,6 +726,7 @@ async function onSubmit() {
     } else {
       for (const col of BUSINESS_COLUMNS) delete fields[col]
     }
+    if (!rsvpFieldsAvailable.value) delete fields.rsvp_fields
     // Las fotos (logo y sponsors incluidos) y sus interruptores se guardan solos.
     delete fields.logo
     delete fields.sponsors
@@ -1546,6 +1559,36 @@ onUnmounted(() => {
                   <label class="admin-label" for="f-limit">Cantidad máxima</label>
                   <input id="f-limit" v-model.number="guestLimit" type="number" min="1" data-preview="rsvp" class="admin-input !w-40" />
                 </div>
+              </div>
+              <div v-if="form.template === 'ejecutiva'">
+                <p class="admin-label">Datos que pedimos al confirmar</p>
+                <p v-if="!rsvpFieldsAvailable" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                  Falta correr la migración 20261002_confirmacion_completa.sql en Supabase.
+                </p>
+                <template v-else>
+                  <p class="admin-help">
+                    El nombre se pide siempre. Tocá los que quieras sumar; las restricciones alimentarias son opcionales para el invitado, el
+                    resto obligatorio.
+                  </p>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="(f, key) in RSVP_FIELDS"
+                      :key="key"
+                      type="button"
+                      data-preview="rsvp"
+                      @click="toggleRsvpField(key)"
+                      :aria-pressed="form.rsvp_fields.includes(key)"
+                      :class="form.rsvp_fields.includes(key) ? 'bg-accent text-chalk' : 'bg-chalk hover:bg-accent-soft'"
+                      class="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors"
+                    >
+                      <Check v-if="form.rsvp_fields.includes(key)" :size="15" />
+                      {{ f.label }}
+                    </button>
+                  </div>
+                  <p class="mt-3 text-sm text-obsidian/55">
+                    ¿Va con acompañante? Dale 2 lugares en su invitación (en Invitados): va a poder confirmar a la otra persona con sus datos.
+                  </p>
+                </template>
               </div>
               <SectionSwitch
                 label="Pedido de canciones"

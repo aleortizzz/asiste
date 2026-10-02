@@ -87,7 +87,9 @@ create table events (
   contact_name text,
   contact_email text,
   contact_phone text,
-  social_links jsonb not null default '{}'::jsonb
+  social_links jsonb not null default '{}'::jsonb,
+  -- Datos que se piden al confirmar: 'company', 'job_title', 'email', 'phone', 'dietary'.
+  rsvp_fields jsonb not null default '[]'::jsonb
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -131,7 +133,14 @@ create table guests (
   table_id uuid references tables(id) on delete set null,
   full_name text not null,
   rsvp_status text not null default 'invited' check (rsvp_status in ('invited', 'attending', 'not_attending')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Datos extra al confirmar (los que pida el evento en events.rsvp_fields).
+  -- Ver migrations/20261002_confirmacion_completa.sql.
+  company text,
+  job_title text,
+  email text,
+  phone text,
+  dietary text
 );
 
 -- 5) Log de aperturas de la invitación pública: cada fila es una vez que
@@ -307,7 +316,12 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id', g.id,
         'full_name', g.full_name,
-        'rsvp_status', g.rsvp_status
+        'rsvp_status', g.rsvp_status,
+        'company', g.company,
+        'job_title', g.job_title,
+        'email', g.email,
+        'phone', g.phone,
+        'dietary', g.dietary
       ) order by g.created_at)
       from guests g
       where g.group_id = ig.id
@@ -328,7 +342,8 @@ begin
     'contact_name', e.contact_name,
     'contact_email', e.contact_email,
     'contact_phone', e.contact_phone,
-    'social_links', e.social_links
+    'social_links', e.social_links,
+    'rsvp_fields', e.rsvp_fields
   ))::json
   into v_group_id, result
   from invitation_groups ig
@@ -351,7 +366,19 @@ grant execute on function public.obtener_invitacion(text) to anon, authenticated
 -- la familia escribe los nombres. Valida server-side que no se carguen
 -- más nombres que "allowed_guests" — el cliente nunca podría forzar eso
 -- porque no tiene permiso de escritura directa sobre la tabla.
-create or replace function public.confirmar_asistencia(p_slug text, p_guest_names text[])
+create or replace function public.texto_invitado(p_value text, p_max int default 200)
+returns text
+language sql
+immutable
+as $$
+  select nullif(left(trim(coalesce(p_value, '')), p_max), '');
+$$;
+
+create or replace function public.confirmar_asistencia(
+  p_slug text,
+  p_guest_names text[],
+  p_detalles jsonb default '[]'::jsonb
+)
 returns json
 language plpgsql
 security definer
@@ -385,10 +412,22 @@ begin
 
   delete from guests where group_id = v_group.id;
 
-  insert into guests (group_id, full_name, rsvp_status)
-  select v_group.id, trim(name), 'attending'
-  from unnest(p_guest_names) as name
-  where trim(name) <> '';
+  insert into guests (group_id, full_name, rsvp_status, company, job_title, email, phone, dietary)
+  select
+    v_group.id,
+    trim(n.name),
+    'attending',
+    public.texto_invitado(d.value ->> 'company'),
+    public.texto_invitado(d.value ->> 'job_title'),
+    public.texto_invitado(d.value ->> 'email'),
+    public.texto_invitado(d.value ->> 'phone', 60),
+    public.texto_invitado(d.value ->> 'dietary', 300)
+  from unnest(p_guest_names) with ordinality as n(name, i)
+  left join lateral (
+    select p_detalles -> (n.i::int - 1) as value
+    where jsonb_typeof(p_detalles) = 'array'
+  ) d on true
+  where trim(n.name) <> '';
 
   update invitation_groups set status = 'confirmed' where id = v_group.id;
 
@@ -396,7 +435,7 @@ begin
 end;
 $$;
 
-grant execute on function public.confirmar_asistencia(text, text[]) to anon, authenticated;
+grant execute on function public.confirmar_asistencia(text, text[], jsonb) to anon, authenticated;
 
 -- Escritura pública del RSVP — modo "con nombres precargados": el
 -- anfitrión ya cargó quiénes son, el invitado solo marca asiste/no
@@ -421,9 +460,14 @@ begin
   end if;
 
   update guests g
-  set rsvp_status = case when (r.attending)::boolean then 'attending' else 'not_attending' end
-  from jsonb_to_recordset(p_respuestas) as r(id uuid, attending boolean)
-  where g.id = r.id and g.group_id = v_group_id;
+  set rsvp_status = case when (r.value ->> 'attending')::boolean then 'attending' else 'not_attending' end,
+      company   = case when r.value ? 'company'   then public.texto_invitado(r.value ->> 'company') else g.company end,
+      job_title = case when r.value ? 'job_title' then public.texto_invitado(r.value ->> 'job_title') else g.job_title end,
+      email     = case when r.value ? 'email'     then public.texto_invitado(r.value ->> 'email') else g.email end,
+      phone     = case when r.value ? 'phone'     then public.texto_invitado(r.value ->> 'phone', 60) else g.phone end,
+      dietary   = case when r.value ? 'dietary'   then public.texto_invitado(r.value ->> 'dietary', 300) else g.dietary end
+  from jsonb_array_elements(p_respuestas) as r(value)
+  where g.id = (r.value ->> 'id')::uuid and g.group_id = v_group_id;
 
   select count(*) filter (where rsvp_status = 'attending')
   into v_attending_count
