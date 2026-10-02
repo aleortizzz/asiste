@@ -1375,11 +1375,12 @@ onUnmounted(() => {
                     </div>
                     <div>
                       <label class="admin-label" for="en-subtitle">Línea de abajo, en inglés</label>
+                      <p class="admin-help">Si la dejás vacía, en inglés no se muestra.</p>
                       <input
                         id="en-subtitle"
                         v-model="form.texts_en.subtitle"
                         data-preview="hero"
-                        :placeholder="form.hero_subtitle || 'Opcional'"
+                        placeholder="Ej. A meeting to celebrate what we achieved"
                         class="admin-input"
                       />
                     </div>

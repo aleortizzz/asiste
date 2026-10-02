@@ -285,8 +285,9 @@ const t = computed(() => {
 })
 
 // --- Textos que escribe el organizador: en inglés, los de texts_en -----------
-// Vacíos: título y subtítulo usan los de castellano; línea de arriba, saludo
-// y cierre, uno de ejemplo en inglés.
+// Vacíos: el título usa el de castellano (suele ser un nombre); el subtítulo
+// no se muestra (mezclar idiomas queda raro); línea de arriba, saludo y
+// cierre usan uno de ejemplo en inglés.
 const textsEn = computed(() => props.invite.texts_en || {})
 const enText = (key) => (textsEn.value[key] || '').trim()
 // «Te invitamos a» era el ejemplo viejo: con el saludo con nombre abajo
@@ -298,7 +299,7 @@ const kickerEs = computed(() => {
 })
 const kickerText = computed(() => (en.value ? enText('kicker') || EN.kicker : kickerEs.value))
 const titleText = computed(() => (en.value && enText('title')) || heroTitle.value)
-const subtitleText = computed(() => (en.value && enText('subtitle')) || props.invite.hero_subtitle || '')
+const subtitleText = computed(() => (en.value ? enText('subtitle') : props.invite.hero_subtitle || ''))
 const introText = computed(() =>
   en.value
     ? enText('intro') || 'We would be honoured to have you with us at an event devoted to what lies ahead.'
