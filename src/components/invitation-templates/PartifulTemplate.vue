@@ -96,7 +96,6 @@ const {
   onSaludoTouchStart,
   onSaludoTouchEnd,
   vReveal,
-  scrollToRsvp,
   gridItems,
   countdown,
   countdownUnits,
@@ -154,14 +153,6 @@ const {
         </p>
       </div>
 
-      <button
-        v-if="entered && !submitted"
-        type="button"
-        @click="scrollToRsvp"
-        class="pf-btn-ghost-invert absolute bottom-7 z-10"
-      >
-        Confirmar asistencia
-      </button>
     </header>
 
     <!-- ============ PORTADA ============ -->
@@ -692,22 +683,6 @@ const {
 }
 .pf-btn-ghost:disabled {
   opacity: 0.5;
-}
-
-.pf-btn-ghost-invert {
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  color: #ffffff;
-  padding: 8px 20px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  backdrop-filter: blur(2px);
-  transition: background 0.15s ease;
-}
-.pf-btn-ghost-invert:hover {
-  background: rgba(255, 255, 255, 0.15);
 }
 
 .pf-nav-arrow {

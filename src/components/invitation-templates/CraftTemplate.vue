@@ -102,7 +102,6 @@ const {
   onSaludoTouchStart,
   onSaludoTouchEnd,
   vReveal,
-  scrollToRsvp,
   gridItems,
   countdown,
   countdownUnits,
@@ -173,14 +172,6 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
         </p>
       </div>
 
-      <button
-        v-if="entered && !submitted"
-        type="button"
-        @click="scrollToRsvp"
-        class="craft-btn-ghost-invert absolute bottom-7 z-10"
-      >
-        Confirmar asistencia
-      </button>
     </header>
 
     <!-- ============ PORTADA ============ -->
@@ -711,22 +702,6 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
   opacity: 0.5;
 }
 
-.craft-btn-ghost-invert {
-  border-radius: 8px;
-  border: 1px solid #f7f5f2;
-  color: #f7f5f2;
-  padding: 8px 20px;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  transition:
-    background 150ms ease,
-    transform 120ms var(--ease-out);
-}
-.craft-btn-ghost-invert:active {
-  transform: scale(0.96);
-}
-
 .craft-nav-arrow {
   position: absolute;
   top: 50%;
@@ -776,9 +751,6 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
   }
   .craft-btn-ghost:hover {
     background: #eae6df;
-  }
-  .craft-btn-ghost-invert:hover {
-    background: rgba(247, 245, 242, 0.12);
   }
   .craft-nav-arrow:hover {
     background: #ffffff;

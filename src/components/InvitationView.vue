@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import ClasicoTemplate from './invitation-templates/ClasicoTemplate.vue'
 import PartifulTemplate from './invitation-templates/PartifulTemplate.vue'
 import CraftTemplate from './invitation-templates/CraftTemplate.vue'
+import EjecutivaTemplate from './invitation-templates/EjecutivaTemplate.vue'
 
 // Selector de plantilla visual: `invite.template` decide qué componente
 // renderizar. Este archivo no tiene lógica propia ni presentación — solo
@@ -16,6 +17,7 @@ const TEMPLATES = {
   partiful: PartifulTemplate,
   craft: CraftTemplate,
   'craft-v2': CraftTemplate,
+  ejecutiva: EjecutivaTemplate,
 }
 
 const props = defineProps({

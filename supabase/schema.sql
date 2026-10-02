@@ -54,7 +54,7 @@ create table events (
   plan text not null default 'basico' check (plan in ('basico', 'plus')),
   -- Plantilla visual, elección libre del host (como bg_color). Ver
   -- supabase/migrations/20260924_plantilla_invitacion.sql.
-  template text not null default 'clasico' check (template in ('clasico', 'partiful', 'craft', 'craft-v2')),
+  template text not null default 'clasico' check (template in ('clasico', 'partiful', 'craft', 'craft-v2', 'ejecutiva')),
   -- Sello del sobre (opcional). Vacío = se infiere de hero_title. Ver
   -- supabase/migrations/20260925_sobre_monograma.sql.
   monogram text,
@@ -66,7 +66,20 @@ create table events (
   envelope_text text,
   -- Color propio del sobre (opcional, independiente del color principal).
   -- Ver supabase/migrations/20260926_color_sobre.sql.
-  envelope_color text
+  envelope_color text,
+  -- Plantilla «Ejecutiva» (ver migrations/20261002_plantilla_ejecutiva.sql):
+  -- color de detalles, claro/oscuro, usted/vos, estilo de la fecha en la
+  -- portada, logo de la empresa y logos de sponsors.
+  accent_color text,
+  theme_mode text not null default 'claro' check (theme_mode in ('claro', 'oscuro')),
+  tono text not null default 'vos' check (tono in ('vos', 'usted')),
+  date_style text not null default 'regresiva' check (date_style in ('regresiva', 'destacada', 'discreta')),
+  logo jsonb not null default '[]'::jsonb,
+  sponsors jsonb not null default '[]'::jsonb,
+  -- Mostrar el logo / los sponsors en blanco (para fondo oscuro). Ver
+  -- migrations/20261002_logos_en_blanco.sql.
+  logo_white boolean not null default false,
+  sponsors_white boolean not null default false
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -247,7 +260,7 @@ declare
   result json;
   v_group_id uuid;
 begin
-  select ig.id, json_build_object(
+  select ig.id, (jsonb_build_object(
     'family_name', ig.family_name,
     'allowed_guests', ig.allowed_guests,
     'status', ig.status,
@@ -283,15 +296,25 @@ begin
     'notes', e.notes,
     'gift_alias', e.gift_alias,
     'guests', coalesce((
-      select json_agg(json_build_object(
+      select jsonb_agg(jsonb_build_object(
         'id', g.id,
         'full_name', g.full_name,
         'rsvp_status', g.rsvp_status
       ) order by g.created_at)
       from guests g
       where g.group_id = ig.id
-    ), '[]'::json)
-  )
+    ), '[]'::jsonb)
+  ) || jsonb_build_object(
+    'event_type', e.event_type,
+    'accent_color', e.accent_color,
+    'theme_mode', e.theme_mode,
+    'tono', e.tono,
+    'date_style', e.date_style,
+    'logo', e.logo,
+    'sponsors', e.sponsors,
+    'logo_white', e.logo_white,
+    'sponsors_white', e.sponsors_white
+  ))::json
   into v_group_id, result
   from invitation_groups ig
   join events e on e.id = ig.event_id

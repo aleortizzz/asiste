@@ -450,12 +450,6 @@ export function useInvitationLogic(props, emit) {
     },
   }
 
-  function scrollToRsvp() {
-    document
-      .getElementById('rsvp')
-      ?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
-  }
-
   // --- Galería: las fotos convergen al centro a medida que se scrollea --------
   const gridItems = ref([])
   let gridRaf = null
@@ -695,7 +689,6 @@ export function useInvitationLogic(props, emit) {
     saludoDrag: saludoSwipe.offset,
     saludoDragging: saludoSwipe.dragging,
     vReveal,
-    scrollToRsvp,
     gridItems,
     countdown,
     countdownUnits,

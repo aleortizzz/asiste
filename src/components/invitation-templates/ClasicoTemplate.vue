@@ -99,7 +99,6 @@ const {
   saludoDragging,
   onSaludoTouchEnd,
   vReveal,
-  scrollToRsvp,
   gridItems,
   countdown,
   countdownUnits,
@@ -182,15 +181,6 @@ const {
 
       </div>
 
-      <button
-        v-if="entered && !submitted"
-        type="button"
-        @click="scrollToRsvp"
-        class="absolute bottom-7 z-10 flex flex-col items-center gap-1 text-[0.65rem] uppercase tracking-[0.3em] text-white/80 hero-cta"
-      >
-        Confirmar asistencia
-        <span class="hint-float text-lg">↓</span>
-      </button>
     </header>
 
     <!-- ============ SOBRE (portada) ============ -->
@@ -1000,9 +990,6 @@ const {
 .press:active {
   transform: scale(0.95);
 }
-.hero-cta {
-  transition: color 0.2s ease;
-}
 @media (hover: hover) and (pointer: fine) {
   .carousel-arrow:hover {
     background-color: #fff;
@@ -1010,29 +997,10 @@ const {
   .decline-btn:hover:not(:disabled) {
     background-color: var(--color-stone-50);
   }
-  .hero-cta:hover {
-    color: #fff;
-  }
-}
-
-/* Flecha de "Confirmar asistencia": flota suave en vez del bounce de
-   Tailwind, que es brusco. */
-.hint-float {
-  animation: hint-float 2.4s ease-in-out infinite;
-}
-@keyframes hint-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(5px);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-flare,
-  .hint-float {
+  .hero-flare {
     animation: none;
   }
   .kenburns,

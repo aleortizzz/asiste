@@ -9,6 +9,7 @@ import { useEvent } from '../composables/useEvent'
 import { useEventPhotos, MAX_GALERIA } from '../composables/useEventPhotos'
 import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 import { confirmDialog } from '../composables/useConfirm'
+import { trimImage } from '../lib/trimImage'
 
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
@@ -16,7 +17,7 @@ const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
 // El editor va por pasos, en el orden en que se arma una invitación. Todos
 // comparten un solo formulario y un solo «Guardar» — los pasos solo ordenan
 // la pantalla. `anchor`: parte de la vista previa a la que se desliza.
-const STEPS = [
+const ALL_STEPS = [
   { id: 'estilo', label: 'Estilo', title: 'Elegí el estilo', desc: 'El tipo de evento, el diseño y los colores de tu invitación.', anchor: 'hero' },
   { id: 'portada', label: 'Portada', title: 'La portada', desc: 'Lo primero que ven tus invitados al abrir el link.', anchor: 'hero' },
   { id: 'sobre', label: 'Sobre', title: 'El sobre', desc: 'Antes de ver la invitación, tus invitados abren un sobre animado. Acá elegís cómo se ve.', anchor: 'hero' },
@@ -25,14 +26,21 @@ const STEPS = [
   { id: 'confirmacion', label: 'Confirmaciones', title: 'Confirmaciones', desc: 'Hasta cuándo pueden confirmar y cuántos invitados entran.', anchor: 'rsvp' },
   { id: 'fotos', label: 'Fotos', title: 'Fotos', desc: 'Se guardan solas apenas las subís. Podés ocultar las secciones que no quieras usar.', anchor: 'hero' },
 ]
+// La plantilla Ejecutiva no tiene sobre: ese paso no se muestra. Por eso el
+// paso actual se guarda por id y no por posición (si no, al cambiar de
+// plantilla quedaría parado en otro paso).
+const STEPS = computed(() =>
+  form.value.template === 'ejecutiva' ? ALL_STEPS.filter((s) => s.id !== 'sobre') : ALL_STEPS,
+)
 // ?paso=<id> abre directo en ese paso (lo usa el checklist del Inicio).
 const route = useRoute()
-const stepIndex = ref(Math.max(0, STEPS.findIndex((s) => s.id === route.query.paso)))
-const step = computed(() => STEPS[stepIndex.value])
+const stepId = ref(ALL_STEPS.some((s) => s.id === route.query.paso) ? route.query.paso : 'estilo')
+const stepIndex = computed(() => Math.max(0, STEPS.value.findIndex((s) => s.id === stepId.value)))
+const step = computed(() => STEPS.value[stepIndex.value])
 
 function goToStep(i) {
-  stepIndex.value = i
-  scrollPreviewTo(STEPS[i].anchor)
+  stepId.value = STEPS.value[i].id
+  scrollPreviewTo(STEPS.value[i].anchor)
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -57,7 +65,7 @@ function centerActiveStep() {
   if (!btn) return
   el.scrollTo({ left: btn.offsetLeft - (el.clientWidth - btn.offsetWidth) / 2, behavior: 'smooth' })
 }
-watch(stepIndex, () => nextTick(centerActiveStep))
+watch(stepId, () => nextTick(centerActiveStep))
 
 // Barra de guardado: cuando queda flotando encima de la tarjeta (mismo color)
 // se perdía, así que mientras flota pasa a blanco con sombra.
@@ -96,13 +104,53 @@ const stepsMask = computed(() => {
   return { maskImage: g, WebkitMaskImage: g }
 })
 // `optional`: se puede ocultar toda la sección en la invitación (la portada no).
-const photoSections = [
+// `only`: plantillas que usan esa sección (sin `only`, todas). La Ejecutiva
+// suma logo y sponsors, y a algunas secciones les cambia el nombre (ver EJECUTIVA_LABELS).
+const MAX_SPONSORS = 8
+const ALL_PHOTO_SECTIONS = [
+  {
+    slot: 'logo',
+    label: 'Logo de la empresa',
+    help: 'Va arriba de todo en la portada. Mejor en PNG con fondo transparente; con fondo oscuro, subí la versión clara del logo.',
+    single: true,
+    optional: false,
+    only: ['ejecutiva'],
+  },
   { slot: 'banner', label: 'Portada', help: 'Foto de fondo de la portada y el hero.', single: true, optional: false },
   { slot: 'retrato', label: 'Saludo', help: 'Carrusel de fotos del saludo.', single: false, optional: true },
   { slot: 'detalle', label: 'La celebración', help: 'Foto de la sección de detalles.', single: true, optional: true },
   { slot: 'momentos', label: 'Momentos', help: 'Carrusel principal de fotos.', single: false, optional: true },
   { slot: 'galeria', label: 'Galería', help: `Grid de hasta ${MAX_GALERIA} fotos.`, single: false, optional: true },
+  {
+    slot: 'sponsors',
+    label: 'Sponsors',
+    help: `Logos de sponsors o co-organizadores, al pie («Con el apoyo de»). Hasta ${MAX_SPONSORS}.`,
+    single: false,
+    optional: false,
+    only: ['ejecutiva'],
+  },
 ]
+// Cómo se llaman y dónde aparecen las fotos en la Ejecutiva.
+const EJECUTIVA_LABELS = {
+  banner: { label: 'Foto de portada', help: 'Una foto panorámica, debajo de la tarjeta de la portada. Opcional.' },
+  retrato: { label: 'Bienvenida', help: 'Carrusel de fotos debajo del texto de bienvenida.' },
+  detalle: { label: 'Foto del lugar', help: 'Una foto institucional o del lugar, debajo de los datos del evento.' },
+  momentos: { label: 'Momentos', help: 'Carrusel de fotos, ideal para muchas.' },
+}
+const photoSections = computed(() =>
+  ALL_PHOTO_SECTIONS.filter((s) => !s.only || s.only.includes(form.value.template)).map((s) =>
+    form.value.template === 'ejecutiva' && EJECUTIVA_LABELS[s.slot] ? { ...s, ...EJECUTIVA_LABELS[s.slot] } : s,
+  ),
+)
+
+// Logos (Ejecutiva): se recortan al subir y se pueden mostrar en blanco.
+const LOGO_SLOTS = ['logo', 'sponsors']
+const WHITE_FIELD = { logo: 'logo_white', sponsors: 'sponsors_white' }
+async function toggleWhite(slot) {
+  const field = WHITE_FIELD[slot]
+  form.value[field] = !form.value[field]
+  await persistPhotos()
+}
 
 function isHidden(slot) {
   return form.value.hidden_sections.includes(slot)
@@ -177,7 +225,7 @@ async function onFilePicked(e) {
   const file = e.target.files?.[0]
   if (!file || !pendingSlot) return
   const slot = pendingSlot
-  const single = photoSections.find((s) => s.slot === slot)?.single
+  const single = ALL_PHOTO_SECTIONS.find((s) => s.slot === slot)?.single
   const invalid = validatePhoto(slot, file)
   if (invalid) {
     setPhotoError(slot, invalid)
@@ -187,8 +235,11 @@ async function onFilePicked(e) {
   uploadingSlot.value = slot
   setPhotoError(null, '')
   try {
+    // Logos: se recorta el borde vacío antes de subir (ver lib/trimImage.js),
+    // si no los que vienen con mucho espacio alrededor se ven diminutos.
+    const toUpload = LOGO_SLOTS.includes(slot) ? await trimImage(file) : file
     if (single && form.value[slot][0]) await removeFile(form.value[slot][0].path)
-    const item = await uploadFile(slot, file, event.value.owner_user_id)
+    const item = await uploadFile(slot, toUpload, event.value.owner_user_id)
     if (single) form.value[slot] = [item]
     else form.value[slot] = [...form.value[slot], item]
     await persistPhotos()
@@ -231,6 +282,10 @@ async function persistPhotos() {
     momentos: form.value.momentos,
     galeria: form.value.galeria,
     hidden_sections: form.value.hidden_sections,
+    // Columnas de 20261002_plantilla_ejecutiva.sql: solo si la base ya las tiene.
+    ...(ejecutivaAvailable.value ? { logo: form.value.logo, sponsors: form.value.sponsors } : {}),
+    // 20261002_logos_en_blanco.sql
+    ...(logosWhiteAvailable.value ? { logo_white: form.value.logo_white, sponsors_white: form.value.sponsors_white } : {}),
   })
 }
 
@@ -238,6 +293,7 @@ function canAdd(section) {
   const arr = form.value[section.slot]
   if (section.single) return arr.length === 0
   if (section.slot === 'galeria') return arr.length < MAX_GALERIA
+  if (section.slot === 'sponsors') return arr.length < MAX_SPONSORS
   return true
 }
 
@@ -266,6 +322,51 @@ const INVITATION_TEMPLATES = [
     help: 'Serif editorial, cards planas y un hero dramático al abrir.',
     font: "'Bodoni Moda', serif",
   },
+  {
+    value: 'ejecutiva',
+    label: 'Ejecutiva',
+    help: 'Tarjeta formal con logo, líneas finas y tono serio. Para empresas.',
+    font: "'Cormorant Garamond', serif",
+  },
+]
+
+// Paletas de la Ejecutiva: color principal (profundo), detalles y papel.
+const PALETTES = [
+  { id: 'marino', label: 'Marino y champagne', primary: '#0f1b2d', accent: '#c8a96a', paper: '#f7f4ee' },
+  { id: 'negro', label: 'Negro y dorado', primary: '#0b0b0c', accent: '#c9a54a', paper: '#f6f4ef' },
+  { id: 'grafito', label: 'Grafito', primary: '#26282c', accent: '#b9bcc2', paper: '#f4f4f2' },
+  { id: 'ingles', label: 'Verde inglés', primary: '#10291f', accent: '#c6b07a', paper: '#f5f3ec' },
+]
+const activePalette = computed(
+  () =>
+    PALETTES.find(
+      (p) =>
+        p.primary === form.value.primary_color?.toLowerCase() &&
+        p.accent === (form.value.accent_color || '').toLowerCase() &&
+        p.paper === form.value.bg_color?.toLowerCase(),
+    )?.id,
+)
+function applyPalette(p) {
+  form.value.primary_color = p.primary
+  form.value.accent_color = p.accent
+  form.value.bg_color = p.paper
+}
+
+// Al pasar a la Ejecutiva, los colores de las otras plantillas (bordó sobre
+// crema, etc.) no le quedan: arranca con la primera paleta, salvo que ya
+// tenga una de las suyas. Después el cliente cambia lo que quiera.
+function selectTemplate(value) {
+  form.value.template = value
+  if (value === 'ejecutiva' && !activePalette.value) applyPalette(PALETTES[0])
+}
+const ACCENT_PRESETS = ['#c8a96a', '#c9a54a', '#d4af37', '#c6b07a', '#b9bcc2', '#a8a29e', '#ffffff', '#9f1239']
+const PAPER_PRESETS = ['#ffffff', '#f7f4ee', '#f6f4ef', '#f4f4f2', '#f5f3ec', '#efe9df', '#e9eef4']
+const showCustomColors = ref(false)
+
+const DATE_STYLES = [
+  { value: 'destacada', label: 'Destacada', help: 'El día en grande, entre dos líneas.' },
+  { value: 'discreta', label: 'Discreta', help: 'Una línea y «Faltan 23 días».' },
+  { value: 'regresiva', label: 'Cuenta regresiva', help: 'Días, horas y minutos.' },
 ]
 
 // Los datos concretos (fecha, salón, dirección…) quedan vacíos a propósito:
@@ -319,6 +420,14 @@ const EMPTY = {
   rsvp_deadline_strict: false,
   notes: '',
   gift_alias: '',
+  accent_color: '',
+  theme_mode: 'claro',
+  tono: 'vos',
+  date_style: 'regresiva',
+  logo: [],
+  sponsors: [],
+  logo_white: false,
+  sponsors_white: false,
 }
 
 // Textos genéricos según el tipo de evento. El switch de arriba cambia entre
@@ -341,14 +450,30 @@ const TEMPLATES = {
       'Con toda la ilusión queremos compartir con ustedes el día en que unimos nuestras vidas.',
     closing_text: '¡Los esperamos!',
   },
+  // Cortos y formales. El cierre queda vacío a propósito: la plantilla pone
+  // uno según el tono («Esperamos contar con su presencia» / «Te esperamos»).
   empresarial: {
-    hero_kicker: 'Te invitamos a',
-    hero_title: 'Encuentro Anual',
-    hero_subtitle: '',
-    intro_text:
-      'Queremos compartir con ustedes un encuentro para celebrar lo logrado juntos y todo lo que viene.',
-    closing_text: '¡Los esperamos!',
+    hero_kicker: 'Invitación',
+    hero_title: 'Lanzamiento 2027',
+    hero_subtitle: 'Presentación de la nueva línea de productos',
+    intro_text: 'Será un honor contar con su presencia en una noche dedicada a lo que viene.',
+    closing_text: '',
   },
+}
+// El saludo de ejemplo empresarial cambia con el tono (ver setTono).
+const EMPRESARIAL_INTRO = {
+  usted: 'Será un honor contar con su presencia en una noche dedicada a lo que viene.',
+  vos: 'Va a ser un honor que nos acompañes en una noche dedicada a lo que viene.',
+}
+// Textos de ejemplo viejos o de la otra variante: cuentan como «sin tocar».
+const OTHER_EXAMPLES = {
+  hero_kicker: ['Te invitamos a'],
+  hero_title: ['Encuentro Anual'],
+  intro_text: [
+    EMPRESARIAL_INTRO.vos,
+    'Queremos compartir con ustedes un encuentro para celebrar lo logrado juntos y todo lo que viene.',
+  ],
+  closing_text: ['¡Los esperamos!', '¡Te esperamos!'],
 }
 
 const TYPE_LABELS = { cumpleanos: 'Cumpleaños', casamiento: 'Casamiento', empresarial: 'Empresarial' }
@@ -366,7 +491,7 @@ async function applyTemplate(newType) {
   const keys = Object.keys(next)
   const isExample = (key) => {
     const value = (form.value[key] ?? '').trim()
-    return value === '' || Object.values(TEMPLATES).some((t) => t[key] === value)
+    return value === '' || Object.values(TEMPLATES).some((t) => t[key] === value) || OTHER_EXAMPLES[key]?.includes(value)
   }
   const custom = keys.filter((key) => !isExample(key) && form.value[key] !== next[key])
 
@@ -384,6 +509,20 @@ async function applyTemplate(newType) {
     if (replaceCustom || isExample(key)) form.value[key] = next[key]
   }
   eventType.value = newType
+
+  // Empresarial: arranca con la plantilla Ejecutiva, en «usted» y con la fecha
+  // destacada. Después se puede cambiar cualquiera de las tres.
+  if (newType === 'empresarial' && form.value.template !== 'ejecutiva') {
+    selectTemplate('ejecutiva')
+    form.value.tono = 'usted'
+    form.value.date_style = 'destacada'
+  }
+}
+
+// Al cambiar usted ↔ vos, el saludo de ejemplo acompaña (si no lo tocaron).
+function setTono(tono) {
+  if (form.value.intro_text === EMPRESARIAL_INTRO[form.value.tono]) form.value.intro_text = EMPRESARIAL_INTRO[tono]
+  form.value.tono = tono
 }
 
 // Preview del sobre en la pestaña "Sobre": misma derivación que usa la
@@ -399,6 +538,7 @@ const TEMPLATE_FONTS = {
   clasico: "'Dancing Script', cursive",
   partiful: "'Space Grotesk', sans-serif",
   craft: "'Bodoni Moda', serif",
+  ejecutiva: "'Cormorant Garamond', serif",
 }
 const envelopePreviewOpen = ref(false)
 const envelopePreviewFont = computed(() => TEMPLATE_FONTS[form.value.template] || 'inherit')
@@ -406,6 +546,10 @@ const envelopePreviewFont = computed(() => TEMPLATE_FONTS[form.value.template] |
 // La opción de cerrar confirmaciones solo aparece si la base ya tiene la
 // columna (ver onSubmit) — hasta correr la migración, la fecha es informativa.
 const strictAvailable = computed(() => !!event.value && 'rsvp_deadline_strict' in event.value)
+// Lo mismo con las columnas de la Ejecutiva (20261002_plantilla_ejecutiva.sql).
+const EJECUTIVA_COLUMNS = ['accent_color', 'theme_mode', 'tono', 'date_style', 'logo', 'sponsors']
+const ejecutivaAvailable = computed(() => !event.value || 'tono' in event.value)
+const logosWhiteAvailable = computed(() => !!event.value && 'logo_white' in event.value)
 
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
@@ -417,7 +561,8 @@ const saveError = ref('')
 // pendientes y no perderlos al salir. Las fotos no cuentan: se guardan solas.
 function snapshot() {
   // eslint-disable-next-line no-unused-vars
-  const { banner, retrato, detalle, momentos, galeria, hidden_sections, ...fields } = form.value
+  const { banner, retrato, detalle, momentos, galeria, hidden_sections, logo, sponsors, logo_white, sponsors_white, ...fields } =
+    form.value
   return JSON.stringify({
     ...fields,
     eventType: eventType.value,
@@ -484,6 +629,14 @@ onMounted(async () => {
       rsvp_deadline_strict: event.value.rsvp_deadline_strict ?? false,
       notes: event.value.notes ?? '',
       gift_alias: event.value.gift_alias ?? '',
+      accent_color: event.value.accent_color ?? '',
+      theme_mode: event.value.theme_mode ?? 'claro',
+      tono: event.value.tono ?? 'vos',
+      date_style: event.value.date_style ?? 'regresiva',
+      logo: event.value.logo ?? [],
+      sponsors: event.value.sponsors ?? [],
+      logo_white: event.value.logo_white ?? false,
+      sponsors_white: event.value.sponsors_white ?? false,
     }
     hasGuestLimit.value = event.value.guest_limit != null
     guestLimit.value = event.value.guest_limit ?? 1
@@ -506,6 +659,17 @@ async function onSubmit() {
     if (!event.value || !('rsvp_deadline_strict' in event.value)) delete fields.rsvp_deadline_strict
     // Sin fecha límite no hay nada que cerrar.
     else if (!form.value.rsvp_deadline) fields.rsvp_deadline_strict = false
+    if (!ejecutivaAvailable.value) {
+      if (form.value.template === 'ejecutiva') {
+        throw new Error('falta correr la migración 20261002_plantilla_ejecutiva.sql en Supabase.')
+      }
+      for (const col of EJECUTIVA_COLUMNS) delete fields[col]
+    }
+    // Las fotos (logo y sponsors incluidos) y sus interruptores se guardan solos.
+    delete fields.logo
+    delete fields.sponsors
+    delete fields.logo_white
+    delete fields.sponsors_white
     await saveEvent({
       ...fields,
       event_type: eventType.value,
@@ -516,6 +680,7 @@ async function onSubmit() {
       monogram: emptyAsNull(form.value.monogram?.trim()),
       envelope_text: emptyAsNull(form.value.envelope_text?.trim()),
       envelope_color: emptyAsNull(form.value.envelope_color),
+      ...(ejecutivaAvailable.value ? { accent_color: emptyAsNull(form.value.accent_color) } : {}),
       hero_subtitle: emptyAsNull(form.value.hero_subtitle),
       intro_text: emptyAsNull(form.value.intro_text),
       closing_text: emptyAsNull(form.value.closing_text),
@@ -548,10 +713,12 @@ const showMobilePreview = ref(false)
 // invitados) y no del evento.
 const previewInvite = computed(() => ({
   ...form.value,
+  event_type: eventType.value,
   event_name: form.value.hero_title,
-  family_name: 'Familia García',
+  // Empresarial: una persona, para ver el saludo con nombre como le llega a un invitado.
+  family_name: eventType.value === 'empresarial' ? 'Sr. Juan Pérez' : 'Familia García',
   named_by_host: false,
-  allowed_guests: 2,
+  allowed_guests: eventType.value === 'empresarial' ? 1 : 2,
   status: 'pending',
   guests: [],
   // Solo lectura: el plan lo activa TizDigital, no es un campo del form.
@@ -766,13 +933,13 @@ onUnmounted(() => {
               <div>
                 <p class="admin-label">Diseño</p>
                 <p class="admin-help">Cada diseño tiene su tipografía y su estilo. Los colores los elegís abajo.</p>
-                <div class="grid gap-3 sm:grid-cols-3">
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <button
                     v-for="t in INVITATION_TEMPLATES"
                     :key="t.value"
                     type="button"
                     data-preview="hero"
-                    @click="form.template = t.value"
+                    @click="selectTemplate(t.value)"
                     :class="form.template === t.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
                     class="relative rounded-[1.5rem] border-2 p-3 text-left transition-colors"
                   >
@@ -794,34 +961,121 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div>
-                <p class="admin-label">Color de fondo</p>
-                <p class="admin-help">El fondo de toda la invitación.</p>
-                <ColorPicker v-model="form.bg_color" :presets="BG_PRESETS" preview="saludo" name="Color de fondo">
-                  <a href="https://colorhunt.co" target="_blank" rel="noopener" class="text-xs text-obsidian/55 underline">
-                    buscar más paletas
-                  </a>
-                </ColorPicker>
-              </div>
+              <template v-if="form.template === 'ejecutiva'">
+                <div>
+                  <p class="admin-label">Paleta</p>
+                  <p class="admin-help">Combinaciones sobrias, pensadas para eventos de empresa.</p>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button
+                      v-for="pal in PALETTES"
+                      :key="pal.id"
+                      type="button"
+                      data-preview="hero"
+                      @click="applyPalette(pal)"
+                      :class="activePalette === pal.id ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                      class="flex items-center gap-3 rounded-[1.5rem] border-2 p-3 text-left text-sm font-bold transition-colors"
+                    >
+                      <span class="flex shrink-0 overflow-hidden rounded-full ring-1 ring-obsidian/10">
+                        <span class="h-8 w-5" :style="{ background: pal.primary }"></span>
+                        <span class="h-8 w-5" :style="{ background: pal.accent }"></span>
+                        <span class="h-8 w-5" :style="{ background: pal.paper }"></span>
+                      </span>
+                      {{ pal.label }}
+                    </button>
+                  </div>
+                </div>
 
-              <div>
-                <p class="admin-label">Color principal</p>
-                <p class="admin-help">Botones, líneas y detalles. El sobre también lo usa, salvo que le elijas uno propio.</p>
-                <ColorPicker v-model="form.primary_color" :presets="PRIMARY_PRESETS" preview="saludo" name="Color principal" />
-              </div>
+                <div>
+                  <p class="admin-label">Fondo</p>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button
+                      v-for="opt in [
+                        { value: 'claro', label: 'Claro', help: 'Papel claro y tinta del color principal.' },
+                        { value: 'oscuro', label: 'Oscuro', help: 'Fondo del color principal y detalles en el color de detalles.' },
+                      ]"
+                      :key="opt.value"
+                      type="button"
+                      data-preview="hero"
+                      @click="form.theme_mode = opt.value"
+                      :class="form.theme_mode === opt.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                      class="rounded-[1.5rem] border-2 p-4 text-left transition-colors"
+                    >
+                      <span class="block font-bold">{{ opt.label }}</span>
+                      <span class="mt-0.5 block text-sm leading-snug text-obsidian/55">{{ opt.help }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <button type="button" @click="showCustomColors = !showCustomColors" class="text-sm font-bold underline underline-offset-4">
+                    {{ showCustomColors ? 'Ocultar colores a medida' : 'Elegir colores a medida' }}
+                  </button>
+                  <div v-if="showCustomColors" class="mt-5 space-y-6">
+                    <div>
+                      <p class="admin-label">Color principal</p>
+                      <p class="admin-help">Títulos y botones; en modo oscuro, el fondo.</p>
+                      <ColorPicker v-model="form.primary_color" :presets="PALETTES.map((x) => x.primary)" preview="hero" name="Color principal" />
+                    </div>
+                    <div>
+                      <p class="admin-label">Color de detalles</p>
+                      <p class="admin-help">Las líneas finas y, en modo oscuro, los botones.</p>
+                      <ColorPicker v-model="form.accent_color" :presets="ACCENT_PRESETS" preview="hero" name="Color de detalles" />
+                    </div>
+                    <div v-if="form.theme_mode === 'claro'">
+                      <p class="admin-label">Color del papel</p>
+                      <p class="admin-help">El fondo en modo claro.</p>
+                      <ColorPicker v-model="form.bg_color" :presets="PAPER_PRESETS" preview="hero" name="Color del papel" />
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <div>
+                  <p class="admin-label">Color de fondo</p>
+                  <p class="admin-help">El fondo de toda la invitación.</p>
+                  <ColorPicker v-model="form.bg_color" :presets="BG_PRESETS" preview="saludo" name="Color de fondo">
+                    <a href="https://colorhunt.co" target="_blank" rel="noopener" class="text-xs text-obsidian/55 underline">
+                      buscar más paletas
+                    </a>
+                  </ColorPicker>
+                </div>
+
+                <div>
+                  <p class="admin-label">Color principal</p>
+                  <p class="admin-help">Botones, líneas y detalles. El sobre también lo usa, salvo que le elijas uno propio.</p>
+                  <ColorPicker v-model="form.primary_color" :presets="PRIMARY_PRESETS" preview="saludo" name="Color principal" />
+                </div>
+              </template>
             </template>
 
             <!-- ========== 2. PORTADA ========== -->
             <template v-else-if="step.id === 'portada'">
               <div>
                 <label class="admin-label" for="f-kicker">Línea de arriba</label>
-                <input id="f-kicker" v-model="form.hero_kicker" data-preview="hero" placeholder="Ej. Te invito a mis · Nos casamos" class="admin-input" />
+                <input
+                  id="f-kicker"
+                  v-model="form.hero_kicker"
+                  data-preview="hero"
+                  :placeholder="form.template === 'ejecutiva' ? 'Ej. Invitación' : 'Ej. Te invito a mis · Nos casamos'"
+                  class="admin-input"
+                />
               </div>
               <div>
                 <label class="admin-label" for="f-title">Texto principal</label>
                 <p class="admin-help">El nombre grande de la portada.</p>
-                <input id="f-title" v-model="form.hero_title" data-preview="hero" placeholder="Ej. Antonella · Ana & Luis" class="admin-input" />
+                <input
+                  id="f-title"
+                  v-model="form.hero_title"
+                  data-preview="hero"
+                  :placeholder="form.template === 'ejecutiva' ? 'Ej. Lanzamiento 2027' : 'Ej. Antonella · Ana & Luis'"
+                  class="admin-input"
+                />
               </div>
+              <p v-if="form.template === 'ejecutiva'" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                El logo de la empresa y los de sponsors se suben en el paso
+                <button type="button" class="font-bold underline" @click="goToStep(STEPS.findIndex((x) => x.id === 'fotos'))">Fotos</button>.
+              </p>
               <div>
                 <label class="admin-label" for="f-subtitle">Línea de abajo</label>
                 <input id="f-subtitle" v-model="form.hero_subtitle" data-preview="hero" placeholder="Opcional" class="admin-input" />
@@ -830,9 +1084,53 @@ onUnmounted(() => {
                 <label class="admin-label" for="f-date">Fecha del evento</label>
                 <input id="f-date" v-model="form.event_date" type="date" data-preview="hero" class="admin-input" />
               </div>
+              <template v-if="form.template === 'ejecutiva'">
+                <div>
+                  <p class="admin-label">Cómo se muestra la fecha</p>
+                  <div class="grid gap-3 sm:grid-cols-3">
+                    <button
+                      v-for="opt in DATE_STYLES"
+                      :key="opt.value"
+                      type="button"
+                      data-preview="hero"
+                      @click="form.date_style = opt.value"
+                      :class="form.date_style === opt.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                      class="rounded-[1.5rem] border-2 p-4 text-left transition-colors"
+                    >
+                      <span class="block font-bold">{{ opt.label }}</span>
+                      <span class="mt-0.5 block text-sm leading-snug text-obsidian/55">{{ opt.help }}</span>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <p class="admin-label">Cómo le hablamos al invitado</p>
+                  <p class="admin-help">Cambia todos los textos de la invitación: el saludo, la confirmación y el cierre.</p>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button
+                      v-for="opt in [
+                        { value: 'usted', label: 'Usted', help: '«Esperamos contar con su presencia.»' },
+                        { value: 'vos', label: 'Vos', help: '«Te esperamos.»' },
+                      ]"
+                      :key="opt.value"
+                      type="button"
+                      data-preview="hero"
+                      @click="setTono(opt.value)"
+                      :class="form.tono === opt.value ? 'border-obsidian bg-chalk' : 'border-transparent bg-chalk/60 hover:bg-chalk'"
+                      class="rounded-[1.5rem] border-2 p-4 text-left transition-colors"
+                    >
+                      <span class="block font-bold">{{ opt.label }}</span>
+                      <span class="mt-0.5 block text-sm leading-snug text-obsidian/55">{{ opt.help }}</span>
+                    </button>
+                  </div>
+                </div>
+              </template>
               <div>
                 <label class="admin-label" for="f-music">Música</label>
-                <p class="admin-help">Pegá el link de una canción de YouTube. Suena cuando abren el sobre. Dejalo vacío si no querés música.</p>
+                <p class="admin-help">
+                  Pegá el link de una canción de YouTube.
+                  {{ form.template === 'ejecutiva' ? 'Aparece un botón para escucharla.' : 'Suena cuando abren el sobre.' }}
+                  Dejalo vacío si no querés música.
+                </p>
                 <input id="f-music" v-model="form.music_url" type="url" data-preview="hero" placeholder="https://www.youtube.com/watch?v=…" class="admin-input" />
               </div>
             </template>
@@ -1049,7 +1347,12 @@ onUnmounted(() => {
                   :class="{ 'pointer-events-none opacity-35': s.optional && isHidden(s.slot) }"
                 >
                   <div v-for="(ph, i) in form[s.slot]" :key="ph.path" class="relative aspect-square overflow-hidden rounded-[1rem] bg-pumice">
-                    <img :src="ph.url" alt="" class="h-full w-full object-cover" />
+                    <img
+                      :src="ph.url"
+                      alt=""
+                      :class="LOGO_SLOTS.includes(s.slot) ? 'object-contain p-2' : 'object-cover'"
+                      class="h-full w-full"
+                    />
                     <button
                       type="button"
                       @click="removePhoto(s.slot, i)"
@@ -1069,6 +1372,32 @@ onUnmounted(() => {
                   >
                     <span class="text-2xl leading-none">+</span>
                     <span class="text-xs font-bold">Subir</span>
+                  </button>
+                </div>
+                <div
+                  v-if="LOGO_SLOTS.includes(s.slot) && logosWhiteAvailable && form[s.slot].length"
+                  class="mt-4 flex items-center justify-between gap-4 border-t-[1.5px] border-dotted border-obsidian/20 pt-4"
+                >
+                  <div>
+                    <p class="text-sm font-bold">Mostrar en blanco</p>
+                    <p class="text-xs text-obsidian/55">
+                      Para fondo oscuro, si {{ s.slot === 'logo' ? 'el logo es oscuro' : 'los logos son oscuros' }}. Sirve para logos de un
+                      solo color; uno de varios colores queda todo blanco.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    :aria-checked="form[WHITE_FIELD[s.slot]]"
+                    :aria-label="`Mostrar ${s.label} en blanco`"
+                    @click="toggleWhite(s.slot)"
+                    :class="form[WHITE_FIELD[s.slot]] ? 'bg-accent' : 'bg-obsidian/20'"
+                    class="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+                  >
+                    <span
+                      class="absolute top-1 left-1 h-5 w-5 rounded-full bg-chalk transition-transform"
+                      :class="form[WHITE_FIELD[s.slot]] ? 'translate-x-5' : ''"
+                    ></span>
                   </button>
                 </div>
                 <p v-if="uploading && uploadingSlot === s.slot" class="mt-3 text-sm text-obsidian/55">Subiendo…</p>

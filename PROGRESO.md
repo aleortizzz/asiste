@@ -6,7 +6,7 @@ Plan original (modelo de datos, rutas, roadmap): `C:\Users\aleor\.claude\plans\p
 
 Modo de trabajo: **aprender haciendo** — explicar el porqué de cada decisión, no solo tirar código hecho. El usuario viene de HTML/CSS/Tailwind fuerte, está aprendiendo JS/Vue. El usuario prueba cada cosa y recién ahí pide commit/push.
 
-_Última actualización: 2026-09-30._
+_Última actualización: 2026-10-02._
 
 ## Stack
 
@@ -19,7 +19,10 @@ _Última actualización: 2026-09-30._
 ## Qué hace hoy
 
 ### Invitación pública (`/i/:slug`, un link por familia)
-- Tres plantillas: **Clásica, Partiful y Craft** (`src/components/invitation-templates/`), elegidas en el editor. Color principal elegido por el anfitrión; las plantillas derivan tints/shades (`src/lib/color.js`).
+- Cuatro plantillas: **Clásica, Partiful, Craft y Ejecutiva** (`src/components/invitation-templates/`), elegidas en el editor. Color principal elegido por el anfitrión; las plantillas derivan tints/shades (`src/lib/color.js`).
+- **Ejecutiva** (eventos empresariales; se elige sola al tocar «Empresarial»): tarjeta formal con marco doble, Cormorant Garamond + Inter, sin sobre. 4 paletas (`primary_color` profundo + `accent_color` + papel), claro/oscuro (`theme_mode`), tono usted/vos (`tono`, todas las frases sin género y en plural si la invitación es para varias personas), fecha destacada/discreta/regresiva (`date_style`), logo + sponsors (con «Mostrar en blanco» y tamaño parejo por superficie). Ninguna imagen se recorta (carrusel `EjecutivaCarousel.vue` con foto entera + relleno desenfocado; galería en columnas). Nunca muestra las fotos de demo.
+- **Agregar al calendario** (`src/lib/calendar.js`, por ahora solo en la Ejecutiva): Google Calendar (popup en compu) y .ics (ventanita nativa en iPhone). Horas en UTC a partir de hora argentina.
+- Sin botón «Confirmar asistencia» en la portada de ninguna plantilla: llevaba al final y la gente se salteaba la invitación.
 - Sobre animado como portada (texto de la carta, color y sello/monograma editables), música de YouTube, cuenta regresiva, carruseles y galería de fotos, datos del salón (horario, mapa, vestimenta, alias de regalos, notas).
 - RSVP: flujo genérico (la familia escribe los nombres) o con nombres precargados (Asiste / No asiste por persona). Todo vía RPC `security definer` (`obtener_invitacion`, `confirmar_asistencia`, `responder_invitados`): nadie puede listar las familias de un evento.
 - Fecha límite de confirmación **orientativa o de cierre** (`rsvp_deadline_strict`; si es de cierre, un trigger rechaza respuestas vencidas).
@@ -28,7 +31,7 @@ _Última actualización: 2026-09-30._
 
 ### Panel admin (`/admin`, barra lateral en `AdminNav.vue`)
 - **Inicio**: resumen de respuestas, checklist de la invitación, actividad reciente; **Movimientos** (`/admin/actividad`) con el historial `rsvp_log`.
-- **Creá tu invitación** (`AdminSalon.vue`): editor por pasos con vista previa en vivo (tipo de evento: cumpleaños / casamiento / empresarial; plantilla, colores, textos, sobre, fotos por sección, datos del salón, fecha límite).
+- **Creá tu invitación** (`AdminSalon.vue`): editor por pasos (el paso Sobre se oculta con la Ejecutiva; logos se recortan solos al subir, `lib/trimImage.js`) con vista previa en vivo (tipo de evento: cumpleaños / casamiento / empresarial; plantilla, colores, textos, sobre, fotos por sección, datos del salón, fecha límite).
 - **Invitados** (una sola pantalla): crear invitaciones (cantidad o con nombres), persona sin link, copiar link, editar mientras no respondieron, eliminar, corregir respuestas, filtros y buscador, cupo del evento (`guest_limit`) que se libera con las cancelaciones, «entró hoy a las…» (`invitation_views`).
 - **Invitaciones sorpresa** (solo superadmin, ícono del ojo en Invitados): la cuenta del evento no las ve en ningún lado (RLS: invitados, actividad, canciones, lista de la entrada). En Mesas figuran como «N lugares reservados», sin nombres (RPC `lugares_reservados`). Caso: Familia Salto Ruiz, sorpresa para Anto. La lista de la entrada con ellos la tiene que exportar el superadmin.
 - **Mesas** (una sola pantalla): crear una o varias mesas de una, editar/eliminar, columna «Sin mesa» con los confirmados; sentar tocando personas + «Sentar acá», o **arrastrando** (una persona, la selección o la familia entera). Tope de capacidad al sentar y al achicar una mesa.
@@ -69,6 +72,16 @@ Esos robots no ejecutan JS, así que `.htaccess` manda **solo a los robots** (po
 - Lo público va siempre por RPC `security definer` que devuelve solo lo necesario, nunca con policies abiertas sobre las tablas.
 
 ## Próximos pasos
+
+Plan de la invitación empresarial (acordado el 2026-10-02; la Parte 1, plantilla Ejecutiva, está hecha):
+- [ ] Parte 2 · Secciones opcionales en todas las plantillas (ocultar canciones, regalos, cuenta regresiva, música).
+- [ ] Parte 3 · Itinerario y «Agregar al calendario» en todas las plantillas (también los 15).
+- [ ] Parte 4 · Secciones empresariales: oradores, cómo llegar (estacionamiento/acceso), vestimenta con opciones, contacto del organizador, programa en PDF, cupo visible, redes y hashtag.
+- [ ] Parte 5 · Confirmación completa (empresa, cargo, mail, teléfono, restricciones alimentarias, acompañante) + panel con «Invitado / Empresa» y lista de la entrada con empresa y cargo.
+- [ ] Parte 6 · Bilingüe ES/EN (botón para el invitado).
+- [ ] Parte 7 · Vista previa de WhatsApp con el logo de la empresa.
+
+Otros:
 
 - [ ] Prueba real antes del 31/10: imprimir el cartel y escanearlo con varios celulares, mandar links reales y revisar la vista previa, probar la lista de la entrada impresa.
 - [ ] Revisar de punta a punta en celular (la mayoría abre los links desde ahí).
