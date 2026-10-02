@@ -54,6 +54,7 @@ const {
   envelopePalette,
   envelopeMonogram,
   shows,
+  useEnvelope,
   showGifts,
   showSongs,
   entered,
@@ -162,7 +163,7 @@ const {
 
     <!-- ============ PORTADA ============ -->
     <EnvelopeCover
-      v-if="!preview && !envelopeGone"
+      v-if="useEnvelope && !preview && !envelopeGone"
       :monogram-short="envelopeMonogram.short"
       :monogram-full="envelopeMonogram.full"
       :text="invite.envelope_text || ''"

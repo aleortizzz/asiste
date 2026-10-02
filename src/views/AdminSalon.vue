@@ -30,12 +30,12 @@ const ALL_STEPS = [
   { id: 'confirmacion', label: 'Confirmaciones', title: 'Confirmaciones', desc: 'Hasta cuándo pueden confirmar y cuántos invitados entran.', anchor: 'rsvp' },
   { id: 'fotos', label: 'Fotos', title: 'Fotos', desc: 'Se guardan solas apenas las subís. Podés ocultar las secciones que no quieras usar.', anchor: 'hero' },
 ]
-// La lista de pasos depende de la plantilla: la Ejecutiva no tiene sobre y
-// suma Programa y Contacto (`only`). Por eso el paso actual se guarda por id
+// La lista de pasos depende de la plantilla: la Ejecutiva suma Programa y
+// Contacto (`only`). Por eso el paso actual se guarda por id
 // y no por posición (si no, al cambiar de plantilla quedaría en otro paso).
 const STEPS = computed(() => {
   const tpl = form.value.template
-  return ALL_STEPS.filter((s) => (!s.only || s.only.includes(tpl)) && !(tpl === 'ejecutiva' && s.id === 'sobre'))
+  return ALL_STEPS.filter((s) => !s.only || s.only.includes(tpl))
 })
 // ?paso=<id> abre directo en ese paso (lo usa el checklist del Inicio).
 const route = useRoute()
@@ -156,6 +156,13 @@ async function toggleWhite(slot) {
   form.value[field] = !form.value[field]
   await persistPhotos()
 }
+
+// Sobre opcional (ver useEnvelope en useInvitationLogic): la Ejecutiva no lo
+// trae salvo que lo prendan ('con-sobre'); las demás sí, salvo que lo apaguen.
+const envelopeOn = computed(() =>
+  form.value.template === 'ejecutiva' ? isHidden('con-sobre') : !isHidden('sobre'),
+)
+const toggleEnvelope = () => toggleSection(form.value.template === 'ejecutiva' ? 'con-sobre' : 'sobre')
 
 function isHidden(slot) {
   return form.value.hidden_sections.includes(slot)
@@ -336,21 +343,29 @@ const INVITATION_TEMPLATES = [
 ]
 
 // Paletas de la Ejecutiva: color principal (profundo), detalles y papel.
+// Ocho combinaciones bien distintas entre sí: cambia el tono principal, el
+// color de detalles y el tinte del papel (así se diferencian también en modo
+// claro). `oldPapers`: papeles de versiones anteriores, para seguir
+// reconociendo como paleta los eventos que se guardaron con ellos.
 const PALETTES = [
-  { id: 'marino', label: 'Marino y champagne', primary: '#0f1b2d', accent: '#c8a96a', paper: '#f7f4ee' },
-  { id: 'negro', label: 'Negro y dorado', primary: '#0b0b0c', accent: '#c9a54a', paper: '#f6f4ef' },
-  { id: 'grafito', label: 'Grafito', primary: '#26282c', accent: '#b9bcc2', paper: '#f4f4f2' },
-  { id: 'ingles', label: 'Verde inglés', primary: '#10291f', accent: '#c6b07a', paper: '#f5f3ec' },
+  { id: 'marino', label: 'Marino y champagne', primary: '#0f1b2d', accent: '#c8a96a', paper: '#f0f3f8', oldPapers: ['#f7f4ee', '#f3f5f9'] },
+  { id: 'negro', label: 'Negro y dorado', primary: '#0b0b0c', accent: '#c9a54a', paper: '#faf6ec', oldPapers: ['#f6f4ef', '#f8f6f1'] },
+  { id: 'bordo', label: 'Bordó y oro rosa', primary: '#5b1a2a', accent: '#d1a092', paper: '#fbf2f0' },
+  { id: 'ingles', label: 'Verde inglés y oro', primary: '#123524', accent: '#c4a259', paper: '#edf3ed', oldPapers: ['#f5f3ec', '#f2f4ee'] },
+  { id: 'petroleo', label: 'Petróleo y cobre', primary: '#0d3b44', accent: '#c47f57', paper: '#ebf4f4' },
+  { id: 'ciruela', label: 'Ciruela y plata', primary: '#3b2140', accent: '#b9adc6', paper: '#f5f0f7' },
+  { id: 'terracota', label: 'Terracota y arena', primary: '#7a3a22', accent: '#d8b48c', paper: '#faf0e7' },
+  { id: 'grafito', label: 'Grafito y plata', primary: '#2a2c31', accent: '#aeb3bb', paper: '#eeeeed', oldPapers: ['#f4f4f2', '#f0f0ee'] },
 ]
-const activePalette = computed(
-  () =>
-    PALETTES.find(
-      (p) =>
-        p.primary === form.value.primary_color?.toLowerCase() &&
-        p.accent === (form.value.accent_color || '').toLowerCase() &&
-        p.paper === form.value.bg_color?.toLowerCase(),
-    )?.id,
-)
+const activePalette = computed(() => {
+  const paper = form.value.bg_color?.toLowerCase()
+  return PALETTES.find(
+    (p) =>
+      p.primary === form.value.primary_color?.toLowerCase() &&
+      p.accent === (form.value.accent_color || '').toLowerCase() &&
+      (p.paper === paper || p.oldPapers?.includes(paper)),
+  )?.id
+})
 function applyPalette(p) {
   form.value.primary_color = p.primary
   form.value.accent_color = p.accent
@@ -364,8 +379,8 @@ function selectTemplate(value) {
   form.value.template = value
   if (value === 'ejecutiva' && !activePalette.value) applyPalette(PALETTES[0])
 }
-const ACCENT_PRESETS = ['#c8a96a', '#c9a54a', '#d4af37', '#c6b07a', '#b9bcc2', '#a8a29e', '#ffffff', '#9f1239']
-const PAPER_PRESETS = ['#ffffff', '#f7f4ee', '#f6f4ef', '#f4f4f2', '#f5f3ec', '#efe9df', '#e9eef4']
+const ACCENT_PRESETS = [...new Set([...PALETTES.map((p) => p.accent), '#d4af37', '#ffffff'])]
+const PAPER_PRESETS = [...new Set(['#ffffff', ...PALETTES.map((p) => p.paper)])]
 const showCustomColors = ref(false)
 
 const DATE_STYLES = [
@@ -440,6 +455,8 @@ const EMPTY = {
   contact_phone: '',
   social_links: { linkedin: '', instagram: '', web: '' },
   rsvp_fields: [],
+  bilingual: false,
+  texts_en: { kicker: '', title: '', subtitle: '', intro: '', closing: '' },
 }
 
 // Datos extra al confirmar (20261002_confirmacion_completa.sql).
@@ -592,6 +609,8 @@ const logosWhiteAvailable = computed(() => !!event.value && 'logo_white' in even
 const BUSINESS_COLUMNS = ['agenda', 'access_info', 'contact_name', 'contact_email', 'contact_phone', 'social_links']
 const businessAvailable = computed(() => !event.value || 'agenda' in event.value)
 const rsvpFieldsAvailable = computed(() => !event.value || 'rsvp_fields' in event.value)
+// Invitación bilingüe (20261002_bilingue.sql).
+const bilingualAvailable = computed(() => !event.value || 'bilingual' in event.value)
 
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
@@ -686,6 +705,8 @@ onMounted(async () => {
       contact_phone: event.value.contact_phone ?? '',
       social_links: { linkedin: '', instagram: '', web: '', ...(event.value.social_links ?? {}) },
       rsvp_fields: event.value.rsvp_fields ?? [],
+      bilingual: event.value.bilingual ?? false,
+      texts_en: { kicker: '', title: '', subtitle: '', intro: '', closing: '', ...(event.value.texts_en ?? {}) },
     }
     hasGuestLimit.value = event.value.guest_limit != null
     guestLimit.value = event.value.guest_limit ?? 1
@@ -727,6 +748,15 @@ async function onSubmit() {
       for (const col of BUSINESS_COLUMNS) delete fields[col]
     }
     if (!rsvpFieldsAvailable.value) delete fields.rsvp_fields
+    if (bilingualAvailable.value) {
+      // Textos en inglés: sin espacios de más y sin los vacíos.
+      fields.texts_en = Object.fromEntries(
+        Object.entries(form.value.texts_en).map(([k, v]) => [k, (v || '').trim()]).filter(([, v]) => v),
+      )
+    } else {
+      delete fields.bilingual
+      delete fields.texts_en
+    }
     // Las fotos (logo y sponsors incluidos) y sus interruptores se guardan solos.
     delete fields.logo
     delete fields.sponsors
@@ -1115,6 +1145,9 @@ onUnmounted(() => {
             <template v-else-if="step.id === 'portada'">
               <div>
                 <label class="admin-label" for="f-kicker">Línea de arriba</label>
+                <p v-if="form.template === 'ejecutiva'" class="admin-help">
+                  Una o dos palabras, por ejemplo «Invitación». El saludo con el nombre de cada invitado ya va debajo.
+                </p>
                 <input
                   id="f-kicker"
                   v-model="form.hero_kicker"
@@ -1198,7 +1231,11 @@ onUnmounted(() => {
                 <label class="admin-label" for="f-music">Música</label>
                 <p class="admin-help">
                   Pegá el link de una canción de YouTube.
-                  {{ form.template === 'ejecutiva' ? 'Aparece un botón para escucharla.' : 'Suena cuando abren el sobre.' }}
+                  {{
+                    envelopeOn
+                      ? 'Suena cuando abren el sobre.'
+                      : 'Sin sobre no arranca sola: tus invitados la inician con el botón flotante.'
+                  }}
                   Dejalo vacío si no querés música.
                 </p>
                 <input id="f-music" v-model="form.music_url" type="url" data-preview="hero" placeholder="https://www.youtube.com/watch?v=…" class="admin-input" />
@@ -1215,6 +1252,17 @@ onUnmounted(() => {
 
             <!-- ========== 3. SOBRE ========== -->
             <template v-else-if="step.id === 'sobre'">
+              <SectionSwitch
+                label="Usar sobre"
+                help="Antes de ver la invitación, tus invitados abren un sobre animado."
+                :on="envelopeOn"
+                @toggle="toggleEnvelope"
+              />
+              <p v-if="!envelopeOn" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                Sin sobre, la música no se puede reproducir sola: los navegadores solo dejan que suene después de que la persona toca
+                algo, y ese toque era abrir el sobre. Tus invitados la van a poder iniciar con el botón flotante de música.
+              </p>
+              <template v-if="envelopeOn">
               <div>
                 <div class="flex justify-center overflow-hidden rounded-[1.5rem]" :style="{ backgroundColor: form.bg_color }">
                   <EnvelopeCover
@@ -1277,6 +1325,7 @@ onUnmounted(() => {
                   class="mt-4"
                 />
               </div>
+              </template>
             </template>
 
             <!-- ========== 4. SALUDO Y CIERRE ========== -->
@@ -1292,6 +1341,65 @@ onUnmounted(() => {
                 <p class="admin-help">Lo último que leen, al final de la invitación. Si la dejás vacía, se usa una de ejemplo.</p>
                 <input id="f-closing" v-model="form.closing_text" data-preview="cierre" placeholder="Ej. ¡Los esperamos!" class="admin-input" />
                 <SectionSwitch class="mt-3" label="Mostrar la frase de cierre" :on="!isHidden('cierre')" @toggle="toggleSection('cierre')" />
+              </div>
+              <!-- Bilingüe (Ejecutiva): botón ES | EN para el invitado y los textos en inglés. -->
+              <div v-if="form.template === 'ejecutiva'" class="rounded-[1.5rem] bg-chalk/60 p-4 sm:p-5">
+                <p v-if="!bilingualAvailable" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                  Falta correr la migración 20261002_bilingue.sql en Supabase.
+                </p>
+                <template v-else>
+                  <SectionSwitch
+                    label="Invitación bilingüe (español / inglés)"
+                    help="Tus invitados ven un botón ES | EN. Si su teléfono está en inglés, arranca en inglés."
+                    :on="form.bilingual"
+                    @toggle="form.bilingual = !form.bilingual"
+                  />
+                  <div v-if="form.bilingual" class="mt-5 space-y-4">
+                    <p class="text-sm text-obsidian/60">
+                      Los textos fijos (botones, títulos de las secciones, la fecha) se traducen solos. Estos los escribís vos; los que
+                      quedan vacíos usan el ejemplo que ves en gris. El programa, las notas y el acceso se muestran como los escribiste.
+                    </p>
+                    <div>
+                      <label class="admin-label" for="en-kicker">Línea de arriba, en inglés</label>
+                      <input id="en-kicker" v-model="form.texts_en.kicker" data-preview="hero" placeholder="Invitation" class="admin-input" />
+                    </div>
+                    <div>
+                      <label class="admin-label" for="en-title">Texto principal, en inglés</label>
+                      <input
+                        id="en-title"
+                        v-model="form.texts_en.title"
+                        data-preview="hero"
+                        :placeholder="form.hero_title || 'Ej. Annual Meeting'"
+                        class="admin-input"
+                      />
+                    </div>
+                    <div>
+                      <label class="admin-label" for="en-subtitle">Línea de abajo, en inglés</label>
+                      <input
+                        id="en-subtitle"
+                        v-model="form.texts_en.subtitle"
+                        data-preview="hero"
+                        :placeholder="form.hero_subtitle || 'Opcional'"
+                        class="admin-input"
+                      />
+                    </div>
+                    <div>
+                      <label class="admin-label" for="en-intro">Saludo, en inglés</label>
+                      <textarea
+                        id="en-intro"
+                        v-model="form.texts_en.intro"
+                        rows="3"
+                        data-preview="saludo"
+                        placeholder="We would be honoured to have you with us at an event devoted to what lies ahead."
+                        class="admin-input"
+                      ></textarea>
+                    </div>
+                    <div>
+                      <label class="admin-label" for="en-closing">Frase de cierre, en inglés</label>
+                      <input id="en-closing" v-model="form.texts_en.closing" data-preview="cierre" placeholder="We look forward to seeing you." class="admin-input" />
+                    </div>
+                  </div>
+                </template>
               </div>
               <SectionSwitch
                 v-if="form.template === 'ejecutiva'"

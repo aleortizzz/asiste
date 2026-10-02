@@ -13,16 +13,44 @@ import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 // El nombre se pide siempre; las restricciones alimentarias son opcionales
 // para el invitado, el resto obligatorio.
 export const RSVP_FIELDS = {
-  company: { label: 'Empresa', required: true, autocomplete: 'organization' },
-  job_title: { label: 'Cargo', required: true, autocomplete: 'organization-title' },
-  email: { label: 'Mail', required: true, type: 'email', autocomplete: 'email' },
-  phone: { label: 'Teléfono', required: true, type: 'tel', autocomplete: 'tel' },
-  dietary: { label: 'Restricciones alimentarias', required: false, placeholder: 'Restricciones alimentarias (opcional)' },
+  company: { label: 'Empresa', labelEn: 'Company', required: true, autocomplete: 'organization' },
+  job_title: { label: 'Cargo', labelEn: 'Job title', required: true, autocomplete: 'organization-title' },
+  email: { label: 'Mail', labelEn: 'Email', required: true, type: 'email', autocomplete: 'email' },
+  phone: { label: 'Teléfono', labelEn: 'Phone', required: true, type: 'tel', autocomplete: 'tel' },
+  dietary: {
+    label: 'Restricciones alimentarias',
+    labelEn: 'Dietary restrictions',
+    required: false,
+    placeholder: 'Restricciones alimentarias (opcional)',
+    placeholderEn: 'Dietary restrictions (optional)',
+  },
+}
+
+// Avisos de la invitación en los dos idiomas (invitaciones bilingües, ver
+// `lang`). Las plantillas que no son bilingües siempre usan 'es'.
+const MSG = {
+  es: {
+    names: 'Completá el nombre en todos los campos, o quitá los que no vayas a usar.',
+    missing: (field, who) => `Completá ${field.toLowerCase()}${who ? ` de ${who}` : ''}.`,
+    email: (who) => `Revisá el mail${who ? ` de ${who}` : ''}: tiene que tener @ y un punto.`,
+    songName: 'Nos falta tu nombre para saber quién la pidió.',
+    songSearch: 'No pudimos buscar canciones ahora, probá de nuevo.',
+  },
+  en: {
+    names: 'Please fill in every name, or remove the ones you won’t use.',
+    missing: (field, who) => `Please fill in ${who ? `${who}’s ` : 'your '}${field.toLowerCase()}.`,
+    email: (who) => `Please check ${who ? `${who}’s` : 'the'} email address.`,
+    songName: 'Please tell us your name so we know who suggested it.',
+    songSearch: 'We couldn’t search for songs right now. Please try again.',
+  },
 }
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function useInvitationLogic(props, emit) {
   const now = ref(new Date())
+  // Idioma que eligió el invitado (solo en invitaciones bilingües).
+  const lang = ref('es')
+  const msg = computed(() => MSG[lang.value] ?? MSG.es)
   let clockTimer = null
 
   // Modo "genérico" (sin nombres precargados): la familia tipea los nombres.
@@ -180,7 +208,17 @@ export function useInvitationLogic(props, emit) {
   // --- Portada (sobre) + música ---------------------------------------------
   // `entered` = ya se abrió el sobre. En preview arranca abierto para no tapar
   // la edición.
-  const entered = ref(props.preview)
+  // El sobre es opcional. Clásica, Partiful y Craft lo traen salvo que lo
+  // apaguen ('sobre' en hidden_sections); la Ejecutiva no lo trae salvo que
+  // lo prendan ('con-sobre'). Así ninguna invitación existente cambia.
+  const useEnvelope = computed(() =>
+    props.invite?.template === 'ejecutiva'
+      ? hiddenSections.value.includes('con-sobre')
+      : !hiddenSections.value.includes('sobre'),
+  )
+  // Sin sobre, la invitación ya está «abierta» (la música no arranca sola:
+  // sin el toque del sobre, el navegador no deja reproducir; queda el botón).
+  const entered = ref(props.preview || !useEnvelope.value)
   const musicPlaying = ref(false)
   const ytFrame = ref(null)
 
@@ -302,7 +340,7 @@ export function useInvitationLogic(props, emit) {
     try {
       songResults.value = await searchYoutubeVideos(q)
     } catch {
-      songSearchError.value = 'No pudimos buscar canciones ahora, probá de nuevo.'
+      songSearchError.value = msg.value.songSearch
     } finally {
       songSearching.value = false
     }
@@ -323,7 +361,7 @@ export function useInvitationLogic(props, emit) {
     localSongError.value = ''
     if (props.preview) return
     if (!songRequesterName.value.trim()) {
-      localSongError.value = 'Nos falta tu nombre para saber quién la pidió.'
+      localSongError.value = msg.value.songName
       return
     }
     emit('submit-song', {
@@ -599,7 +637,11 @@ export function useInvitationLogic(props, emit) {
   const rsvpFields = computed(() =>
     (Array.isArray(props.invite?.rsvp_fields) ? props.invite.rsvp_fields : [])
       .filter((key) => RSVP_FIELDS[key])
-      .map((key) => ({ key, ...RSVP_FIELDS[key] })),
+      .map((key) => {
+        const f = RSVP_FIELDS[key]
+        const en = lang.value === 'en'
+        return { key, ...f, label: en ? f.labelEn : f.label, placeholder: en ? f.placeholderEn : f.placeholder }
+      }),
   )
 
   // Solo los datos que pide el evento, sin espacios de más.
@@ -609,9 +651,8 @@ export function useInvitationLogic(props, emit) {
   function detailsError(row, who) {
     for (const f of rsvpFields.value) {
       const v = (row?.[f.key] ?? '').trim()
-      const de = who ? ` de ${who}` : ''
-      if (f.required && !v) return `Completá ${f.label.toLowerCase()}${de}.`
-      if (f.key === 'email' && v && !EMAIL_RE.test(v)) return `Revisá el mail${de}: tiene que tener @ y un punto.`
+      if (f.required && !v) return msg.value.missing(f.label, who)
+      if (f.key === 'email' && v && !EMAIL_RE.test(v)) return msg.value.email(who)
     }
     return ''
   }
@@ -662,7 +703,7 @@ export function useInvitationLogic(props, emit) {
     if (props.preview) return
     const hasBlank = names.value.some((n) => n.trim() === '')
     if (hasBlank) {
-      localError.value = 'Completá el nombre en todos los campos, o quitá los que no vayas a usar.'
+      localError.value = msg.value.names
       return
     }
     // Sin datos extra pedidos: igual que siempre (solo los nombres).
@@ -709,6 +750,7 @@ export function useInvitationLogic(props, emit) {
 
   return {
     now,
+    lang,
     names,
     details,
     rsvpFields,
@@ -735,6 +777,7 @@ export function useInvitationLogic(props, emit) {
     envelopeMonogram,
     hiddenSections,
     shows,
+    useEnvelope,
     showGifts,
     showSongs,
     showIntro,

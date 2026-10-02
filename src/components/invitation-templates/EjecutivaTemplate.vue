@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { MapPin, ArrowUpRight, Music, Pause, Copy, Check, Search, CalendarPlus, X, Mail, MessageCircle } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
 import { isDark } from '../../lib/color'
 import { googleCalendarUrl, openGoogleCalendar, downloadIcs, isIOS } from '../../lib/calendar'
 import EjecutivaCarousel from './EjecutivaCarousel.vue'
+import EnvelopeCover from '../EnvelopeCover.vue'
 
 // Plantilla «Ejecutiva» — para eventos empresariales: tarjeta impresa con
 // marco fino doble, serif fina (Cormorant Garamond) y versalitas espaciadas
@@ -42,6 +43,14 @@ const {
   primaryColor,
   bgColor,
   shows,
+  useEnvelope,
+  envelopePalette,
+  envelopeMonogram,
+  opening,
+  closing,
+  envelopeGone,
+  openEnvelope,
+  onEnvelopeFadeEnd,
   showGifts,
   showSongs,
   showIntro,
@@ -80,11 +89,11 @@ const {
   confirmarGenerico,
   declinarGenerico,
   enviarRespuestasNominales,
+  lang,
 } = useInvitationLogic(props, emit)
 
-// Sin sobre: la invitación está «abierta» desde el principio (useInvitationLogic
-// bloquea el scroll mientras `entered` es false).
-entered.value = true
+// Sobre opcional (por defecto, sin sobre): si no hay, la invitación ya está
+// «abierta» desde el principio (ver useEnvelope en useInvitationLogic).
 
 // --- Colores ------------------------------------------------------------------
 const dark = computed(() => props.invite.theme_mode === 'oscuro')
@@ -98,6 +107,143 @@ const ink = computed(() => {
 const btnBg = computed(() => (dark.value ? accent.value : primaryColor.value))
 const btnInk = computed(() => (isDark(btnBg.value) ? '#f7f4ee' : '#141414'))
 
+// --- Idioma (invitación bilingüe) ----------------------------------------------
+// Si el evento es bilingüe, el invitado elige ES | EN. Arranca en inglés si su
+// teléfono está en inglés, y se acuerda de lo que eligió.
+const bilingual = computed(() => !!props.invite.bilingual)
+const LANG_KEY = 'asiste-idioma'
+function initialLang() {
+  try {
+    const saved = localStorage.getItem(LANG_KEY)
+    if (saved === 'es' || saved === 'en') return saved
+  } catch {
+    /* modo privado */
+  }
+  return typeof navigator !== 'undefined' && /^en\b/i.test(navigator.language || '') ? 'en' : 'es'
+}
+watch(bilingual, (on) => (lang.value = on ? initialLang() : 'es'), { immediate: true })
+function setLang(l) {
+  lang.value = l
+  try {
+    localStorage.setItem(LANG_KEY, l)
+  } catch {
+    /* modo privado */
+  }
+}
+const en = computed(() => lang.value === 'en')
+const locale = computed(() => (en.value ? 'en-US' : 'es-AR'))
+
+// Textos fijos de la plantilla.
+const ES = {
+  kicker: 'Invitación',
+  welcome: 'Bienvenida',
+  event: 'El evento',
+  date: 'Fecha',
+  time: 'Horario',
+  to: 'a',
+  hs: 'hs',
+  venue: 'Lugar',
+  directions: 'Cómo llegar',
+  access: 'Acceso',
+  dress: 'Vestimenta',
+  info: 'Información',
+  agenda: 'Programa',
+  moments: 'Momentos',
+  gallery: 'Galería',
+  gifts: 'Obsequios',
+  copied: 'Copiado',
+  songs: 'Sugerencias musicales',
+  songThanks: 'Gracias. La sumamos a la lista.',
+  songAnother: 'Sugerir otra',
+  songSearch: 'Buscar una canción o artista',
+  searching: 'Buscando…',
+  removeSong: 'Quitar canción elegida',
+  sending: 'Enviando…',
+  suggestSong: 'Sugerir canción',
+  rsvp: 'Confirmación de asistencia',
+  previewNote: 'Vista previa. La confirmación funciona en la invitación real.',
+  closed: 'Las confirmaciones ya cerraron.',
+  deadlineWas: (d) => `La fecha límite era el ${d}.`,
+  attending: 'Asiste',
+  notAttending: 'No asiste',
+  sendReply: 'Enviar respuesta',
+  guestsFor: (n) => `Invitación para ${n} personas.`,
+  namePh: 'Nombre y apellido',
+  of: (f, who) => `${f} de ${who}`,
+  ofPerson: (f, i) => `${f} de la persona ${i}`,
+  removeGuest: 'Quitar invitado',
+  addPerson: '+ Agregar otra persona',
+  confirm: 'Confirmar asistencia',
+  deadline: (d) => `Por favor, confirmar antes del ${d}`,
+  contact: 'Consultas',
+  writeEmail: 'Escribir un mail',
+  support: 'Con el apoyo de',
+  finePrint: 'Invitación personal e intransferible',
+  addCalendar: 'Agregar al calendario',
+  calIcs: (ios) => (ios ? 'Calendario del iPhone' : 'iPhone, Outlook y otros'),
+  play: 'Reproducir música',
+  pause: 'Pausar música',
+  units: ['Días', 'Horas', 'Min', 'Seg'],
+  today: 'Es hoy',
+  tomorrow: 'Es mañana',
+  daysLeft: (n) => `Faltan ${n} días`,
+}
+const EN = {
+  kicker: 'Invitation',
+  welcome: 'Welcome',
+  event: 'The event',
+  date: 'Date',
+  time: 'Time',
+  to: 'to',
+  hs: '',
+  venue: 'Venue',
+  directions: 'Directions',
+  access: 'Access',
+  dress: 'Dress code',
+  info: 'Information',
+  agenda: 'Agenda',
+  moments: 'Moments',
+  gallery: 'Gallery',
+  gifts: 'Gifts',
+  copied: 'Copied',
+  songs: 'Music suggestions',
+  songThanks: 'Thank you. We added it to the list.',
+  songAnother: 'Suggest another',
+  songSearch: 'Search for a song or artist',
+  searching: 'Searching…',
+  removeSong: 'Remove selected song',
+  sending: 'Sending…',
+  suggestSong: 'Suggest song',
+  rsvp: 'RSVP',
+  previewNote: 'Preview. RSVP works on the real invitation.',
+  closed: 'RSVP is now closed.',
+  deadlineWas: (d) => `The deadline was ${d}.`,
+  attending: 'Attending',
+  notAttending: 'Not attending',
+  sendReply: 'Send reply',
+  guestsFor: (n) => `Invitation for ${n} guests.`,
+  namePh: 'Full name',
+  of: (f, who) => `${who}: ${f}`,
+  ofPerson: (f, i) => `Guest ${i}: ${f}`,
+  removeGuest: 'Remove guest',
+  addPerson: '+ Add another guest',
+  confirm: 'Confirm attendance',
+  deadline: (d) => `Kindly reply by ${d}`,
+  contact: 'Enquiries',
+  writeEmail: 'Send an email',
+  support: 'With the support of',
+  finePrint: 'Personal and non-transferable invitation',
+  addCalendar: 'Add to calendar',
+  calIcs: (ios) => (ios ? 'iPhone Calendar' : 'iPhone, Outlook & others'),
+  play: 'Play music',
+  pause: 'Pause music',
+  units: ['Days', 'Hours', 'Min', 'Sec'],
+  today: 'It’s today',
+  tomorrow: 'It’s tomorrow',
+  daysLeft: (n) => `${n} days to go`,
+}
+const L = computed(() => (en.value ? EN : ES))
+
 // --- Textos según el tono y la cantidad de invitados ---------------------------
 const usted = computed(() => props.invite.tono === 'usted')
 const plural = computed(() => {
@@ -109,6 +255,18 @@ const plural = computed(() => {
 const t = computed(() => {
   const u = usted.value
   const p = plural.value
+  // En inglés no hay usted/vos: una sola versión, en plural si son varios.
+  if (en.value) {
+    return {
+      invite: 'we are pleased to invite you to',
+      rsvpLead: 'Please confirm your attendance.',
+      thanks: 'Thank you. We have received your reply.',
+      decline: p ? 'We won’t be able to attend' : 'I won’t be able to attend',
+      closing: p ? 'We look forward to seeing you all.' : 'We look forward to seeing you.',
+      gift: 'Your presence is the greatest gift. Should you wish to send a present, this is our account alias:',
+      songName: 'Your name',
+    }
+  }
   return {
     invite: u ? 'tenemos el agrado de contar con su presencia en' : p ? 'queremos que nos acompañen en' : 'queremos que nos acompañes en',
     rsvpLead: u
@@ -125,6 +283,42 @@ const t = computed(() => {
     songName: u || p ? 'Su nombre' : 'Tu nombre',
   }
 })
+
+// --- Textos que escribe el organizador: en inglés, los de texts_en -----------
+// Vacíos: título y subtítulo usan los de castellano; línea de arriba, saludo
+// y cierre, uno de ejemplo en inglés.
+const textsEn = computed(() => props.invite.texts_en || {})
+const enText = (key) => (textsEn.value[key] || '').trim()
+// «Te invitamos a» era el ejemplo viejo: con el saludo con nombre abajo
+// («…tenemos el agrado de contar con su presencia en») queda redundante.
+const OLD_KICKERS = ['te invitamos a']
+const kickerEs = computed(() => {
+  const k = (props.invite.hero_kicker || '').trim()
+  return !k || OLD_KICKERS.includes(k.toLowerCase()) ? ES.kicker : k
+})
+const kickerText = computed(() => (en.value ? enText('kicker') || EN.kicker : kickerEs.value))
+const titleText = computed(() => (en.value && enText('title')) || heroTitle.value)
+const subtitleText = computed(() => (en.value && enText('subtitle')) || props.invite.hero_subtitle || '')
+const introText = computed(() =>
+  en.value
+    ? enText('intro') || 'We would be honoured to have you with us at an event devoted to what lies ahead.'
+    : props.invite.intro_text || defaultIntro.value,
+)
+const closingText = computed(() => (en.value ? enText('closing') || t.value.closing : props.invite.closing_text || t.value.closing))
+
+// «08:30 a 13:30 hs» / «08:30 to 13:30».
+const timeRange = computed(() => {
+  const start = formatTime(props.invite.reception_time)
+  const end = props.invite.end_time ? ` ${L.value.to} ${formatTime(props.invite.end_time)}` : ''
+  return `${start}${end} ${L.value.hs}`.trim()
+})
+
+// Fecha límite: dd/mm/aaaa en castellano, «October 13» en inglés.
+function deadlineDate(iso) {
+  if (!en.value) return formatDate(iso)
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+}
 
 // --- Portada --------------------------------------------------------------------
 const logoUrl = computed(() => slotUrls('logo')[0] || '')
@@ -154,10 +348,12 @@ const eventDay = computed(() => {
   const [y, m, d] = props.invite.event_date.split('-').map(Number)
   return new Date(y, m - 1, d)
 })
-const fmt = (opts) => eventDay.value?.toLocaleDateString('es-AR', opts) ?? ''
+const fmt = (opts) => eventDay.value?.toLocaleDateString(locale.value, opts) ?? ''
 const weekday = computed(() => fmt({ weekday: 'long' }))
 const monthName = computed(() => fmt({ month: 'long' }))
-const time = computed(() => (props.invite.reception_time ? `${formatTime(props.invite.reception_time)} hs` : ''))
+const time = computed(() =>
+  props.invite.reception_time ? `${formatTime(props.invite.reception_time)} ${L.value.hs}`.trim() : '',
+)
 const dateLine = computed(() => fmt({ weekday: 'long', day: 'numeric', month: 'long' }))
 
 const daysLeftText = computed(() => {
@@ -166,19 +362,20 @@ const daysLeftText = computed(() => {
   today.setHours(0, 0, 0, 0)
   const days = Math.round((eventDay.value - today) / 86400000)
   if (days < 0) return ''
-  if (days === 0) return 'Es hoy'
-  if (days === 1) return 'Es mañana'
-  return `Faltan ${days} días`
+  if (days === 0) return L.value.today
+  if (days === 1) return L.value.tomorrow
+  return L.value.daysLeft(days)
 })
 
 const countdownParts = computed(() => {
   const c = countdown.value
   if (!c) return []
+  const [d, h, m, s] = L.value.units
   return [
-    { label: 'Días', value: c.days },
-    { label: 'Horas', value: c.hours },
-    { label: 'Min', value: c.minutes },
-    { label: 'Seg', value: c.seconds },
+    { label: d, value: c.days },
+    { label: h, value: c.hours },
+    { label: m, value: c.minutes },
+    { label: s, value: c.seconds },
   ]
 })
 
@@ -198,7 +395,7 @@ function onGoogle() {
 const ios = isIOS()
 const calendarOptions = computed(() => {
   const google = { key: 'google', label: 'Google Calendar', action: onGoogle }
-  const ics = { key: 'ics', label: ios ? 'Calendario del iPhone' : 'iPhone, Outlook y otros', action: onIcs }
+  const ics = { key: 'ics', label: L.value.calIcs(ios), action: onIcs }
   return ios ? [ics, google] : [google, ics]
 })
 
@@ -245,7 +442,26 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 </script>
 
 <template>
-  <div class="ej min-h-screen overflow-x-clip" :class="{ 'ej-dark': dark }">
+  <!-- ej-paused: con sobre, la portada espera a que lo abran para animarse. -->
+  <div class="ej min-h-screen overflow-x-clip" :class="{ 'ej-dark': dark, 'ej-preview': preview, 'ej-paused': !entered }" :lang="lang">
+    <EnvelopeCover
+      v-if="useEnvelope && !preview && !envelopeGone"
+      :monogram-short="envelopeMonogram.short"
+      :monogram-full="envelopeMonogram.full"
+      :text="invite.envelope_text || ''"
+      :music-id="musicId"
+      :opening="opening"
+      :closing="closing"
+      v-bind="{ ...envelopePalette, bg: pageBg }"
+      monogram-font="'Cormorant Garamond', serif"
+      @open="openEnvelope"
+      @fade-end="onEnvelopeFadeEnd"
+    />
+    <!-- Idioma: solo en invitaciones bilingües -->
+    <div v-if="bilingual" class="ej-lang fixed top-4 right-4 z-40 flex p-0.5" role="group" aria-label="Idioma / Language">
+      <button type="button" :aria-pressed="!en" :class="{ 'ej-lang-on': !en }" @click="setLang('es')">ES</button>
+      <button type="button" :aria-pressed="en" :class="{ 'ej-lang-on': en }" @click="setLang('en')">EN</button>
+    </div>
     <iframe
       v-if="ytSrc && !preview"
       ref="ytFrame"
@@ -256,7 +472,8 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
     ></iframe>
 
     <!-- ============ PORTADA: la tarjeta ============ -->
-    <header data-anchor="hero" class="flex min-h-svh items-center justify-center px-4 pt-7 pb-10 sm:px-6">
+    <!-- Con el botón de idioma arriba, la tarjeta baja un poco para no quedar debajo. -->
+    <header data-anchor="hero" class="flex min-h-svh items-center justify-center px-4 pb-10 sm:px-6" :class="bilingual ? 'pt-16' : 'pt-7'">
       <div class="ej-card relative w-full max-w-[620px] px-6 pt-16 pb-12 text-center sm:px-10">
         <img
           v-if="logoUrl"
@@ -267,15 +484,15 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
           style="--d: 0.5s"
         />
 
-        <p class="ej-label ej-in" :class="logoUrl ? 'mt-9' : ''" style="--d: 0.9s">{{ invite.hero_kicker || 'Invitación' }}</p>
+        <p class="ej-label ej-in" :class="logoUrl ? 'mt-9' : ''" style="--d: 0.9s">{{ kickerText }}</p>
         <div class="ej-rule ej-draw mx-auto mt-5 mb-6" style="--d: 1.1s"></div>
 
         <p v-if="invite.family_name" class="ej-guest ej-in" style="--d: 1.5s">
           {{ invite.family_name }}, {{ t.invite }}
         </p>
-        <h1 class="ej-title ej-in mt-2.5 break-words" style="--d: 1.7s">{{ heroTitle }}</h1>
-        <p v-if="invite.hero_subtitle" class="ej-muted ej-in mt-3.5 text-[15px] leading-relaxed text-balance sm:text-[17px]" style="--d: 1.9s">
-          {{ invite.hero_subtitle }}
+        <h1 class="ej-title ej-in mt-2.5 break-words" style="--d: 1.7s">{{ titleText }}</h1>
+        <p v-if="subtitleText" class="ej-muted ej-in mt-3.5 text-[15px] leading-relaxed text-balance sm:text-[17px]" style="--d: 1.9s">
+          {{ subtitleText }}
         </p>
 
         <!-- Fecha, en el estilo que eligió el organizador -->
@@ -319,7 +536,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
         <div class="ej-in relative z-20 mt-10 flex flex-wrap justify-center gap-2.5" style="--d: 2.5s">
           <div v-if="googleUrl" class="relative">
             <button type="button" class="ej-btn ej-btn-ghost" :aria-expanded="calendarOpen" @click="calendarOpen = !calendarOpen">
-              Agregar al calendario
+              {{ L.addCalendar }}
             </button>
             <div v-if="calendarOpen" class="fixed inset-0 z-30" @click="calendarOpen = false"></div>
             <div v-if="calendarOpen" class="ej-menu absolute left-1/2 z-40 mt-2 w-60 -translate-x-1/2 p-1.5 text-left">
@@ -330,7 +547,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
           </div>
         </div>
 
-        <p v-if="showFinePrint" class="ej-fine ej-in mt-11" style="--d: 2.8s">Invitación personal e intransferible</p>
+        <p v-if="showFinePrint" class="ej-fine ej-in mt-11" style="--d: 2.8s">{{ L.finePrint }}</p>
       </div>
     </header>
 
@@ -344,48 +561,46 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
     <!-- ============ SALUDO ============ -->
     <section v-if="showIntro || saludoPhotos.length" v-reveal data-anchor="saludo" class="mx-auto max-w-[620px] px-6 py-16 text-center">
       <template v-if="showIntro">
-        <p class="ej-label">Bienvenida</p>
-        <p class="ej-lead mt-5 whitespace-pre-line">{{ invite.intro_text || defaultIntro }}</p>
+        <p class="ej-label">{{ L.welcome }}</p>
+        <p class="ej-lead mt-5 whitespace-pre-line">{{ introText }}</p>
       </template>
-      <EjecutivaCarousel v-if="saludoPhotos.length" :photos="saludoPhotos" aspect="4 / 5" label="Bienvenida" :class="showIntro ? 'mt-12' : ''" />
+      <EjecutivaCarousel v-if="saludoPhotos.length" :photos="saludoPhotos" aspect="4 / 5" :label="L.welcome" :en="en" :class="showIntro ? 'mt-12' : ''" />
     </section>
 
     <!-- ============ DETALLES ============ -->
     <section v-reveal data-anchor="fiesta" class="mx-auto max-w-[620px] px-6 py-16">
-      <p class="ej-label text-center">El evento</p>
+      <p class="ej-label text-center">{{ L.event }}</p>
       <div class="ej-rule mx-auto mt-5"></div>
 
       <dl class="mt-10 divide-y border-y">
         <div v-if="eventDay" class="ej-row">
-          <dt class="ej-label">Fecha</dt>
+          <dt class="ej-label">{{ L.date }}</dt>
           <dd class="ej-ink first-letter:uppercase">{{ fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }}</dd>
         </div>
         <div v-if="invite.reception_time" class="ej-row">
-          <dt class="ej-label">Horario</dt>
-          <dd class="ej-ink">
-            {{ formatTime(invite.reception_time) }}<template v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</template> hs
-          </dd>
+          <dt class="ej-label">{{ L.time }}</dt>
+          <dd class="ej-ink">{{ timeRange }}</dd>
         </div>
         <div v-if="invite.venue_name || invite.venue_address" class="ej-row">
-          <dt class="ej-label">Lugar</dt>
+          <dt class="ej-label">{{ L.venue }}</dt>
           <dd>
             <p v-if="invite.venue_name" class="ej-ink">{{ invite.venue_name }}</p>
             <p v-if="invite.venue_address" class="ej-muted text-sm">{{ invite.venue_address }}</p>
             <a v-if="invite.maps_url" :href="invite.maps_url" target="_blank" rel="noopener" class="ej-link mt-2">
-              <MapPin :size="14" :stroke-width="1.5" /> Cómo llegar <ArrowUpRight :size="13" :stroke-width="1.5" />
+              <MapPin :size="14" :stroke-width="1.5" /> {{ L.directions }} <ArrowUpRight :size="13" :stroke-width="1.5" />
             </a>
           </dd>
         </div>
         <div v-if="accessInfo" class="ej-row">
-          <dt class="ej-label">Acceso</dt>
+          <dt class="ej-label">{{ L.access }}</dt>
           <dd class="ej-muted text-sm leading-relaxed whitespace-pre-line">{{ accessInfo }}</dd>
         </div>
         <div v-if="invite.dress_code" class="ej-row">
-          <dt class="ej-label">Vestimenta</dt>
+          <dt class="ej-label">{{ L.dress }}</dt>
           <dd class="ej-ink">{{ invite.dress_code }}</dd>
         </div>
         <div v-if="invite.notes" class="ej-row">
-          <dt class="ej-label">Información</dt>
+          <dt class="ej-label">{{ L.info }}</dt>
           <dd class="ej-muted text-sm leading-relaxed whitespace-pre-line">{{ invite.notes }}</dd>
         </div>
       </dl>
@@ -402,7 +617,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ PROGRAMA ============ -->
     <section v-if="agendaItems.length" v-reveal data-anchor="programa" class="mx-auto max-w-[620px] px-6 py-16">
-      <p class="ej-label text-center">Programa</p>
+      <p class="ej-label text-center">{{ L.agenda }}</p>
       <div class="ej-rule mx-auto mt-5"></div>
       <ol class="ej-agenda mt-10">
         <li v-for="(item, i) in agendaItems" :key="i" class="ej-agenda-item">
@@ -417,13 +632,13 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ FOTOS (solo si el organizador subió) ============ -->
     <section v-if="momentos.length" v-reveal data-anchor="momentos" class="mx-auto max-w-[900px] px-6 py-16">
-      <p class="ej-label text-center">Momentos</p>
+      <p class="ej-label text-center">{{ L.moments }}</p>
       <div class="ej-rule mx-auto mt-5"></div>
-      <EjecutivaCarousel :photos="momentos" aspect="3 / 2" label="Momentos" class="mt-10" />
+      <EjecutivaCarousel :photos="momentos" aspect="3 / 2" :label="L.moments" :en="en" class="mt-10" />
     </section>
 
     <section v-if="galeria.length" v-reveal data-anchor="galeria" class="mx-auto max-w-[900px] px-6 py-16">
-      <p class="ej-label text-center">Galería</p>
+      <p class="ej-label text-center">{{ L.gallery }}</p>
       <div class="ej-rule mx-auto mt-5"></div>
       <!-- Columnas en vez de cuadrados: cada foto con su forma, sin recortes. -->
       <div class="mt-10 columns-2 gap-3 sm:columns-3">
@@ -441,10 +656,10 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ OBSEQUIOS ============ -->
     <section v-if="showGifts" v-reveal data-anchor="regalos" class="mx-auto max-w-[520px] px-6 py-14 text-center">
-      <p class="ej-label">Obsequios</p>
+      <p class="ej-label">{{ L.gifts }}</p>
       <p class="ej-muted mt-5 leading-relaxed">{{ t.gift }}</p>
       <button type="button" class="ej-btn ej-btn-ghost mt-5 inline-flex items-center gap-2 normal-case tracking-normal" @click="copyAlias">
-        <span class="font-mono">{{ aliasCopied ? 'Copiado' : invite.gift_alias }}</span>
+        <span class="font-mono">{{ aliasCopied ? L.copied : invite.gift_alias }}</span>
         <Check v-if="aliasCopied" :size="14" />
         <Copy v-else :size="14" />
       </button>
@@ -452,22 +667,22 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ CANCIONES (plan Plus) ============ -->
     <section v-if="showSongs" v-reveal data-anchor="canciones" class="mx-auto max-w-[620px] px-6 py-16 text-center">
-      <p class="ej-label">Sugerencias musicales</p>
+      <p class="ej-label">{{ L.songs }}</p>
       <div class="ej-rule mx-auto mt-5"></div>
 
       <div class="ej-panel mt-10 p-6 text-left sm:p-8">
         <div v-if="justAddedSong" class="text-center">
-          <p class="ej-lead">Gracias. La sumamos a la lista.</p>
-          <button type="button" class="ej-link mx-auto mt-4" @click="justAddedSong = false">Sugerir otra</button>
+          <p class="ej-lead">{{ L.songThanks }}</p>
+          <button type="button" class="ej-link mx-auto mt-4" @click="justAddedSong = false">{{ L.songAnother }}</button>
         </div>
 
         <template v-else>
           <div class="relative">
-            <input v-model="songQuery" type="text" placeholder="Buscar una canción o artista" class="ej-input pr-10" @input="onSongQueryInput" />
+            <input v-model="songQuery" type="text" :placeholder="L.songSearch" class="ej-input pr-10" @input="onSongQueryInput" />
             <Search :size="16" class="ej-muted pointer-events-none absolute top-1/2 right-4 -translate-y-1/2" />
           </div>
 
-          <p v-if="songSearching" class="ej-muted mt-3 text-center text-xs">Buscando…</p>
+          <p v-if="songSearching" class="ej-muted mt-3 text-center text-xs">{{ L.searching }}</p>
           <p v-else-if="songSearchError" class="ej-error mt-3 text-center text-xs">{{ songSearchError }}</p>
 
           <ul v-if="songResults.length && !selectedSong" class="mt-3 max-h-64 space-y-1 overflow-y-auto">
@@ -488,14 +703,14 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
               <span class="block truncate text-sm">{{ selectedSong.title }}</span>
               <span class="ej-muted block truncate text-xs">{{ selectedSong.channel }}</span>
             </span>
-            <button type="button" aria-label="Quitar canción elegida" class="shrink-0 p-1" @click="clearSelectedSong"><X :size="15" /></button>
+            <button type="button" :aria-label="L.removeSong" class="shrink-0 p-1" @click="clearSelectedSong"><X :size="15" /></button>
           </div>
 
           <form v-if="selectedSong" class="mt-4 space-y-3" @submit.prevent="submitSong">
             <input v-model="songRequesterName" :placeholder="t.songName" class="ej-input" />
             <p v-if="displaySongError" class="ej-error text-sm">{{ displaySongError }}</p>
             <button type="submit" :disabled="songSubmitting" class="ej-btn ej-btn-solid w-full">
-              {{ songSubmitting ? 'Enviando…' : 'Sugerir canción' }}
+              {{ songSubmitting ? L.sending : L.suggestSong }}
             </button>
           </form>
         </template>
@@ -504,19 +719,19 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ CONFIRMACIÓN ============ -->
     <section id="rsvp" v-reveal data-anchor="rsvp" class="mx-auto max-w-[560px] scroll-mt-6 px-6 py-16 text-center">
-      <p class="ej-label">Confirmación de asistencia</p>
+      <p class="ej-label">{{ L.rsvp }}</p>
       <div class="ej-rule mx-auto mt-5"></div>
 
       <div class="ej-panel mt-10 p-6 sm:p-9">
-        <p v-if="preview" class="ej-muted mb-5 text-xs">Vista previa. La confirmación funciona en la invitación real.</p>
+        <p v-if="preview" class="ej-muted mb-5 text-xs">{{ L.previewNote }}</p>
 
         <div v-if="submitted" class="py-2">
           <p class="ej-lead">{{ t.thanks }}</p>
         </div>
 
         <div v-else-if="rsvpClosed" class="py-2">
-          <p class="ej-lead">Las confirmaciones ya cerraron.</p>
-          <p class="ej-muted mt-2 text-sm">La fecha límite era el {{ formatDate(invite.rsvp_deadline) }}.</p>
+          <p class="ej-lead">{{ L.closed }}</p>
+          <p class="ej-muted mt-2 text-sm">{{ L.deadlineWas(deadlineDate(invite.rsvp_deadline)) }}</p>
         </div>
 
         <template v-else-if="invite.named_by_host">
@@ -527,10 +742,10 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
                 <span class="ej-ink min-w-0">{{ guest.full_name }}</span>
                 <span class="flex shrink-0 gap-1.5">
                   <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': guest.attending }" @click="guest.attending = true">
-                    Asiste
+                    {{ L.attending }}
                   </button>
                   <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': !guest.attending }" @click="guest.attending = false">
-                    No asiste
+                    {{ L.notAttending }}
                   </button>
                 </span>
               </div>
@@ -543,7 +758,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
                   :type="f.type || 'text'"
                   :autocomplete="f.autocomplete || 'off'"
                   :placeholder="f.placeholder || f.label"
-                  :aria-label="`${f.label} de ${guest.full_name}`"
+                  :aria-label="L.of(f.label, guest.full_name)"
                   class="ej-input"
                   :class="{ 'sm:col-span-2': f.key === 'dietary' }"
                 />
@@ -552,20 +767,20 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
           </ul>
           <p v-if="displayError" class="ej-error mt-4 text-sm">{{ displayError }}</p>
           <button type="button" :disabled="submitting" class="ej-btn ej-btn-solid mt-7 w-full" @click="enviarRespuestasNominales">
-            {{ submitting ? 'Enviando…' : 'Enviar respuesta' }}
+            {{ submitting ? L.sending : L.sendReply }}
           </button>
         </template>
 
         <template v-else>
           <p class="ej-muted text-sm">
             {{ t.rsvpLead }}
-            <template v-if="invite.allowed_guests > 1"> Invitación para {{ invite.allowed_guests }} personas.</template>
+            <template v-if="invite.allowed_guests > 1"> {{ L.guestsFor(invite.allowed_guests) }}</template>
           </p>
           <form class="mt-6 space-y-3 text-left" @submit.prevent="confirmarGenerico">
             <div v-for="(name, i) in names" :key="i" :class="{ 'ej-person': rsvpFields.length && names.length > 1 }">
               <div class="flex gap-2">
-                <input v-model="names[i]" placeholder="Nombre y apellido" autocomplete="name" class="ej-input flex-1" />
-                <button v-if="names.length > 1" type="button" aria-label="Quitar invitado" class="px-2" @click="removeName(i)"><X :size="15" /></button>
+                <input v-model="names[i]" :placeholder="L.namePh" autocomplete="name" class="ej-input flex-1" />
+                <button v-if="names.length > 1" type="button" :aria-label="L.removeGuest" class="px-2" @click="removeName(i)"><X :size="15" /></button>
               </div>
               <!-- Datos extra que pide el evento (empresa, cargo, mail…). -->
               <div v-if="rsvpFields.length" class="mt-2 grid gap-2 sm:grid-cols-2">
@@ -576,17 +791,17 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
                   :type="f.type || 'text'"
                   :autocomplete="i === 0 ? f.autocomplete || 'off' : 'off'"
                   :placeholder="f.placeholder || f.label"
-                  :aria-label="names.length > 1 ? `${f.label} de la persona ${i + 1}` : f.label"
+                  :aria-label="names.length > 1 ? L.ofPerson(f.label, i + 1) : f.label"
                   class="ej-input"
                   :class="{ 'sm:col-span-2': f.key === 'dietary' }"
                 />
               </div>
             </div>
-            <button v-if="names.length < invite.allowed_guests" type="button" class="ej-link" @click="addName">+ Agregar otra persona</button>
+            <button v-if="names.length < invite.allowed_guests" type="button" class="ej-link" @click="addName">{{ L.addPerson }}</button>
             <p v-if="displayError" class="ej-error text-sm">{{ displayError }}</p>
             <div class="flex flex-col gap-2.5 pt-3 sm:flex-row">
               <button type="submit" :disabled="submitting" class="ej-btn ej-btn-solid flex-1">
-                {{ submitting ? 'Enviando…' : 'Confirmar asistencia' }}
+                {{ submitting ? L.sending : L.confirm }}
               </button>
               <button type="button" :disabled="submitting" class="ej-btn ej-btn-ghost" @click="declinarGenerico">{{ t.decline }}</button>
             </div>
@@ -595,17 +810,17 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
       </div>
 
       <p v-if="!submitted && invite.rsvp_deadline && !rsvpDeadlinePassed" class="ej-fine mt-6">
-        Por favor, confirmar antes del {{ formatDate(invite.rsvp_deadline) }}
+        {{ L.deadline(deadlineDate(invite.rsvp_deadline)) }}
       </p>
     </section>
 
     <!-- ============ CONSULTAS ============ -->
     <section v-if="contact" v-reveal data-anchor="contacto" class="mx-auto max-w-[560px] px-6 pb-14 text-center">
-      <p class="ej-label">Consultas</p>
+      <p class="ej-label">{{ L.contact }}</p>
       <p v-if="contact.name" class="ej-lead mt-4">{{ contact.name }}</p>
       <div class="mt-5 flex flex-wrap justify-center gap-2.5">
         <a v-if="contact.email" :href="`mailto:${contact.email}`" class="ej-btn ej-btn-ghost inline-flex items-center gap-2">
-          <Mail :size="15" :stroke-width="1.5" /> Escribir un mail
+          <Mail :size="15" :stroke-width="1.5" /> {{ L.writeEmail }}
         </a>
         <a v-if="contact.wa" :href="contact.wa" target="_blank" rel="noopener" class="ej-btn ej-btn-ghost inline-flex items-center gap-2">
           <MessageCircle :size="15" :stroke-width="1.5" /> WhatsApp
@@ -615,10 +830,25 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
     <!-- ============ CIERRE ============ -->
     <footer data-anchor="cierre" class="mx-auto max-w-[620px] px-6 pt-6 pb-20 text-center">
-      <p v-if="showClosing" class="ej-closing">{{ invite.closing_text || t.closing }}</p>
+      <p v-if="showClosing" class="ej-closing">{{ closingText }}</p>
 
-      <div v-if="sponsorUrls.length" class="mt-16 border-t pt-10">
-        <p class="ej-label">Con el apoyo de</p>
+      <!-- Quien organiza: su logo y, debajo, sus redes (como una firma). -->
+      <div v-if="logoUrl || socials.length" data-anchor="redes" class="mt-14">
+        <img
+          v-if="logoUrl"
+          :src="logoUrl"
+          alt=""
+          class="mx-auto block max-h-11 max-w-[180px] object-contain"
+          :class="{ 'ej-white': invite.logo_white }"
+        />
+        <p v-if="socials.length" class="flex flex-wrap justify-center gap-x-6 gap-y-2" :class="logoUrl ? 'mt-6' : ''">
+          <a v-for="s in socials" :key="s.label" :href="s.url" target="_blank" rel="noopener" class="ej-social">{{ s.label }}</a>
+        </p>
+      </div>
+
+      <!-- Quienes acompañan: aparte, separados por una línea. -->
+      <div v-if="sponsorUrls.length" class="mt-14 border-t pt-10">
+        <p class="ej-label">{{ L.support }}</p>
         <div class="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
           <img
             v-for="(src, i) in sponsorUrls"
@@ -634,26 +864,13 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
         </div>
       </div>
 
-      <div v-if="socials.length" data-anchor="redes" class="mt-14">
-        <p class="flex flex-wrap justify-center gap-x-6 gap-y-2">
-          <a v-for="s in socials" :key="s.label" :href="s.url" target="_blank" rel="noopener" class="ej-social">{{ s.label }}</a>
-        </p>
-      </div>
-
-      <img
-        v-if="logoUrl"
-        :src="logoUrl"
-        alt=""
-        class="mx-auto mt-14 block max-h-8 max-w-[140px] object-contain opacity-70"
-        :class="{ 'ej-white': invite.logo_white }"
-      />
-      <p v-if="showFinePrint" class="ej-fine mt-6">Invitación personal e intransferible</p>
+      <p v-if="showFinePrint" class="ej-fine mt-12">{{ L.finePrint }}</p>
     </footer>
 
     <button
       v-if="musicId && !preview"
       type="button"
-      :aria-label="musicPlaying ? 'Pausar música' : 'Reproducir música'"
+      :aria-label="musicPlaying ? L.pause : L.play"
       class="ej-fab fixed bottom-5 left-5 z-30 grid h-11 w-11 place-items-center rounded-full"
       @click="toggleMusic"
     >
@@ -671,7 +888,9 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
   --bg: v-bind(pageBg);
   --ink: v-bind(ink);
   --muted: color-mix(in srgb, var(--ink) 62%, var(--bg));
-  --frame: color-mix(in srgb, var(--ink) 18%, var(--bg));
+  /* Marco y bordes con el color de detalles (dorado, plateado…): es lo que
+     más diferencia una paleta de otra en modo claro. */
+  --frame: color-mix(in srgb, var(--accent) 45%, var(--bg));
   --line: color-mix(in srgb, var(--accent) 85%, var(--ink));
   --panel: color-mix(in srgb, var(--ink) 4%, var(--bg));
   --btn-bg: v-bind(btnBg);
@@ -679,6 +898,12 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
   background: var(--bg);
   color: var(--ink);
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* Grosor de las líneas finas. En la vista previa del editor la página se ve
+     achicada (hasta ~40%): con 1px, las líneas desaparecen; ahí van a 2px. */
+  --hair: 1px;
+}
+.ej-preview {
+  --hair: 2px;
 }
 .ej-dark {
   --frame: color-mix(in srgb, var(--accent) 35%, var(--bg));
@@ -752,7 +977,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
   content: '';
   position: absolute;
   pointer-events: none;
-  border: 1px solid var(--frame);
+  border: var(--hair) solid var(--frame);
   animation: ej-fade 1.2s var(--ease) 0.1s both;
 }
 .ej-card::before {
@@ -763,9 +988,9 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 }
 
 .ej-rule {
-  height: 1px;
+  height: 0;
   width: min(220px, 60%);
-  background: var(--line);
+  border-top: var(--hair) solid var(--line);
 }
 section .ej-rule {
   width: 48px;
@@ -804,8 +1029,8 @@ section .ej-rule {
   left: calc(4.25rem + 0.75rem);
   top: 0.55rem;
   bottom: -0.2rem;
-  width: 1px;
-  background: var(--frame);
+  width: 0;
+  border-left: var(--hair) solid var(--frame);
 }
 .ej-agenda-item:last-child::before {
   display: none;
@@ -955,6 +1180,25 @@ section .ej-rule {
   text-align: left;
 }
 
+.ej-lang {
+  background: var(--bg);
+  border: 1px solid var(--frame);
+  border-radius: 2px;
+}
+.ej-lang button {
+  font: 500 11px 'Inter', sans-serif;
+  letter-spacing: 0.2em;
+  padding: 7px 10px 7px 12px;
+  color: var(--muted);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.ej-lang .ej-lang-on {
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+}
+
 .ej-fab {
   background: var(--btn-bg);
   color: var(--btn-ink);
@@ -999,6 +1243,14 @@ section .ej-rule {
 .reveal-in {
   opacity: 1;
   transform: none;
+}
+
+/* Con sobre: las animaciones de la portada arrancan recién al abrirlo. */
+.ej-paused .ej-in,
+.ej-paused .ej-draw,
+.ej-paused .ej-card::before,
+.ej-paused .ej-card::after {
+  animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {

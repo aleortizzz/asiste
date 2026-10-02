@@ -51,6 +51,7 @@ const {
   envelopePalette,
   envelopeMonogram,
   shows,
+  useEnvelope,
   showGifts,
   showSongs,
   entered,
@@ -193,7 +194,7 @@ const {
          la música (dentro del gesto de click, para que el navegador no la
          bloquee) y después de la animación revela la invitación de atrás. -->
     <EnvelopeCover
-      v-if="!preview && !envelopeGone"
+      v-if="useEnvelope && !preview && !envelopeGone"
       :monogram-short="envelopeMonogram.short"
       :monogram-full="envelopeMonogram.full"
       :text="invite.envelope_text || ''"

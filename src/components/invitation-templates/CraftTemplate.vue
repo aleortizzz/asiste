@@ -60,6 +60,7 @@ const {
   envelopePalette,
   envelopeMonogram,
   shows,
+  useEnvelope,
   showGifts,
   showSongs,
   entered,
@@ -181,7 +182,7 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
 
     <!-- ============ PORTADA ============ -->
     <EnvelopeCover
-      v-if="!preview && !envelopeGone"
+      v-if="useEnvelope && !preview && !envelopeGone"
       :monogram-short="envelopeMonogram.short"
       :monogram-full="envelopeMonogram.full"
       :text="invite.envelope_text || ''"

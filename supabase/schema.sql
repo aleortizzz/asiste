@@ -89,7 +89,10 @@ create table events (
   contact_phone text,
   social_links jsonb not null default '{}'::jsonb,
   -- Datos que se piden al confirmar: 'company', 'job_title', 'email', 'phone', 'dietary'.
-  rsvp_fields jsonb not null default '[]'::jsonb
+  rsvp_fields jsonb not null default '[]'::jsonb,
+  -- Invitación bilingüe (ver migrations/20261002_bilingue.sql).
+  bilingual boolean not null default false,
+  texts_en jsonb not null default '{}'::jsonb
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -343,7 +346,9 @@ begin
     'contact_email', e.contact_email,
     'contact_phone', e.contact_phone,
     'social_links', e.social_links,
-    'rsvp_fields', e.rsvp_fields
+    'rsvp_fields', e.rsvp_fields,
+    'bilingual', e.bilingual,
+    'texts_en', e.texts_en
   ))::json
   into v_group_id, result
   from invitation_groups ig

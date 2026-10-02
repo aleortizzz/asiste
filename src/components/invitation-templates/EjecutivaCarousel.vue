@@ -14,6 +14,8 @@ const props = defineProps({
   // Proporción de la caja, para que no salte de alto entre fotos.
   aspect: { type: String, default: '4 / 3' },
   label: { type: String, default: 'Fotos' },
+  // Invitación bilingüe en inglés: textos para lectores de pantalla.
+  en: { type: Boolean, default: false },
 })
 
 const index = ref(0)
@@ -82,7 +84,7 @@ function onTouchEnd(e) {
           <img :src="photos[index]" alt="" aria-hidden="true" class="ejc-fill absolute inset-0 h-full w-full object-cover" />
           <img
             :src="photos[index]"
-            :alt="`${label}: foto ${index + 1} de ${count}`"
+            :alt="en ? `${label}: photo ${index + 1} of ${count}` : `${label}: foto ${index + 1} de ${count}`"
             decoding="async"
             class="absolute inset-0 h-full w-full object-contain"
           />
@@ -92,16 +94,16 @@ function onTouchEnd(e) {
     </div>
 
     <div v-if="count > 1" class="mt-4 flex items-center justify-between gap-4">
-      <button type="button" class="ejc-arrow" aria-label="Foto anterior" @click="go(-1)">
+      <button type="button" class="ejc-arrow" :aria-label="en ? 'Previous photo' : 'Foto anterior'" @click="go(-1)">
         <ChevronLeft :size="18" :stroke-width="1.25" />
       </button>
       <div class="flex min-w-0 flex-1 items-center gap-4">
         <span class="ejc-count shrink-0">{{ pad(index + 1) }} / {{ pad(count) }}</span>
-        <span class="ejc-track relative h-px flex-1">
-          <span class="ejc-progress absolute inset-y-0 left-0" :style="{ width: `${((index + 1) / count) * 100}%` }"></span>
+        <span class="ejc-track relative flex-1">
+          <span class="ejc-progress absolute -top-px left-0" :style="{ width: `${((index + 1) / count) * 100}%` }"></span>
         </span>
       </div>
-      <button type="button" class="ejc-arrow" aria-label="Foto siguiente" @click="go(1)">
+      <button type="button" class="ejc-arrow" :aria-label="en ? 'Next photo' : 'Foto siguiente'" @click="go(1)">
         <ChevronRight :size="18" :stroke-width="1.25" />
       </button>
     </div>
@@ -138,10 +140,10 @@ function onTouchEnd(e) {
   font-variant-numeric: tabular-nums;
 }
 .ejc-track {
-  background: var(--frame);
+  border-top: var(--hair, 1px) solid var(--frame);
 }
 .ejc-progress {
-  background: var(--line);
+  border-top: var(--hair, 1px) solid var(--line);
   transition: width 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
