@@ -75,7 +75,7 @@ Esos robots no ejecutan JS, así que `.htaccess` manda **solo a los robots** (po
 
 Plan de la invitación empresarial (acordado el 2026-10-02; la Parte 1, plantilla Ejecutiva, está hecha):
 - [x] Parte 2 · Secciones opcionales en todas las plantillas: interruptores para cuenta regresiva, música, regalos, canciones, saludo, cierre y (Ejecutiva) «personal e intransferible». Van en `hidden_sections` (`shows()` / `showGifts` / `showSongs`… en useInvitationLogic). Saludo y cierre vacíos usan textos de ejemplo según el tipo de evento.
-- [ ] Parte 4 · Secciones empresariales: oradores, cómo llegar (estacionamiento/acceso), vestimenta con opciones, contacto del organizador, programa en PDF, cupo visible, redes y hashtag.
+- [x] Parte 4 · Secciones empresariales (Ejecutiva): programa (`agenda`, paso «Programa»), acceso y estacionamiento (`access_info`), vestimenta con opciones, contacto del organizador (mail/WhatsApp) y redes (`social_links`), en el paso «Contacto». Todo apagable (`hidden_sections`: agenda, acceso, contacto, redes) y oculto si está vacío. Quedaron afuera por decisión: oradores, cupo visible, PDF y hashtag. `supabase/herramientas/ejemplo-empresarial.sql` carga contenido de ejemplo en un evento.
 - [ ] Parte 5 · Confirmación completa (empresa, cargo, mail, teléfono, restricciones alimentarias, acompañante) + panel con «Invitado / Empresa» y lista de la entrada con empresa y cargo.
 - [ ] Parte 6 · Bilingüe ES/EN (botón para el invitado).
 - [ ] Parte 7 · Vista previa de WhatsApp con el logo de la empresa.

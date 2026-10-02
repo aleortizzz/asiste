@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
-import { Cake, Heart, Briefcase, ChevronLeft, ChevronRight, Eye, X, Check } from '@lucide/vue'
+import { Cake, Heart, Briefcase, ChevronLeft, ChevronRight, Eye, X, Check, Plus, ArrowDownUp, Clock } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import EnvelopeCover from '../components/EnvelopeCover.vue'
 import ColorPicker from '../components/ColorPicker.vue'
@@ -24,15 +24,18 @@ const ALL_STEPS = [
   { id: 'sobre', label: 'Sobre', title: 'El sobre', desc: 'Antes de ver la invitación, tus invitados abren un sobre animado. Acá elegís cómo se ve.', anchor: 'hero' },
   { id: 'textos', label: 'Saludo', title: 'Saludo y cierre', desc: 'Unas palabras para tus invitados, al principio y al final.', anchor: 'saludo' },
   { id: 'fiesta', label: 'La fiesta', title: 'La fiesta', desc: 'Cuándo, dónde y todo lo que tus invitados necesitan saber.', anchor: 'fiesta' },
+  { id: 'programa', label: 'Programa', title: 'Programa', desc: 'Las actividades del evento con su horario. Opcional.', anchor: 'programa', only: ['ejecutiva'] },
+  { id: 'contacto', label: 'Contacto', title: 'Contacto y redes', desc: 'A quién le escriben tus invitados si tienen dudas, y las redes del evento. Opcional.', anchor: 'contacto', only: ['ejecutiva'] },
   { id: 'confirmacion', label: 'Confirmaciones', title: 'Confirmaciones', desc: 'Hasta cuándo pueden confirmar y cuántos invitados entran.', anchor: 'rsvp' },
   { id: 'fotos', label: 'Fotos', title: 'Fotos', desc: 'Se guardan solas apenas las subís. Podés ocultar las secciones que no quieras usar.', anchor: 'hero' },
 ]
-// La plantilla Ejecutiva no tiene sobre: ese paso no se muestra. Por eso el
-// paso actual se guarda por id y no por posición (si no, al cambiar de
-// plantilla quedaría parado en otro paso).
-const STEPS = computed(() =>
-  form.value.template === 'ejecutiva' ? ALL_STEPS.filter((s) => s.id !== 'sobre') : ALL_STEPS,
-)
+// La lista de pasos depende de la plantilla: la Ejecutiva no tiene sobre y
+// suma Programa y Contacto (`only`). Por eso el paso actual se guarda por id
+// y no por posición (si no, al cambiar de plantilla quedaría en otro paso).
+const STEPS = computed(() => {
+  const tpl = form.value.template
+  return ALL_STEPS.filter((s) => (!s.only || s.only.includes(tpl)) && !(tpl === 'ejecutiva' && s.id === 'sobre'))
+})
 // ?paso=<id> abre directo en ese paso (lo usa el checklist del Inicio).
 const route = useRoute()
 const stepId = ref(ALL_STEPS.some((s) => s.id === route.query.paso) ? route.query.paso : 'estilo')
@@ -429,6 +432,30 @@ const EMPTY = {
   sponsors: [],
   logo_white: false,
   sponsors_white: false,
+  agenda: [],
+  access_info: '',
+  contact_name: '',
+  contact_email: '',
+  contact_phone: '',
+  social_links: { linkedin: '', instagram: '', web: '' },
+}
+
+// Vestimenta: opciones rápidas (también se puede escribir otra).
+const DRESS_OPTIONS = ['Formal', 'Business', 'Smart casual', 'Casual']
+
+// --- Programa ---------------------------------------------------------------------
+function addAgendaItem() {
+  form.value.agenda = [...form.value.agenda, { time: '', title: '', detail: '' }]
+}
+function removeAgendaItem(i) {
+  form.value.agenda = form.value.agenda.filter((_, idx) => idx !== i)
+}
+// Las que no tienen horario quedan al final, en el orden en que estaban.
+function sortAgenda() {
+  form.value.agenda = [...form.value.agenda].sort((a, b) => {
+    if (!a.time !== !b.time) return a.time ? -1 : 1
+    return (a.time || '').localeCompare(b.time || '')
+  })
 }
 
 // Textos genéricos según el tipo de evento. El switch de arriba cambia entre
@@ -551,6 +578,9 @@ const strictAvailable = computed(() => !!event.value && 'rsvp_deadline_strict' i
 const EJECUTIVA_COLUMNS = ['accent_color', 'theme_mode', 'tono', 'date_style', 'logo', 'sponsors']
 const ejecutivaAvailable = computed(() => !event.value || 'tono' in event.value)
 const logosWhiteAvailable = computed(() => !!event.value && 'logo_white' in event.value)
+// Secciones empresariales (20261002_secciones_empresariales.sql).
+const BUSINESS_COLUMNS = ['agenda', 'access_info', 'contact_name', 'contact_email', 'contact_phone', 'social_links']
+const businessAvailable = computed(() => !event.value || 'agenda' in event.value)
 
 const hasGuestLimit = ref(false)
 const guestLimit = ref(1)
@@ -638,6 +668,12 @@ onMounted(async () => {
       sponsors: event.value.sponsors ?? [],
       logo_white: event.value.logo_white ?? false,
       sponsors_white: event.value.sponsors_white ?? false,
+      agenda: (event.value.agenda ?? []).map((i) => ({ time: i.time ?? '', title: i.title ?? '', detail: i.detail ?? '' })),
+      access_info: event.value.access_info ?? '',
+      contact_name: event.value.contact_name ?? '',
+      contact_email: event.value.contact_email ?? '',
+      contact_phone: event.value.contact_phone ?? '',
+      social_links: { linkedin: '', instagram: '', web: '', ...(event.value.social_links ?? {}) },
     }
     hasGuestLimit.value = event.value.guest_limit != null
     guestLimit.value = event.value.guest_limit ?? 1
@@ -665,6 +701,18 @@ async function onSubmit() {
         throw new Error('falta correr la migración 20261002_plantilla_ejecutiva.sql en Supabase.')
       }
       for (const col of EJECUTIVA_COLUMNS) delete fields[col]
+    }
+    if (businessAvailable.value) {
+      // Filas del programa sin título no se guardan; textos vacíos → null.
+      fields.agenda = form.value.agenda
+        .map((i) => ({ time: i.time || '', title: i.title.trim(), detail: i.detail.trim() }))
+        .filter((i) => i.title)
+      for (const k of ['access_info', 'contact_name', 'contact_email', 'contact_phone']) fields[k] = emptyAsNull(form.value[k].trim())
+      fields.social_links = Object.fromEntries(
+        Object.entries(form.value.social_links).map(([k, v]) => [k, (v || '').trim()]).filter(([, v]) => v),
+      )
+    } else {
+      for (const col of BUSINESS_COLUMNS) delete fields[col]
     }
     // Las fotos (logo y sponsors incluidos) y sus interruptores se guardan solos.
     delete fields.logo
@@ -1268,7 +1316,45 @@ onUnmounted(() => {
               </div>
               <div>
                 <label class="admin-label" for="f-dress">Código de vestimenta</label>
-                <input id="f-dress" v-model="form.dress_code" data-preview="fiesta" placeholder="Ej. Elegante sport" class="admin-input" />
+                <div v-if="form.template === 'ejecutiva'" class="mb-3 flex flex-wrap gap-2">
+                  <button
+                    v-for="opt in DRESS_OPTIONS"
+                    :key="opt"
+                    type="button"
+                    data-preview="fiesta"
+                    @click="form.dress_code = form.dress_code === opt ? '' : opt"
+                    :class="form.dress_code === opt ? 'bg-accent text-chalk' : 'bg-chalk hover:bg-accent-soft'"
+                    class="rounded-full px-4 py-2 text-sm font-bold transition-colors"
+                  >
+                    {{ opt }}
+                  </button>
+                </div>
+                <input
+                  id="f-dress"
+                  v-model="form.dress_code"
+                  data-preview="fiesta"
+                  :placeholder="form.template === 'ejecutiva' ? 'O escribí otra. Vacío: no se muestra.' : 'Ej. Elegante sport'"
+                  class="admin-input"
+                />
+              </div>
+              <div v-if="form.template === 'ejecutiva' && businessAvailable">
+                <label class="admin-label" for="f-access">Acceso y estacionamiento</label>
+                <p class="admin-help">Cómo llegar, dónde estacionar, por qué puerta se entra. Va debajo del lugar.</p>
+                <textarea
+                  id="f-access"
+                  v-model="form.access_info"
+                  rows="3"
+                  data-preview="fiesta"
+                  placeholder="Ej. Estacionamiento con valet sobre Posadas · Ingreso por Av. Alvear"
+                  class="admin-input"
+                ></textarea>
+                <SectionSwitch
+                  v-if="form.access_info"
+                  class="mt-3"
+                  label="Mostrar acceso y estacionamiento"
+                  :on="!isHidden('acceso')"
+                  @toggle="toggleSection('acceso')"
+                />
               </div>
               <div>
                 <label class="admin-label" for="f-gift">Alias para regalos</label>
@@ -1287,6 +1373,125 @@ onUnmounted(() => {
                 <label class="admin-label" for="f-notes">Algo más que quieras contar</label>
                 <textarea id="f-notes" v-model="form.notes" rows="3" data-preview="fiesta" placeholder="Ej. Hay estacionamiento · Evento sin niños" class="admin-input"></textarea>
               </div>
+            </template>
+
+            <!-- ========== PROGRAMA (Ejecutiva) ========== -->
+            <template v-else-if="step.id === 'programa'">
+              <p v-if="!businessAvailable" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                Falta correr la migración 20261002_secciones_empresariales.sql en Supabase.
+              </p>
+              <template v-else>
+                <div v-if="form.agenda.length" class="space-y-3">
+                  <div v-for="(item, i) in form.agenda" :key="i" class="rounded-[1.5rem] bg-chalk p-4">
+                    <div class="flex gap-2">
+                      <input
+                        v-model="item.time"
+                        type="time"
+                        data-preview="programa"
+                        :aria-label="`Horario de la actividad ${i + 1}`"
+                        class="admin-input !w-32 shrink-0 !bg-limestone"
+                      />
+                      <input
+                        v-model="item.title"
+                        data-preview="programa"
+                        placeholder="Ej. Acreditación"
+                        :aria-label="`Actividad ${i + 1}`"
+                        class="admin-input !bg-limestone"
+                      />
+                      <button
+                        type="button"
+                        @click="removeAgendaItem(i)"
+                        :aria-label="`Quitar la actividad ${i + 1}`"
+                        class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-limestone"
+                      >
+                        <X :size="16" />
+                      </button>
+                    </div>
+                    <input
+                      v-model="item.detail"
+                      data-preview="programa"
+                      placeholder="Detalle, opcional. Ej. Hall central · Café de bienvenida"
+                      :aria-label="`Detalle de la actividad ${i + 1}`"
+                      class="admin-input mt-2 !bg-limestone text-sm"
+                    />
+                  </div>
+                </div>
+                <!-- Estado vacío: borde punteado (no parece un campo) y se toca para empezar. -->
+                <button
+                  v-else
+                  type="button"
+                  @click="addAgendaItem"
+                  class="flex w-full flex-col items-center gap-2 rounded-[1.5rem] border-[1.5px] border-dashed border-obsidian/25 px-6 py-8 text-center transition-colors hover:border-obsidian/50 hover:bg-chalk/50"
+                >
+                  <span class="grid h-11 w-11 place-items-center rounded-full bg-accent-soft text-accent"><Clock :size="20" /></span>
+                  <span class="font-bold">Todavía no hay actividades</span>
+                  <span class="max-w-xs text-sm text-obsidian/55">
+                    Si no cargás ninguna, el programa no aparece en la invitación. Tocá acá para agregar la primera.
+                  </span>
+                </button>
+                <div v-if="form.agenda.length" class="flex flex-wrap gap-2">
+                  <button type="button" @click="addAgendaItem" class="admin-btn-secondary">
+                    <Plus :size="17" /> Agregar actividad
+                  </button>
+                  <button v-if="form.agenda.length > 1" type="button" @click="sortAgenda" class="admin-btn-secondary">
+                    <ArrowDownUp :size="17" /> Ordenar por horario
+                  </button>
+                </div>
+                <SectionSwitch
+                  v-if="form.agenda.length"
+                  label="Mostrar el programa"
+                  :on="!isHidden('agenda')"
+                  @toggle="toggleSection('agenda')"
+                />
+              </template>
+            </template>
+
+            <!-- ========== CONTACTO Y REDES (Ejecutiva) ========== -->
+            <template v-else-if="step.id === 'contacto'">
+              <p v-if="!businessAvailable" class="rounded-[1.25rem] bg-accent-soft px-4 py-3 text-sm text-accent">
+                Falta correr la migración 20261002_secciones_empresariales.sql en Supabase.
+              </p>
+              <template v-else>
+                <div>
+                  <p class="admin-label">Contacto para consultas</p>
+                  <p class="admin-help">Aparecen botones para escribir por mail o WhatsApp. Lo que quede vacío no se muestra.</p>
+                  <div class="space-y-3">
+                    <input v-model="form.contact_name" data-preview="contacto" placeholder="Nombre. Ej. Cinthia López · Organización" aria-label="Nombre del contacto" class="admin-input" />
+                    <input v-model="form.contact_email" type="email" data-preview="contacto" placeholder="Mail. Ej. eventos@empresa.com" aria-label="Mail del contacto" class="admin-input" />
+                    <input
+                      v-model="form.contact_phone"
+                      type="tel"
+                      data-preview="contacto"
+                      placeholder="WhatsApp, con código de país. Ej. 54 9 11 2345-6789"
+                      aria-label="WhatsApp del contacto"
+                      class="admin-input"
+                    />
+                  </div>
+                  <SectionSwitch
+                    v-if="form.contact_name || form.contact_email || form.contact_phone"
+                    class="mt-3"
+                    label="Mostrar el contacto"
+                    :on="!isHidden('contacto')"
+                    @toggle="toggleSection('contacto')"
+                  />
+                </div>
+                <div>
+                  <p class="admin-label">Redes</p>
+                  <p class="admin-help">Van al pie de la invitación. Lo que quede vacío no se muestra.</p>
+                  <div class="space-y-3">
+                    <input v-model="form.social_links.linkedin" data-preview="cierre" placeholder="LinkedIn. Ej. linkedin.com/company/empresa" aria-label="LinkedIn" class="admin-input" />
+                    <input v-model="form.social_links.instagram" data-preview="cierre" placeholder="Instagram. Ej. @empresa" aria-label="Instagram" class="admin-input" />
+                    <input v-model="form.social_links.web" data-preview="cierre" placeholder="Web. Ej. www.empresa.com" aria-label="Web" class="admin-input" />
+                  </div>
+                  <SectionSwitch
+                    v-if="Object.values(form.social_links).some(Boolean)"
+                    class="mt-3"
+                    label="Mostrar redes"
+                    :on="!isHidden('redes')"
+                    @toggle="toggleSection('redes')"
+                  />
+                </div>
+              </template>
             </template>
 
             <!-- ========== 6. CONFIRMACIONES ========== -->

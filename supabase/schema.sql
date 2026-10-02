@@ -79,7 +79,15 @@ create table events (
   -- Mostrar el logo / los sponsors en blanco (para fondo oscuro). Ver
   -- migrations/20261002_logos_en_blanco.sql.
   logo_white boolean not null default false,
-  sponsors_white boolean not null default false
+  sponsors_white boolean not null default false,
+  -- Secciones empresariales (ver migrations/20261002_secciones_empresariales.sql):
+  -- programa, cómo llegar, contacto del organizador y redes.
+  agenda jsonb not null default '[]'::jsonb,
+  access_info text,
+  contact_name text,
+  contact_email text,
+  contact_phone text,
+  social_links jsonb not null default '{}'::jsonb
 );
 
 -- 2) Mesas del salón, una por evento.
@@ -314,6 +322,13 @@ begin
     'sponsors', e.sponsors,
     'logo_white', e.logo_white,
     'sponsors_white', e.sponsors_white
+  ) || jsonb_build_object(
+    'agenda', e.agenda,
+    'access_info', e.access_info,
+    'contact_name', e.contact_name,
+    'contact_email', e.contact_email,
+    'contact_phone', e.contact_phone,
+    'social_links', e.social_links
   ))::json
   into v_group_id, result
   from invitation_groups ig

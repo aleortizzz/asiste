@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { MapPin, ArrowUpRight, Music, Pause, Copy, Check, Search, CalendarPlus, X } from '@lucide/vue'
+import { MapPin, ArrowUpRight, Music, Pause, Copy, Check, Search, CalendarPlus, X, Mail, MessageCircle } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
 import { isDark } from '../../lib/color'
 import { googleCalendarUrl, openGoogleCalendar, downloadIcs, isIOS } from '../../lib/calendar'
@@ -199,6 +199,38 @@ const calendarOptions = computed(() => {
   return ios ? [ics, google] : [google, ics]
 })
 
+// --- Secciones empresariales (cada una: con datos y sin apagar) -----------------
+// Programa: en el orden en que lo cargaron; las filas sin título no cuentan.
+const agendaItems = computed(() =>
+  shows('agenda') && Array.isArray(props.invite.agenda) ? props.invite.agenda.filter((i) => i?.title?.trim()) : [],
+)
+const accessInfo = computed(() => (shows('acceso') ? (props.invite.access_info || '').trim() : ''))
+
+const contact = computed(() => {
+  if (!shows('contacto')) return null
+  const name = (props.invite.contact_name || '').trim()
+  const email = (props.invite.contact_email || '').trim()
+  const phone = (props.invite.contact_phone || '').trim()
+  if (!name && !email && !phone) return null
+  const digits = phone.replace(/\D/g, '')
+  return { name, email, wa: digits ? `https://wa.me/${digits}` : '' }
+})
+
+// Acepta links completos, «www.…» o (Instagram) «@usuario».
+const withHttp = (u) => (/^https?:\/\//i.test(u) ? u : `https://${u}`)
+const socials = computed(() => {
+  if (!shows('redes')) return []
+  const s = props.invite.social_links || {}
+  const out = []
+  if (s.linkedin?.trim()) out.push({ label: 'LinkedIn', url: withHttp(s.linkedin.trim()) })
+  if (s.instagram?.trim()) {
+    const v = s.instagram.trim()
+    out.push({ label: 'Instagram', url: /instagram\.com/i.test(v) ? withHttp(v) : `https://instagram.com/${v.replace(/^@/, '')}` })
+  }
+  if (s.web?.trim()) out.push({ label: 'Web', url: withHttp(s.web.trim()) })
+  return out
+})
+
 // --- Fotos: solo las que subió el organizador (nunca las de demo) ---------------
 // La de portada va como franja panorámica debajo de la tarjeta; el carrusel
 // del saludo, debajo de la bienvenida.
@@ -337,6 +369,10 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
             </a>
           </dd>
         </div>
+        <div v-if="accessInfo" class="ej-row">
+          <dt class="ej-label">Acceso</dt>
+          <dd class="ej-muted text-sm leading-relaxed whitespace-pre-line">{{ accessInfo }}</dd>
+        </div>
         <div v-if="invite.dress_code" class="ej-row">
           <dt class="ej-label">Vestimenta</dt>
           <dd class="ej-ink">{{ invite.dress_code }}</dd>
@@ -355,6 +391,21 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
         decoding="async"
         class="mx-auto mt-12 block h-auto max-h-[85svh] w-auto max-w-full object-contain"
       />
+    </section>
+
+    <!-- ============ PROGRAMA ============ -->
+    <section v-if="agendaItems.length" v-reveal data-anchor="programa" class="mx-auto max-w-[620px] px-6 py-16">
+      <p class="ej-label text-center">Programa</p>
+      <div class="ej-rule mx-auto mt-5"></div>
+      <ol class="ej-agenda mt-10">
+        <li v-for="(item, i) in agendaItems" :key="i" class="ej-agenda-item">
+          <p class="ej-agenda-time">{{ item.time || '—' }}</p>
+          <div class="min-w-0">
+            <p class="ej-agenda-title">{{ item.title }}</p>
+            <p v-if="item.detail" class="ej-muted mt-1 text-sm leading-relaxed">{{ item.detail }}</p>
+          </div>
+        </li>
+      </ol>
     </section>
 
     <!-- ============ FOTOS (solo si el organizador subió) ============ -->
@@ -509,6 +560,20 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
       </p>
     </section>
 
+    <!-- ============ CONSULTAS ============ -->
+    <section v-if="contact" v-reveal data-anchor="contacto" class="mx-auto max-w-[560px] px-6 pb-14 text-center">
+      <p class="ej-label">Consultas</p>
+      <p v-if="contact.name" class="ej-lead mt-4">{{ contact.name }}</p>
+      <div class="mt-5 flex flex-wrap justify-center gap-2.5">
+        <a v-if="contact.email" :href="`mailto:${contact.email}`" class="ej-btn ej-btn-ghost inline-flex items-center gap-2">
+          <Mail :size="15" :stroke-width="1.5" /> Escribir un mail
+        </a>
+        <a v-if="contact.wa" :href="contact.wa" target="_blank" rel="noopener" class="ej-btn ej-btn-ghost inline-flex items-center gap-2">
+          <MessageCircle :size="15" :stroke-width="1.5" /> WhatsApp
+        </a>
+      </div>
+    </section>
+
     <!-- ============ CIERRE ============ -->
     <footer data-anchor="cierre" class="mx-auto max-w-[620px] px-6 pt-6 pb-20 text-center">
       <p v-if="showClosing" class="ej-closing">{{ invite.closing_text || t.closing }}</p>
@@ -528,6 +593,12 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
             @load="onSponsorLoad($event, src)"
           />
         </div>
+      </div>
+
+      <div v-if="socials.length" data-anchor="redes" class="mt-14">
+        <p class="flex flex-wrap justify-center gap-x-6 gap-y-2">
+          <a v-for="s in socials" :key="s.label" :href="s.url" target="_blank" rel="noopener" class="ej-social">{{ s.label }}</a>
+        </p>
       </div>
 
       <img
@@ -673,6 +744,62 @@ section .ej-rule {
     grid-template-columns: 1fr;
     gap: 0.35rem;
   }
+}
+
+/* Programa: línea fina vertical con un punto por actividad. */
+.ej-agenda {
+  position: relative;
+  max-width: 30rem;
+  margin-inline: auto;
+}
+.ej-agenda-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.25rem 1fr;
+  gap: 1.5rem;
+  padding: 0 0 1.75rem;
+}
+.ej-agenda-item::before {
+  content: '';
+  position: absolute;
+  left: calc(4.25rem + 0.75rem);
+  top: 0.55rem;
+  bottom: -0.2rem;
+  width: 1px;
+  background: var(--frame);
+}
+.ej-agenda-item:last-child::before {
+  display: none;
+}
+.ej-agenda-item::after {
+  content: '';
+  position: absolute;
+  left: calc(4.25rem + 0.75rem - 3px);
+  top: 0.4rem;
+  height: 7px;
+  width: 7px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.ej-agenda-time {
+  font: 500 13px/1.5 'Inter', sans-serif;
+  letter-spacing: 0.08em;
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ej-agenda-title {
+  font: 500 21px/1.3 'Cormorant Garamond', serif;
+}
+
+.ej-social {
+  font: 500 11px 'Inter', sans-serif;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 5px;
 }
 
 .ej-panel {
