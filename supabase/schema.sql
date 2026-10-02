@@ -1001,7 +1001,17 @@ as $$
       e.retrato -> 0 ->> 'url',
       e.momentos -> 0 ->> 'url',
       e.galeria -> 0 ->> 'url'
-    )
+    ),
+    -- Para la Ejecutiva: tarjeta con el logo en vez de una foto.
+    'template', e.template,
+    'logo', e.logo -> 0 ->> 'url',
+    'logo_white', e.logo_white,
+    'theme_mode', e.theme_mode,
+    'primary_color', e.primary_color,
+    'accent_color', e.accent_color,
+    'bg_color', e.bg_color,
+    'reception_time', e.reception_time,
+    'venue_name', e.venue_name
   )
   from public.invitation_groups ig
   join public.events e on e.id = ig.event_id

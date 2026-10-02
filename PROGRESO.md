@@ -79,7 +79,7 @@ Plan de la invitación empresarial (acordado el 2026-10-02; la Parte 1, plantill
 - [x] Parte 5 (invitado) · Confirmación completa en la Ejecutiva: el evento elige qué pedir (`events.rsvp_fields`: empresa, cargo, mail, teléfono, restricciones) y se guarda por invitado (`guests.company`, `job_title`, `email`, `phone`, `dietary`). `confirmar_asistencia` suma `p_detalles` (opcional) y `responder_invitados` acepta los datos en cada respuesta. Acompañante = 2 lugares en la invitación. En Invitados se ven los datos debajo del nombre.
 - [ ] Parte 5 (panel) · «Invitado / Empresa» en vez de «Familia» en eventos empresariales, y lista de la entrada con empresa y cargo.
 - [ ] Parte 6 · Bilingüe ES/EN (botón para el invitado).
-- [ ] Parte 7 · Vista previa de WhatsApp con el logo de la empresa.
+- [x] Parte 7 · Vista previa de WhatsApp para la Ejecutiva: «Título · Invitación», «Para X · fecha, hora · lugar» y, si hay logo, una tarjeta 1200×630 con el logo sobre el color de la invitación (`og-image.php?k=logo`, cacheada en og-cache/). Se probó con PHP portable contra datos reales.
 - [ ] **Al final, junto con los 15** · Parte 3: itinerario y «Agregar al calendario» en Clásica, Partiful y Craft (`lib/calendar.js` ya está hecho; la Ejecutiva ya lo tiene). Prioridad ahora: terminar la empresarial para Cinthia.
 
 Otros:

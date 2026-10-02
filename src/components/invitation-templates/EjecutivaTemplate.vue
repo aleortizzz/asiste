@@ -157,7 +157,7 @@ const eventDay = computed(() => {
 const fmt = (opts) => eventDay.value?.toLocaleDateString('es-AR', opts) ?? ''
 const weekday = computed(() => fmt({ weekday: 'long' }))
 const monthName = computed(() => fmt({ month: 'long' }))
-const time = computed(() => (props.invite.reception_time ? `${formatTime(props.invite.reception_time)} h` : ''))
+const time = computed(() => (props.invite.reception_time ? `${formatTime(props.invite.reception_time)} hs` : ''))
 const dateLine = computed(() => fmt({ weekday: 'long', day: 'numeric', month: 'long' }))
 
 const daysLeftText = computed(() => {
@@ -178,6 +178,7 @@ const countdownParts = computed(() => {
     { label: 'Días', value: c.days },
     { label: 'Horas', value: c.hours },
     { label: 'Min', value: c.minutes },
+    { label: 'Seg', value: c.seconds },
   ]
 })
 
@@ -295,12 +296,16 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
 
           <div v-else>
             <div class="flex justify-center gap-[clamp(10px,3vw,22px)]">
-              <div v-for="u in countdownParts" :key="u.label" class="min-w-16">
+              <div v-for="u in countdownParts" :key="u.label" class="min-w-14 sm:min-w-16">
                 <p class="ej-num">{{ u.value }}</p>
                 <p class="ej-label mt-2 text-[10px]">{{ u.label }}</p>
               </div>
             </div>
-            <p class="ej-label mt-5">{{ dateLine }}<template v-if="time"> · {{ time }}</template></p>
+            <!-- Fecha y hora sin partirse a la mitad (antes la «h» quedaba sola). -->
+            <p class="ej-label mt-5">
+              <span class="whitespace-nowrap">{{ dateLine }}</span>
+              <template v-if="time"><span class="hidden sm:inline"> · </span><span class="block whitespace-nowrap sm:inline">{{ time }}</span></template>
+            </p>
           </div>
         </div>
 
@@ -358,7 +363,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
         <div v-if="invite.reception_time" class="ej-row">
           <dt class="ej-label">Horario</dt>
           <dd class="ej-ink">
-            {{ formatTime(invite.reception_time) }}<template v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</template> h
+            {{ formatTime(invite.reception_time) }}<template v-if="invite.end_time"> a {{ formatTime(invite.end_time) }}</template> hs
           </dd>
         </div>
         <div v-if="invite.venue_name || invite.venue_address" class="ej-row">

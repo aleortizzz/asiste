@@ -34,7 +34,23 @@ $name = trim($data['hero_title'] ?? '') ?: trim($data['event_name'] ?? '') ?: 'A
 $fecha = og_fecha($data['event_date'] ?? null);
 $fechaTxt = $fecha ? ucfirst($fecha) . ' · ' : '';
 
-if ($type === 'i') {
+// Plantilla Ejecutiva: textos sobrios y, si hay logo, la tarjeta con el logo
+// como imagen (ver og-image.php?k=logo) en vez de una foto.
+$ejecutiva = $type === 'i' && ($data['template'] ?? '') === 'ejecutiva';
+$logoCard = $ejecutiva && !empty($data['logo']);
+
+if ($ejecutiva) {
+  $title = "$name · Invitación";
+  $family = trim($data['family_name'] ?? '');
+  $hora = !empty($data['reception_time']) ? substr($data['reception_time'], 0, 5) . ' hs' : '';
+  $cuando = $fecha ? ucfirst($fecha) . ($hora ? ", $hora" : '') : '';
+  $description = implode(' · ', array_filter([
+    $family ? "Para $family" : '',
+    $cuando,
+    trim($data['venue_name'] ?? ''),
+  ])) ?: 'Tocá para ver la invitación y confirmar tu asistencia.';
+  $path = '/i/' . $key;
+} elseif ($type === 'i') {
   $suffix = ['cumpleanos' => 'Mi invitación', 'casamiento' => 'Nuestra invitación', 'empresarial' => 'Invitación'][$data['event_type'] ?? ''] ?? 'Invitación';
   $title = "$name · $suffix";
   $family = trim($data['family_name'] ?? '');
@@ -60,12 +76,17 @@ $meta = [
   '<meta property="og:title" content="' . $e($title) . '" />',
   '<meta property="og:description" content="' . $e($description) . '" />',
 ];
-if (!empty($data['image'])) {
-  // La foto pasa por og-image.php: la achica a 1200×630 (WhatsApp no muestra
+if ($logoCard || !empty($data['image'])) {
+  // La imagen pasa por og-image.php: la achica a 1200×630 (WhatsApp no muestra
   // imágenes pesadas) y la guarda para no rehacerla en cada vista previa.
-  // `v` cambia si cambia la foto, así WhatsApp no se queda con la vieja.
+  // `v` cambia si cambia la foto (o el logo y sus colores), así WhatsApp no se
+  // queda con la vieja.
+  $version = $logoCard
+    ? og_logo_card_key($data)
+    : $data['image'];
   $img = $base . '/og-image.php?t=' . $type . '&' . ($type === 'i' ? 's' : 'e') . '=' . rawurlencode($key)
-    . '&v=' . substr(sha1($data['image']), 0, 10);
+    . ($logoCard ? '&k=logo' : '')
+    . '&v=' . substr(sha1($version), 0, 10);
   array_push(
     $meta,
     '<meta property="og:image" content="' . $e($img) . '" />',

@@ -65,3 +65,24 @@ function og_base_url() {
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
   return ($https ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
 }
+
+// --- Tarjeta con el logo (plantilla Ejecutiva) --------------------------------
+// Colores de la tarjeta: en claro, el papel de la invitación; en oscuro, el
+// color principal. El logo se pasa a blanco solo en oscuro y si lo pidieron.
+function og_logo_card_style($data) {
+  $dark = ($data['theme_mode'] ?? '') === 'oscuro';
+  $hex = fn($c, $def) => (is_string($c) && preg_match('/^#[0-9a-fA-F]{6}$/', $c)) ? strtolower($c) : $def;
+  $primary = $hex($data['primary_color'] ?? '', '#0f1b2d');
+  return [
+    'dark' => $dark,
+    'bg' => $dark ? $primary : $hex($data['bg_color'] ?? '', '#f7f4ee'),
+    'ink' => $dark ? '#f3efe6' : $primary,
+    'accent' => $hex($data['accent_color'] ?? '', '#c8a96a'),
+    'white' => $dark && !empty($data['logo_white']),
+  ];
+}
+
+// Cambia si cambia el logo o algo de cómo se dibuja la tarjeta.
+function og_logo_card_key($data) {
+  return ($data['logo'] ?? '') . '|' . json_encode(og_logo_card_style($data));
+}
