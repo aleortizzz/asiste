@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { useGuestTheme } from '../composables/useGuestTheme'
 import { seededShuffle, formatDuration } from '../lib/trivia'
+import RankRow from '../components/trivia/RankRow.vue'
 import { Trophy, Timer, ChevronLeft, ChevronRight, Check, X, Send, Camera, Hourglass, RotateCw, ListChecks, Flag } from '@lucide/vue'
 
 // Trivia para los invitados (/juego/:eventId, se llega desde la página de
@@ -540,35 +541,14 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
           <span class="w-16 shrink-0 text-right">Tiempo</span>
         </div>
         <TransitionGroup tag="ol" name="rank" class="mt-1.5 space-y-2">
-          <li
-            v-for="r in ranking.top"
-            :key="r.name + r.duration_ms"
-            class="row flex items-center gap-3 rounded-2xl py-2.5 pr-4 pl-2.5"
-            :class="{ mine: r.me }"
-          >
-            <span class="place grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold" :class="`p${r.position}`">
-              {{ r.position }}
-            </span>
-            <span class="min-w-0 flex-1 truncate font-semibold">{{ r.name }}<template v-if="r.me"> (vos)</template></span>
-            <span class="w-16 shrink-0 text-right font-bold tabular-nums">
-              {{ r.correct }}<span class="text-xs font-semibold opacity-60">/{{ ranking.total }}</span>
-            </span>
-            <span class="w-16 shrink-0 text-right text-sm tabular-nums" style="color: var(--muted)">{{ formatDuration(r.duration_ms) }}</span>
+          <li v-for="r in ranking.top" :key="r.name + r.duration_ms">
+            <RankRow :row="r" :total="ranking.total" :mine="r.me" />
           </li>
         </TransitionGroup>
-        <p class="mt-2 text-center text-xs" style="color: var(--muted)">Si empatan en correctas, gana quien tardó menos.</p>
+        <!-- Si no estoy en el top 10, mi fila aparte, abajo. -->
+        <RankRow v-if="me && !meInTop" :row="me" :total="ranking.total" mine class="mt-4" />
+        <p class="mt-3 text-center text-xs" style="color: var(--muted)">Si empatan en correctas, gana quien tardó menos.</p>
         </template>
-        <div v-if="me && !meInTop" class="mt-2">
-          <p class="text-center leading-none" style="color: var(--muted)">⋮</p>
-          <div class="row mine mt-2 flex items-center gap-3 rounded-2xl py-2.5 pr-4 pl-2.5">
-            <span class="place grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold">{{ me.position }}</span>
-            <span class="min-w-0 flex-1 truncate font-semibold">{{ me.name }} (vos)</span>
-            <span class="w-16 shrink-0 text-right font-bold tabular-nums">
-              {{ me.correct }}<span class="text-xs font-semibold opacity-60">/{{ ranking.total }}</span>
-            </span>
-            <span class="w-16 shrink-0 text-right text-sm tabular-nums" style="color: var(--muted)">{{ formatDuration(me.duration_ms) }}</span>
-          </div>
-        </div>
 
         <!-- Mis respuestas: recién con el juego cerrado (mientras tanto, un rojo
              sin la correcta al lado parecía «todo mal»). -->
@@ -816,31 +796,6 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
 .status.ended {
   background: var(--tint);
   color: var(--ink);
-}
-.row {
-  background: var(--tint);
-}
-.row.mine {
-  background: var(--accent);
-  color: var(--accent-on);
-}
-.row.mine span {
-  color: inherit !important;
-}
-.place {
-  background: var(--field);
-}
-.place.p1 {
-  background: #fde68a;
-  color: #92400e;
-}
-.place.p2 {
-  background: #e5e7eb;
-  color: #374151;
-}
-.place.p3 {
-  background: #fed7aa;
-  color: #9a3412;
 }
 .right {
   color: #16a34a;
