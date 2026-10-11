@@ -99,7 +99,7 @@ function goFullscreen() {
         {{ closed ? 'Partida finalizada' : status === 'abierto' ? 'Partida en curso' : 'Todavía no empezó' }}
       </p>
 
-      <h1 class="title leading-[1.05]" :style="displayFont">{{ title }}</h1>
+      <h1 class="title leading-[1.05]" :class="{ small: closed }" :style="displayFont">{{ title }}</h1>
 
       <template v-if="!closed">
         <div class="qr rounded-[1.5vw] bg-white p-[1.2vw] shadow-xl">
@@ -108,13 +108,30 @@ function goFullscreen() {
         <p class="hint font-semibold">Escaneá y jugá desde tu celular</p>
       </template>
 
-      <div v-if="winner" class="winner w-full rounded-[1.5vw] px-[1.5vw] py-[2.5vh]">
-        <p class="winner-label font-bold tracking-[0.2em] uppercase">🏆 Ganó</p>
-        <p class="winner-name mt-[0.5vh] font-bold break-words">{{ winner.name }}</p>
-        <p class="winner-meta mt-[0.5vh] font-semibold">
-          {{ winner.correct }}/{{ ranking.total }} correctas · {{ formatDuration(winner.duration_ms) }}
+      <!-- Ganador: medalla, etiqueta entre filetes, nombre con la tipografía
+           de la invitación y dos datos como ficha. Todo en el color del evento. -->
+      <section v-if="winner" class="winner flex w-[85%] flex-col items-center">
+        <span class="medal grid place-items-center rounded-full">
+          <Trophy class="medal-icon" :stroke-width="1.75" />
+        </span>
+        <p class="winner-label mt-[3vh] flex w-full items-center gap-[1vw] font-semibold uppercase">
+          <span class="rule"></span>Ganador<span class="rule"></span>
         </p>
-      </div>
+        <p class="winner-name mt-[1.2vh] break-words" :style="displayFont">{{ winner.name }}</p>
+        <dl class="winner-stats mt-[2.8vh] flex items-stretch">
+          <div class="px-[2vw]">
+            <dt class="sr-only">Correctas</dt>
+            <dd class="stat-value">{{ winner.correct }}<span class="stat-of">/{{ ranking.total }}</span></dd>
+            <dd class="stat-label">correctas</dd>
+          </div>
+          <span class="stat-divider" aria-hidden="true"></span>
+          <div class="px-[2vw]">
+            <dt class="sr-only">Tiempo</dt>
+            <dd class="stat-value">{{ formatDuration(winner.duration_ms) }}</dd>
+            <dd class="stat-label">tiempo</dd>
+          </div>
+        </dl>
+      </section>
 
       <p v-if="ranking?.players" class="players inline-flex items-center gap-[0.6vw] font-semibold">
         <Users class="icon" /> {{ ranking.players }} {{ ranking.players === 1 ? 'jugador' : 'jugadores' }}
@@ -205,6 +222,12 @@ function goFullscreen() {
 .title {
   font-size: 6.5vh;
   color: var(--accent-text);
+  transition: font-size 0.6s ease;
+}
+/* Con el juego cerrado, el protagonista es el ganador. */
+.title.small {
+  font-size: 4.2vh;
+  opacity: 0.85;
 }
 .hint,
 .players {
@@ -222,76 +245,132 @@ function goFullscreen() {
   font-size: 2vh;
   color: var(--muted);
 }
+/* Filas: tarjetas claras con borde de un pelo y sombra apenas, sobre el fondo
+   de la página. El podio usa solo el color del evento: 1.º lleno, 2.º y 3.º
+   en un tono suave con anillo, el resto neutro. */
 .row {
-  background: var(--tint);
+  background: var(--field);
+  border: 1px solid var(--line);
+  box-shadow: 0 0.3vh 1.2vh -0.6vh rgb(0 0 0 / 0.12);
   font-size: 3.4vh;
 }
 .row.first {
-  background: linear-gradient(135deg, #fde68a, #f59e0b);
-  color: #451a03;
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-on);
+  box-shadow: 0 1.6vh 4vh -1.8vh var(--accent);
+  transform: scale(1.015);
 }
 .row.first .time,
 .row.first .total {
   color: inherit;
-  opacity: 0.7;
+  opacity: 0.72;
 }
 .place {
   width: 5.4vh;
   height: 5.4vh;
-  font-size: 2.8vh;
-  background: var(--field);
+  font-family: 'Inter', ui-sans-serif, sans-serif;
+  font-size: 2.5vh;
+  color: var(--muted);
 }
 .trophy {
-  width: 55%;
-  height: 55%;
+  width: 52%;
+  height: 52%;
 }
 .place.p1 {
-  background: #fde68a;
-  color: #92400e;
+  background: var(--accent);
+  color: var(--accent-on);
 }
-.place.p2 {
-  background: #e5e7eb;
-  color: #374151;
-}
+.place.p2,
 .place.p3 {
-  background: #fed7aa;
-  color: #9a3412;
+  background: var(--tint);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 0.25vh color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .row.first .place.p1 {
-  background: #fff;
+  background: var(--accent-on);
+  color: var(--accent);
 }
 .num {
   font-family: 'Inter', ui-sans-serif, sans-serif;
 }
 .total {
-  font-size: 0.65em;
+  font-size: 0.62em;
+  font-weight: 600;
   color: var(--muted);
 }
 .time {
-  font-size: 2.8vh;
+  font-size: 2.7vh;
   color: var(--muted);
 }
 
+/* Ganador (columna izquierda, juego cerrado). */
 .winner {
-  background: linear-gradient(135deg, #fde68a, #f59e0b);
-  color: #451a03;
-  animation: winner-in 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.3);
+  color: var(--ink);
+  animation: winner-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.medal {
+  width: 13vh;
+  height: 13vh;
+  background: var(--accent);
+  color: var(--accent-on);
+  /* Dos anillos: uno del color del fondo y otro tenue del color del evento. */
+  box-shadow:
+    0 0 0 0.9vh var(--tint),
+    0 0 0 1.25vh color-mix(in srgb, var(--accent) 28%, transparent),
+    0 2.5vh 5vh -2vh var(--accent);
+}
+.medal-icon {
+  width: 46%;
+  height: 46%;
 }
 .winner-label {
-  font-size: 2vh;
+  font-family: 'Inter', ui-sans-serif, sans-serif;
+  font-size: 1.7vh;
+  letter-spacing: 0.32em;
+  color: var(--accent-text);
+}
+.rule {
+  height: 1px;
+  flex: 1;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .winner-name {
-  font-size: 5vh;
-  line-height: 1.1;
+  font-size: 7.5vh;
+  line-height: 1;
+  color: var(--accent-text);
+  max-width: 100%;
 }
-.winner-meta {
-  font-size: 2.2vh;
-  opacity: 0.75;
+.winner-stats {
+  font-family: 'Inter', ui-sans-serif, sans-serif;
+}
+.stat-value {
+  font-size: 4vh;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.stat-of {
+  font-size: 0.55em;
+  font-weight: 600;
+  color: var(--muted);
+}
+.stat-label {
+  margin-top: 0.4vh;
+  font-size: 1.5vh;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stat-divider {
+  width: 1px;
+  background: var(--line);
 }
 @keyframes winner-in {
   from {
-    transform: scale(0.8);
     opacity: 0;
+    transform: translateY(2vh);
   }
 }
 

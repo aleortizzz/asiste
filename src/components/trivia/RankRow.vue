@@ -30,21 +30,25 @@ defineProps({
 </template>
 
 <style scoped>
+/* Mismo criterio que el proyector: tarjetas claras con borde de un pelo y el
+   podio en el color del evento (1.º lleno, 2.º y 3.º suaves con anillo). */
 .rank-row {
-  background: var(--tint);
+  background: var(--field);
+  border: 1px solid var(--line);
   color: var(--ink);
 }
 .soft {
   color: var(--muted);
 }
 .place {
-  background: var(--field);
-  color: var(--ink);
+  font-family: 'Inter', ui-sans-serif, sans-serif;
+  color: var(--muted);
 }
 
 /* Mi fila: color de la invitación, un poco más grande y con sombra. */
 .rank-row.mine {
   background: var(--accent);
+  border-color: transparent;
   color: var(--accent-on);
   font-size: 1.06rem;
   box-shadow: 0 10px 24px -10px var(--accent);
@@ -63,17 +67,24 @@ defineProps({
   color: var(--accent);
 }
 
-/* Podio: también en mi fila. */
+/* Podio. */
 .place.p1 {
-  background: #fde68a;
-  color: #92400e;
+  background: var(--accent);
+  color: var(--accent-on);
 }
-.place.p2 {
-  background: #e5e7eb;
-  color: #374151;
-}
+.place.p2,
 .place.p3 {
-  background: #fed7aa;
-  color: #9a3412;
+  background: var(--tint);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+/* En mi fila (fondo de color) el círculo va invertido, sea cual sea el puesto. */
+.mine .place,
+.mine .place.p1,
+.mine .place.p2,
+.mine .place.p3 {
+  background: var(--accent-on);
+  color: var(--accent);
+  box-shadow: none;
 }
 </style>

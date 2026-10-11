@@ -693,8 +693,11 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
   color: var(--accent-text);
 }
 .badge.gold {
-  background: #fde68a;
-  color: #92400e;
+  background: var(--accent);
+  color: var(--accent-on);
+  box-shadow:
+    0 0 0 6px var(--page-bg),
+    0 0 0 8px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 .rules,
 .card {
