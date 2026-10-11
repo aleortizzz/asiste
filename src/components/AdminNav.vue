@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Camera,
   Music2,
+  Trophy,
   Menu,
   X,
 } from '@lucide/vue'
@@ -82,6 +83,13 @@ const items = [
     icon: Music2,
     to: { name: 'admin-canciones' },
     match: ['admin-canciones'],
+  },
+  {
+    label: 'Juego',
+    hint: 'Trivia para la fiesta',
+    icon: Trophy,
+    to: { name: 'admin-juego' },
+    match: ['admin-juego'],
   },
   {
     label: 'Superadmin',

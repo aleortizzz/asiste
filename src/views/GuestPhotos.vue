@@ -3,8 +3,8 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/compressImage'
-import { lighten, contrastText, isDark } from '../lib/color'
-import { Camera, Heart, Clock, Flame, UserRound, Check, X, AlertCircle, ArrowUp, ImagePlus, Pencil } from '@lucide/vue'
+import { useGuestTheme } from '../composables/useGuestTheme'
+import { Camera, Heart, Clock, Flame, UserRound, Check, X, AlertCircle, ArrowUp, ImagePlus, Pencil, Trophy, ChevronRight } from '@lucide/vue'
 import PhotoFeed from '../components/guest-photos/PhotoFeed.vue'
 
 // Galería pública para los invitados (la abren escaneando el QR de las mesas).
@@ -20,59 +20,7 @@ const photos = ref([])
 const loading = ref(true)
 
 // --- Estilo según la plantilla de la invitación ---------------------------------
-// Las fuentes ya las carga index.html (son las mismas de las invitaciones).
-const THEMES = {
-  clasico: {
-    display: "'Dancing Script', cursive",
-    displayWeight: 700,
-    displaySize: '2.6rem',
-    body: "'Playfair Display', serif",
-  },
-  partiful: {
-    display: "'Space Grotesk', ui-sans-serif, sans-serif",
-    displayWeight: 700,
-    displaySize: '2.1rem',
-    body: "'Inter', ui-sans-serif, sans-serif",
-    bg: '#ffffff',
-  },
-  craft: {
-    display: "'DM Serif Text', ui-serif, Georgia, serif",
-    displayWeight: 400,
-    displaySize: '2.3rem',
-    body: "'Inter', ui-sans-serif, sans-serif",
-    bg: '#f7f3ea',
-  },
-}
-
-const theme = computed(() => {
-  const t = THEMES[info.value?.template] ?? THEMES.clasico
-  const accent = /^#[0-9a-f]{6}$/i.test(info.value?.primary_color || '') ? info.value.primary_color : '#9f1239'
-  const bg = t.bg ?? info.value?.bg_color ?? '#fdf7f1'
-  const dark = isDark(bg)
-  return {
-    ...t,
-    vars: {
-      '--accent': accent,
-      '--accent-on': contrastText(accent),
-      // Sobre fondo oscuro el color principal puede no leerse: lo aclaramos.
-      '--accent-text': dark ? lighten(accent, 0.45) : accent,
-      '--tint': dark ? 'rgba(255,255,255,0.08)' : lighten(accent, 0.86),
-      '--page-bg': bg,
-      '--ink': dark ? '#f5f3f0' : '#2b2527',
-      '--muted': dark ? 'rgba(245,243,240,0.6)' : 'rgba(43,37,39,0.58)',
-      '--line': dark ? 'rgba(255,255,255,0.12)' : 'rgba(43,37,39,0.1)',
-      '--field': dark ? 'rgba(255,255,255,0.08)' : '#ffffff',
-      '--heart': '#ff3040',
-    },
-  }
-})
-
-const pageStyle = computed(() => ({
-  ...theme.value.vars,
-  background: 'var(--page-bg)',
-  color: 'var(--ink)',
-  fontFamily: theme.value.body,
-}))
+const { theme, pageStyle } = useGuestTheme(info)
 
 // Para no decir «la fiesta» en un evento de empresa.
 const eventType = ref(null)
@@ -91,6 +39,28 @@ async function loadInfo() {
   if (!b.error && b.data?.image) cover.value = b.data.image
   if (!b.error && b.data?.event_type) eventType.value = b.data.event_type
 }
+
+// --- Juego (trivia) -------------------------------------------------------------------
+// El botón aparece solo con el juego abierto, o cerrado si desde este celular
+// se jugó (para volver a ver el resultado). Ver GuestTrivia.vue.
+const game = ref(null) // info_juego(): { status, title, … } | null
+let playedHere = false
+try {
+  playedHere = !!localStorage.getItem(`trivia-token-${eventId}`)
+} catch {
+  /* modo privado */
+}
+
+async function loadGame() {
+  const { data, error } = await supabase.rpc('info_juego', { p_event_id: eventId })
+  if (!error) game.value = data
+}
+
+const showGame = computed(() => game.value?.status === 'abierto' || (game.value?.status === 'cerrado' && playedHere))
+const gameCta = computed(() => {
+  if (game.value?.status === 'cerrado') return 'Ver los resultados'
+  return playedHere ? 'Ver el ranking en vivo' : '¡Jugá y ganá un premio!'
+})
 
 async function fetchPhotos() {
   const { data, error } = await supabase.rpc('listar_fotos_invitados', { p_event_id: eventId })
@@ -115,7 +85,7 @@ async function loadPhotos() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadInfo(), loadPhotos()])
+  await Promise.all([loadInfo(), loadPhotos(), loadGame()])
   loading.value = false
 })
 
@@ -127,6 +97,7 @@ let pollTimer = null
 onMounted(() => {
   pollTimer = setInterval(async () => {
     if (document.visibilityState !== 'visible' || uploading.value) return
+    loadGame()
     const data = await fetchPhotos()
     if (!data) return
     const known = new Map(photos.value.map((p) => [p.id, p]))
@@ -427,6 +398,20 @@ watch(tab, () => {
       <p class="mt-2 text-sm" style="color: var(--muted)">
         Compartí las fotos que saques {{ whereText }}. Tocá dos veces una foto para darle me gusta ❤️
       </p>
+      <router-link
+        v-if="showGame"
+        :to="{ name: 'guest-trivia', params: { eventId } }"
+        class="game-card mt-4 flex items-center gap-3 rounded-2xl p-3 pr-4"
+      >
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full" style="background: var(--accent); color: var(--accent-on)">
+          <Trophy :size="21" />
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block truncate font-bold">{{ game.title }}</span>
+          <span class="block text-sm" style="color: var(--muted)">{{ gameCta }}</span>
+        </span>
+        <ChevronRight :size="20" style="color: var(--muted)" />
+      </router-link>
       <button
         v-if="nameAsked"
         type="button"
@@ -631,6 +616,17 @@ watch(tab, () => {
 </template>
 
 <style scoped>
+.game-card {
+  background: var(--tint);
+  color: var(--ink);
+  animation: game-pop 0.5s cubic-bezier(0.17, 0.89, 0.32, 1.3);
+}
+@keyframes game-pop {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
 .ring-avatar {
   background: conic-gradient(from 200deg, var(--accent), var(--heart), #ffb347, var(--accent));
 }

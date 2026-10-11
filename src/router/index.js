@@ -11,7 +11,9 @@ import AdminSuperadmin from '../views/AdminSuperadmin.vue'
 import AdminFotosEvento from '../views/AdminFotosEvento.vue'
 import AdminCanciones from '../views/AdminCanciones.vue'
 import AdminActividad from '../views/AdminActividad.vue'
+import AdminJuego from '../views/AdminJuego.vue'
 import GuestPhotos from '../views/GuestPhotos.vue'
+import GuestTrivia from '../views/GuestTrivia.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { useAuth } from '../composables/useAuth'
 
@@ -62,8 +64,10 @@ const router = createRouter({
       component: AdminCanciones,
       meta: { requiresAuth: true },
     },
+    { path: '/admin/juego', name: 'admin-juego', component: AdminJuego, meta: { requiresAuth: true } },
     { path: '/i/:slug', name: 'public-invite', component: PublicInvite },
     { path: '/fotos/:eventId', name: 'guest-photos', component: GuestPhotos },
+    { path: '/juego/:eventId', name: 'guest-trivia', component: GuestTrivia },
     { path: '/', redirect: '/admin/login' },
   ],
 })

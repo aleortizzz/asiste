@@ -83,6 +83,29 @@ Plan de la invitación empresarial (acordado el 2026-10-02; la Parte 1, plantill
 - [x] Parte 7 · Vista previa de WhatsApp para la Ejecutiva: «Título · Invitación», «Para X · fecha, hora · lugar» y, si hay logo, una tarjeta 1200×630 con el logo sobre el color de la invitación (`og-image.php?k=logo`, cacheada en og-cache/). Se probó con PHP portable contra datos reales.
 - [ ] **Al final, junto con los 15** · Parte 3: itinerario y «Agregar al calendario» en Clásica, Partiful y Craft (`lib/calendar.js` ya está hecho; la Ejecutiva ya lo tiene). Prioridad ahora: terminar la empresarial para Cinthia.
 
+### Hito · Trivia en la fiesta (acordado el 2026-10-11)
+
+Durante la comida se anuncia con el micrófono: escaneando el QR de la mesa aparece un botón «Jugar» en la página de fotos. Preguntas de multiple choice armadas por Anto (20–30), tiempo máximo (ej. 5 min). Gana quien más acierta; si empatan, quien tardó menos. Al enviar se ve el top en vivo.
+
+Decisiones:
+- **Lo abre Anto en vivo**: el juego tiene estado `borrador → abierto → cerrado`, con botones en el panel. Antes de abrirlo el botón no aparece en `/fotos`.
+- **Una pregunta por pantalla, sin feedback**: no se sabe si acertó hasta enviar (así no se soplan en la mesa). Al final «Enviar», o se envía sola cuando se acaba el tiempo.
+- **Las respuestas correctas se ven recién cuando se cierra el juego.** Mientras tanto, solo el puntaje y el puesto.
+- **Ranking solo en el celular** (sin pantalla para proyector).
+- **El tiempo lo mide el servidor**, no el celular: `empezar_juego` guarda la hora de inicio y `enviar_juego` calcula puntaje y duración. Las respuestas correctas nunca viajan al navegador mientras el juego está abierto (si no, se podrían ver con las herramientas del navegador).
+- **Un intento por celular**: el navegador guarda un token del intento (localStorage). Si se cierra la página o se queda sin batería, vuelve y sigue donde estaba, con el reloj que siguió corriendo. Anto puede borrar un intento sospechoso desde el panel.
+- **Ranking «en vivo» por consulta cada ~5 s** (como la galería), no con Supabase Realtime: Realtime pediría abrir la tabla a `anon`, y lo público va siempre por RPC.
+
+Pasos:
+- [x] **1 · Base de datos** (`migrations/20261011_trivia.sql`): `trivia_games` (uno por evento: título, tiempo límite, estado), `trivia_questions` (2 a 4 opciones + índice de la correcta) y `trivia_attempts` (nombre, token, respuestas, aciertos, duración). El panel usa las tablas con RLS; los invitados, RPC: `info_juego` (estado, sin preguntas), `empezar_juego` (recién ahí manda las preguntas, **sin** la correcta), `mi_intento_juego` (retomar), `responder_pregunta` (guarda cada respuesta al elegirla), `enviar_juego` y `ranking_juego` (top 10 + mi puesto; cerrado, también mis correctas). Fuera de tiempo (+15 s de gracia) se corrige con lo ya guardado; al cerrar el juego, un trigger corrige a los que estaban jugando. Probado con PGlite (36 casos).
+- [x] **2 · Panel: armar las preguntas** (`AdminJuego.vue` + `components/trivia/QuestionEditor.vue`, ítem «Juego» en la barra lateral): título (por defecto «¿Cuánto conocés a {hero_title}?») y tiempo, que se guardan solos; agregar de corrido («Guardar y agregar otra»), editar y borrar preguntas con 2 a 4 opciones y la correcta marcada. El juego se crea en la base recién con el primer cambio. La vista previa del invitado queda para cuando exista la pantalla del juego (paso 5).
+- [x] **3 · Panel: en vivo** (`components/trivia/TriviaLive.vue`): Abrir / Cerrar (avisa cuántos siguen jugando, que se corrigen con lo que llevan) / Reabrir, «N terminaron · N jugando ahora», ranking completo con aciertos y tiempo (m:ss,d), borrar un intento y «Reiniciar» (borra intentos y vuelve a «sin abrir»; para probar antes de la fiesta). Se actualiza cada 5 s mientras está abierto.
+- [x] **4 · Invitados: botón en `/fotos`**: tarjeta con el título del juego debajo del encabezado, solo con el juego abierto (o cerrado si se jugó desde ese celular: «Ver los resultados»). Se revisa con el refresco de 20 s de la galería. El estilo por plantilla pasó a `composables/useGuestTheme.js` (fotos y juego).
+- [x] **5 · Invitados: jugar** (`views/GuestTrivia.vue`, `/juego/:eventId`): espera («todavía no empezó», pasa sola al inicio cuando se abre), inicio (nombre precargado del de fotos + reglas), una pregunta por pantalla con reloj (rojo los últimos 30 s) y barra de progreso, pasa sola a la próxima sin responder, Anterior/Siguiente para cambiar, resumen con las que faltan y «Enviar»; envío automático en 0. Preguntas y opciones mezcladas por invitado (`seededShuffle` con el token: distinto para cada uno, igual si recarga). Reloj con la hora del servidor (corrige el desfase del celular). Si se recarga, sigue donde estaba; si lo borran desde el panel, «Tu partida ya no está».
+- [x] **6 · Invitados: resultado y top en vivo**: «X/30 correctas en m:ss,d · Vas N.º de M», top 10 que se actualiza cada 5 s (mi fila resaltada, y si no estoy en el top, abajo aparte). Cerrado: «¡Ganaste!» o el ganador destacado, y «Tus respuestas» con la correcta y la mía tachada si le erré.
+- [ ] **7 · Prueba de punta a punta** con varios celulares a la vez (empates, se acaba el tiempo, cerrar la pestaña a la mitad, juego cerrado mientras alguien juega).
+- [ ] (A decidir para cuando se venda) ¿El juego es del plan Plus como las canciones?
+
 Otros:
 
 - [ ] Prueba real antes del 31/10: imprimir el cartel y escanearlo con varios celulares, mandar links reales y revisar la vista previa, probar la lista de la entrada impresa.
