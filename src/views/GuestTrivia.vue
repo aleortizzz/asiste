@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { useGuestTheme } from '../composables/useGuestTheme'
 import { seededShuffle, formatDuration } from '../lib/trivia'
-import { Trophy, Timer, ChevronLeft, ChevronRight, Check, X, Send, Camera, Hourglass, RotateCw } from '@lucide/vue'
+import { Trophy, Timer, ChevronLeft, ChevronRight, Check, X, Send, Camera, Hourglass, RotateCw, ListChecks } from '@lucide/vue'
 
 // Trivia para los invitados (/juego/:eventId, se llega desde la página de
 // fotos del QR). Sin login: el intento se identifica con un token que queda
@@ -118,6 +118,8 @@ async function start() {
 // --- Jugando ----------------------------------------------------------------------------
 const questions = ref([]) // [{ id, question, options: [{ text, i }] }] ya mezcladas
 const answers = ref({}) // { [id de la pregunta]: índice original de la opción }
+const results = ref({}) // { [id de la pregunta]: true | false } según el servidor
+const checking = ref(null) // id de la pregunta que se está corrigiendo
 const current = ref(0)
 const playerName = ref('')
 let deadline = 0 // en hora del servidor (ms)
@@ -153,7 +155,9 @@ function setupPlay(data) {
   } catch {
     /* basura vieja */
   }
-  answers.value = { ...(data.answers || {}), ...local }
+  // Lo del servidor gana: una respuesta guardada ya no se puede cambiar.
+  answers.value = { ...local, ...(data.answers || {}) }
+  results.value = data.results || {}
   playerName.value = data.player_name
 
   offset = Date.parse(data.server_now) - Date.now()
@@ -176,30 +180,51 @@ function startTick() {
   }, 250)
 }
 
+// Al tocar una opción el servidor dice si es correcta: se pinta verde o roja y
+// queda fija (si se pudiera cambiar, alguien probaría hasta que dé verde). Si
+// le erró, no se muestra cuál era la correcta, así no se la pasan en la mesa.
 let advanceTimer = null
-function choose(option) {
+async function choose(option) {
   const q = question.value
-  if (!q || screen.value !== 'playing') return
+  if (!q || screen.value !== 'playing' || answers.value[q.id] != null || checking.value) return
   answers.value = { ...answers.value, [q.id]: option.i }
   write(answersKey(token.value), JSON.stringify(answers.value))
+  checking.value = q.id
 
-  supabase
-    .rpc('responder_pregunta', { p_token: token.value, p_question_id: q.id, p_option: option.i })
-    .then(({ data, error }) => {
-      if (error?.message?.includes('no encontrado')) return removed()
-      // false = se terminó el tiempo o cerraron el juego: enviamos lo que hay.
-      if (data === false) submit()
-    })
+  const { data, error } = await supabase.rpc('responder_pregunta', {
+    p_token: token.value,
+    p_question_id: q.id,
+    p_option: option.i,
+  })
+  checking.value = null
+  if (error?.message?.includes('no encontrado')) return removed()
+  // ok false = se terminó el tiempo o cerraron el juego: enviamos lo que hay.
+  if (data?.ok === false) return submit()
+  if (data) {
+    // Si ya estaba respondida (otra pestaña), vale la que quedó guardada.
+    if (data.locked) answers.value = { ...answers.value, [q.id]: data.option }
+    results.value = { ...results.value, [q.id]: data.correct }
+  }
+  // Sin conexión queda elegida sin color; se manda igual al enviar.
 
-  // Pasa sola a la próxima sin responder (un ratito después, para que se vea
-  // qué tocó). Si no queda ninguna, al resumen para enviar.
+  // Pasa sola a la próxima sin responder (después de ver el color). Si no
+  // queda ninguna, al resumen para enviar.
   clearTimeout(advanceTimer)
   advanceTimer = setTimeout(() => {
-    if (screen.value !== 'playing') return
+    if (screen.value !== 'playing' || question.value?.id !== q.id) return
     const next = unanswered.value.find((i) => i > current.value) ?? unanswered.value[0]
     if (next == null) screen.value = 'summary'
     else current.value = next
-  }, 280)
+  }, 900)
+}
+
+// Estado de una opción para pintarla.
+function optionState(q, opt) {
+  if (answers.value[q.id] !== opt.i) return ''
+  if (checking.value === q.id) return 'checking'
+  if (results.value[q.id] === true) return 'right'
+  if (results.value[q.id] === false) return 'wrong'
+  return 'chosen'
 }
 
 function go(delta) {
@@ -279,6 +304,17 @@ const meInTop = computed(() => ranking.value?.top?.some((r) => r.me))
 const winner = computed(() => (closed.value ? ranking.value?.top?.[0] : null))
 const ord = (n) => `${n}.º`
 
+const reviewOpen = ref(false)
+// is_correct lo manda el servidor desde 20261012_trivia_feedback.sql; si no
+// viene (SQL viejo), se calcula con la correcta, que con el juego cerrado sí está.
+const review = computed(() =>
+  (ranking.value?.review ?? []).map((r) => ({
+    ...r,
+    is_correct: r.is_correct ?? (r.chosen != null && r.chosen === r.correct_index),
+  })),
+)
+const reviewRight = computed(() => review.value.filter((r) => r.is_correct).length)
+
 onUnmounted(() => {
   clearInterval(tick)
   clearInterval(waitTimer)
@@ -329,7 +365,7 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
         </li>
         <li>Gana quien más acierta. Si hay empate, gana quien terminó más rápido.</li>
         <li>Hay <strong>una sola partida</strong> por celular.</li>
-        <li>Vas a ver si acertaste cuando termine el juego.</li>
+        <li>Al tocar una opción vas a ver si acertaste. <strong>No se puede cambiar</strong>, así que pensala bien.</li>
       </ul>
       <label class="mt-6 block text-sm font-semibold" for="trivia-name">Tu nombre (así aparecés en el ranking)</label>
       <input
@@ -379,14 +415,24 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             :key="opt.i"
             type="button"
             @click="choose(opt)"
+            :disabled="answers[question.id] != null && answers[question.id] !== opt.i"
             class="option flex w-full items-center gap-3 rounded-2xl p-4 text-left text-base font-semibold"
-            :class="{ chosen: answers[question.id] === opt.i }"
+            :class="optionState(question, opt)"
           >
             <span class="letter grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold">{{ LETTERS[j] }}</span>
             <span class="min-w-0 flex-1">{{ opt.text }}</span>
-            <Check v-if="answers[question.id] === opt.i" :size="20" class="shrink-0" />
+            <Check v-if="optionState(question, opt) === 'right' || optionState(question, opt) === 'chosen'" :size="20" class="shrink-0" />
+            <X v-else-if="optionState(question, opt) === 'wrong'" :size="20" class="shrink-0" />
+            <span v-else-if="optionState(question, opt) === 'checking'" class="mini-spinner shrink-0"></span>
           </button>
         </div>
+        <p
+          v-if="results[question.id] != null"
+          class="verdict mt-5 text-center text-lg font-bold"
+          :class="results[question.id] ? 'right' : 'wrong'"
+        >
+          {{ results[question.id] ? '¡Correcto! 🎉' : 'Incorrecto' }}
+        </p>
       </main>
 
       <!-- Resumen antes de enviar -->
@@ -399,7 +445,7 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             Te {{ unanswered.length === 1 ? 'falta 1 pregunta' : `faltan ${unanswered.length} preguntas` }}. Tocá un número para
             ir, o enviá así.
           </template>
-          <template v-else>Respondiste todas. Podés revisar alguna o enviar ya: el tiempo sigue corriendo.</template>
+          <template v-else>Respondiste todas. Enviá ya: el tiempo sigue corriendo.</template>
         </p>
         <div class="mt-5 flex flex-wrap justify-center gap-2">
           <button
@@ -408,7 +454,7 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             type="button"
             @click="goTo(i)"
             class="dot grid h-10 w-10 place-items-center rounded-full text-sm font-bold"
-            :class="{ open: answers[q.id] == null }"
+            :class="answers[q.id] == null ? 'open' : results[q.id] === true ? 'right' : results[q.id] === false ? 'wrong' : ''"
             :aria-label="`Ir a la pregunta ${i + 1}`"
           >
             {{ i + 1 }}
@@ -470,6 +516,19 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             {{ closed ? 'Quedaste' : 'Vas' }} {{ ord(me.position) }}
             <span class="font-semibold opacity-70">de {{ ranking.players }}</span>
           </p>
+          <!-- Las respuestas, recién con el juego cerrado: mientras tanto un
+               rojo sin la correcta al lado parecía «todo mal». -->
+          <p v-if="!closed" class="mt-4 text-sm" style="color: var(--muted)">
+            Te vamos a mostrar tus respuestas cuando termine el juego 👀
+          </p>
+          <button
+            v-else-if="review.length"
+            type="button"
+            @click="reviewOpen = true"
+            class="ghost mx-auto mt-4 flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
+          >
+            <ListChecks :size="17" /> Ver mis respuestas
+          </button>
         </section>
         <section v-else class="text-center">
           <div class="badge mx-auto grid h-20 w-20 place-items-center rounded-full"><Trophy :size="34" /></div>
@@ -486,7 +545,7 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
           </div>
         </div>
         <p v-else-if="me" class="mt-6 text-center text-sm" style="color: var(--muted)">
-          El ganador se conoce cuando termine el juego. Las respuestas correctas también aparecen ahí. 👀
+          El ganador se conoce cuando termine el juego.
         </p>
 
         <!-- Top 10 -->
@@ -522,37 +581,55 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
           </div>
         </div>
 
-        <!-- Mis respuestas (con el juego cerrado) -->
-        <template v-if="ranking.review?.length">
-          <h2 class="mt-10 text-lg font-bold">Tus respuestas</h2>
-          <ol class="mt-3 space-y-3">
-            <li v-for="(r, i) in ranking.review" :key="i" class="card rounded-2xl p-4">
-              <p class="font-semibold">
-                <span style="color: var(--muted)">{{ i + 1 }}.</span> {{ r.question }}
-              </p>
-              <ul class="mt-2 space-y-1 text-sm">
-                <li
-                  v-for="(opt, j) in r.options"
-                  :key="j"
-                  class="flex items-center gap-2"
-                  :class="{ right: j === r.correct_index, wrong: j === r.chosen && j !== r.correct_index }"
-                  v-show="j === r.correct_index || j === r.chosen"
-                >
-                  <Check v-if="j === r.correct_index" :size="16" class="shrink-0" />
-                  <X v-else :size="16" class="shrink-0" />
-                  {{ opt }}
-                </li>
-                <li v-if="r.chosen == null" class="text-xs" style="color: var(--muted)">No la respondiste</li>
-              </ul>
-            </li>
-          </ol>
-        </template>
-
         <router-link :to="photosLink" class="ghost mt-10 flex items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold">
           <Camera :size="16" /> Volver a las fotos
         </router-link>
       </template>
     </div>
+
+    <!-- ============ MIS RESPUESTAS ============ -->
+    <transition name="sheet">
+      <div v-if="reviewOpen && closed && review.length" class="review fixed inset-0 z-40 overflow-y-auto" :style="pageStyle">
+        <header class="bar sticky top-0 z-10">
+          <div class="mx-auto flex max-w-md items-center justify-between gap-3 px-5 py-4">
+            <div>
+              <h2 class="text-lg font-bold">Tus respuestas</h2>
+              <p class="text-sm" style="color: var(--muted)">
+                {{ reviewRight }} bien · {{ review.length - reviewRight }} mal o sin responder
+              </p>
+            </div>
+            <button type="button" @click="reviewOpen = false" aria-label="Cerrar" class="ghost grid h-10 w-10 place-items-center rounded-full">
+              <X :size="20" />
+            </button>
+          </div>
+        </header>
+        <div class="mx-auto max-w-md px-5 pb-12">
+          <ol class="space-y-3">
+            <li
+              v-for="(r, i) in review"
+              :key="i"
+              class="answer rounded-2xl p-4"
+              :class="r.is_correct ? 'is-right' : 'is-wrong'"
+            >
+              <p class="font-semibold">
+                <span style="color: var(--muted)">{{ i + 1 }}.</span> {{ r.question }}
+              </p>
+              <p v-if="r.chosen == null" class="mt-2 flex items-center gap-2 text-sm" style="color: var(--muted)">
+                <X :size="16" class="shrink-0" /> No la respondiste
+              </p>
+              <p v-else class="mt-2 flex items-center gap-2 text-sm font-semibold" :class="r.is_correct ? 'right' : 'wrong'">
+                <Check v-if="r.is_correct" :size="16" class="shrink-0" />
+                <X v-else :size="16" class="shrink-0" />
+                {{ r.options[r.chosen] }}
+              </p>
+              <p v-if="!r.is_correct && r.correct_index != null" class="right mt-1 flex items-center gap-2 text-sm">
+                <Check :size="16" class="shrink-0" /> {{ r.options[r.correct_index] }}
+              </p>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -646,13 +723,60 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
   background: var(--tint);
   color: var(--accent-text);
 }
-.option.chosen {
+.option:disabled {
+  opacity: 0.45;
+}
+.option.chosen,
+.option.checking {
   border-color: var(--accent);
   background: var(--tint);
 }
-.option.chosen .letter {
+.option.chosen .letter,
+.option.checking .letter {
   background: var(--accent);
   color: var(--accent-on);
+}
+.option.right {
+  border-color: #16a34a;
+  background: rgb(22 163 74 / 0.12);
+  animation: pop 0.3s ease-out;
+}
+.option.right .letter {
+  background: #16a34a;
+  color: #fff;
+}
+.option.wrong {
+  border-color: #dc2626;
+  background: rgb(220 38 38 / 0.1);
+  animation: shake 0.35s ease-in-out;
+}
+.option.wrong .letter {
+  background: #dc2626;
+  color: #fff;
+}
+@keyframes pop {
+  50% {
+    transform: scale(1.03);
+  }
+}
+@keyframes shake {
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+.verdict {
+  animation: q-in 0.2s ease-out;
+}
+.mini-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  border: 2.5px solid var(--tint);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
 }
 .navbar {
   background: linear-gradient(to top, var(--page-bg) 60%, transparent);
@@ -661,6 +785,14 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
 .dot {
   background: var(--accent);
   color: var(--accent-on);
+}
+.dot.right {
+  background: #16a34a;
+  color: #fff;
+}
+.dot.wrong {
+  background: #dc2626;
+  color: #fff;
 }
 .dot.open {
   background: transparent;
@@ -707,7 +839,6 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
 }
 .wrong {
   color: #dc2626;
-  text-decoration: line-through;
 }
 .live-dot {
   width: 0.5rem;
@@ -730,6 +861,27 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
     opacity: 0;
     transform: translateX(1rem);
   }
+}
+.review {
+  background: var(--page-bg);
+}
+.answer {
+  background: var(--tint);
+  border-left: 4px solid transparent;
+}
+.answer.is-right {
+  border-left-color: #16a34a;
+}
+.answer.is-wrong {
+  border-left-color: #dc2626;
+}
+.sheet-enter-active,
+.sheet-leave-active {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-enter-from,
+.sheet-leave-to {
+  transform: translateY(100%);
 }
 .rank-move {
   transition: transform 0.4s ease;
