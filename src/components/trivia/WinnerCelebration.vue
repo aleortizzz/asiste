@@ -4,10 +4,11 @@ import { Trophy } from '@lucide/vue'
 import { formatDuration } from '../../lib/trivia'
 
 // Festejo del ganador al cerrarse la trivia, a pantalla completa (como la
-// pantalla de «¡Listo!» de Mercado Pago): el verde se expande desde el
-// centro, salta la copa, cae papel picado y aparece el nombre. Lo usan el
+// pantalla de «¡Listo!» de Mercado Pago): el color del evento se expande
+// desde el centro, salta la copa, cae papel picado y aparece el nombre. Lo usan el
 // celular (GuestTrivia) y el proyector (TriviaProyector); los tamaños van en
-// vmin para que sirva en los dos.
+// vmin para que sirva en los dos. Los colores salen de las variables de la
+// página (--accent y --accent-on, ver useGuestTheme).
 const props = defineProps({
   winner: { type: Object, required: true }, // { name, correct, duration_ms }
   total: { type: Number, required: true },
@@ -17,7 +18,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 // Papel picado: posiciones, colores y tiempos al azar (fijos por montaje).
-const COLORS = ['#ffffff', '#fde047', '#facc15', '#bbf7d0', '#fef9c3', '#86efac']
+const COLORS = ['var(--accent-on)', '#fde047', '#facc15', '#fef9c3', 'color-mix(in srgb, var(--accent) 45%, white)', '#ffffff']
 const confetti = Array.from({ length: 46 }, (_, i) => ({
   left: `${Math.random() * 100}%`,
   background: COLORS[i % COLORS.length],
@@ -44,10 +45,10 @@ const firstName = (name) => name.trim().split(/\s+/)[0]
       <span v-for="(c, i) in confetti" :key="i" class="confetti" :style="c"></span>
     </div>
 
-    <div class="relative mx-auto flex h-full max-w-full flex-col items-center justify-center px-6 text-center text-white">
+    <div class="relative mx-auto flex h-full max-w-full flex-col items-center justify-center px-6 text-center">
       <div class="badge-wrap relative">
         <span class="ring absolute inset-0 rounded-full"></span>
-        <span class="badge grid place-items-center rounded-full bg-white">
+        <span class="badge grid place-items-center rounded-full">
           <Trophy class="cup" :stroke-width="2.2" />
         </span>
       </div>
@@ -62,7 +63,7 @@ const firstName = (name) => name.trim().split(/\s+/)[0]
         {{ winner.correct }}/{{ total }} correctas · {{ formatDuration(winner.duration_ms) }}
       </p>
 
-      <button type="button" @click="emit('close')" class="close mt-[6vmin] rounded-full bg-white font-bold">
+      <button type="button" @click="emit('close')" class="close mt-[6vmin] rounded-full font-bold">
         {{ buttonText }}
       </button>
     </div>
@@ -71,13 +72,19 @@ const firstName = (name) => name.trim().split(/\s+/)[0]
 
 <style scoped>
 .celebration {
+  color: var(--accent-on);
   font-family: 'Inter', ui-sans-serif, sans-serif;
   font-variant-numeric: lining-nums tabular-nums;
 }
 
 /* El verde se expande desde el centro. */
 .flood {
-  background: radial-gradient(circle at 50% 42%, #00b85c, #00a650 55%, #008f45);
+  background: radial-gradient(
+    circle at 50% 42%,
+    color-mix(in srgb, var(--accent) 85%, white),
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 82%, black)
+  );
   animation: flood 0.75s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 @keyframes flood {
@@ -93,7 +100,8 @@ const firstName = (name) => name.trim().split(/\s+/)[0]
 .badge {
   width: clamp(6rem, 26vmin, 16rem);
   height: clamp(6rem, 26vmin, 16rem);
-  color: #00a650;
+  background: var(--accent-on);
+  color: var(--accent);
   box-shadow: 0 1.5vmin 5vmin rgb(0 0 0 / 0.18);
   animation: pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
 }
@@ -103,7 +111,7 @@ const firstName = (name) => name.trim().split(/\s+/)[0]
   animation: wiggle 0.9s ease-in-out 1.1s both;
 }
 .ring {
-  border: 0.6vmin solid rgb(255 255 255 / 0.7);
+  border: 0.6vmin solid color-mix(in srgb, var(--accent-on) 70%, transparent);
   animation: ring 1.4s ease-out 0.75s both;
 }
 @keyframes pop {
@@ -163,7 +171,8 @@ const firstName = (name) => name.trim().split(/\s+/)[0]
   animation-delay: 1.2s;
 }
 .close {
-  color: #00843f;
+  background: var(--accent-on);
+  color: var(--accent);
   font-size: clamp(1rem, 2.6vmin, 1.6rem);
   padding: clamp(0.8rem, 2vmin, 1.2rem) clamp(1.8rem, 5vmin, 3rem);
   box-shadow: 0 1vmin 3vmin rgb(0 0 0 / 0.15);
