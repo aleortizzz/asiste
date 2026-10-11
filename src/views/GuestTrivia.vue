@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { useGuestTheme } from '../composables/useGuestTheme'
 import { seededShuffle, formatDuration } from '../lib/trivia'
-import { Trophy, Timer, ChevronLeft, ChevronRight, Check, X, Send, Camera, Hourglass, RotateCw, ListChecks } from '@lucide/vue'
+import { Trophy, Timer, ChevronLeft, ChevronRight, Check, X, Send, Camera, Hourglass, RotateCw, ListChecks, Flag } from '@lucide/vue'
 
 // Trivia para los invitados (/juego/:eventId, se llega desde la página de
 // fotos del QR). Sin login: el intento se identifica con un token que queda
@@ -301,7 +301,6 @@ async function showResult() {
 const me = computed(() => ranking.value?.me)
 const closed = computed(() => ranking.value?.status === 'cerrado')
 const meInTop = computed(() => ranking.value?.top?.some((r) => r.me))
-const winner = computed(() => (closed.value ? ranking.value?.top?.[0] : null))
 const ord = (n) => `${n}.º`
 
 const reviewOpen = ref(false)
@@ -499,6 +498,13 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
       <div v-if="!ranking" class="grid place-items-center py-20"><span class="spinner"></span></div>
 
       <template v-else>
+        <!-- Estado del juego -->
+        <p class="status mx-auto mb-6 flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold" :class="{ ended: closed }">
+          <span v-if="!closed" class="live-dot"></span>
+          <Flag v-else :size="15" />
+          {{ closed ? 'Partida finalizada' : 'Partida en curso' }}
+        </p>
+
         <!-- Mi resultado -->
         <section v-if="me" class="text-center">
           <div class="badge mx-auto grid h-20 w-20 place-items-center rounded-full" :class="{ gold: closed && me.position === 1 }">
@@ -516,45 +522,14 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             {{ closed ? 'Quedaste' : 'Vas' }} {{ ord(me.position) }}
             <span class="font-semibold opacity-70">de {{ ranking.players }}</span>
           </p>
-          <!-- Las respuestas, recién con el juego cerrado: mientras tanto un
-               rojo sin la correcta al lado parecía «todo mal». -->
-          <p v-if="!closed" class="mt-4 text-sm" style="color: var(--muted)">
-            Te vamos a mostrar tus respuestas cuando termine el juego 👀
-          </p>
-          <button
-            v-else-if="review.length"
-            type="button"
-            @click="reviewOpen = true"
-            class="ghost mx-auto mt-4 flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
-          >
-            <ListChecks :size="17" /> Ver mis respuestas
-          </button>
         </section>
         <section v-else class="text-center">
           <div class="badge mx-auto grid h-20 w-20 place-items-center rounded-full"><Trophy :size="34" /></div>
           <h1 class="mt-5 text-4xl leading-tight" :style="displayFont" style="color: var(--accent-text)">{{ ranking.title }}</h1>
-          <p class="mt-2" style="color: var(--muted)">{{ closed ? 'El juego terminó.' : 'Ranking en vivo' }}</p>
         </section>
 
-        <!-- Ganador -->
-        <div v-if="winner" class="winner mt-8 flex items-center gap-3 rounded-3xl p-4">
-          <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/90 text-2xl">🏆</span>
-          <div class="min-w-0">
-            <p class="text-xs font-bold tracking-wider uppercase opacity-80">Ganador</p>
-            <p class="truncate text-xl font-bold">{{ winner.name }}</p>
-          </div>
-        </div>
-        <p v-else-if="me" class="mt-6 text-center text-sm" style="color: var(--muted)">
-          El ganador se conoce cuando termine el juego.
-        </p>
-
         <!-- Top 10 -->
-        <h2 class="mt-8 flex items-center justify-between text-lg font-bold">
-          Top {{ Math.min(10, ranking.top.length) || '' }}
-          <span v-if="!closed" class="live inline-flex items-center gap-1.5 text-xs font-semibold" style="color: var(--muted)">
-            <span class="live-dot"></span> En vivo
-          </span>
-        </h2>
+        <h2 class="mt-8 text-lg font-bold">Top {{ Math.min(10, ranking.top.length) || '' }}</h2>
         <p v-if="!ranking.top.length" class="mt-3 text-sm" style="color: var(--muted)">Todavía nadie terminó.</p>
         <TransitionGroup v-else tag="ol" name="rank" class="mt-3 space-y-2">
           <li
@@ -581,7 +556,23 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
           </div>
         </div>
 
-        <router-link :to="photosLink" class="ghost mt-10 flex items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold">
+        <!-- Mis respuestas: recién con el juego cerrado (mientras tanto, un rojo
+             sin la correcta al lado parecía «todo mal»). -->
+        <template v-if="me">
+          <p v-if="!closed" class="mt-10 text-center text-sm" style="color: var(--muted)">
+            Te vamos a mostrar tus respuestas cuando termine el juego 👀
+          </p>
+          <button
+            v-else-if="review.length"
+            type="button"
+            @click="reviewOpen = true"
+            class="cta mt-10 flex w-full items-center justify-center gap-2 rounded-full py-3.5 font-bold"
+          >
+            <ListChecks :size="18" /> Ver mis respuestas
+          </button>
+        </template>
+
+        <router-link :to="photosLink" class="ghost mt-4 flex items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold">
           <Camera :size="16" /> Volver a las fotos
         </router-link>
       </template>
@@ -804,9 +795,13 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
   background: var(--accent);
   color: var(--accent-on);
 }
-.winner {
-  background: linear-gradient(135deg, #fde68a, #f59e0b);
-  color: #451a03;
+.status {
+  background: rgb(22 163 74 / 0.12);
+  color: #15803d;
+}
+.status.ended {
+  background: var(--tint);
+  color: var(--ink);
 }
 .row {
   background: var(--tint);
