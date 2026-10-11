@@ -531,7 +531,15 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
         <!-- Top 10 -->
         <h2 class="mt-8 text-lg font-bold">Top {{ Math.min(10, ranking.top.length) || '' }}</h2>
         <p v-if="!ranking.top.length" class="mt-3 text-sm" style="color: var(--muted)">Todavía nadie terminó.</p>
-        <TransitionGroup v-else tag="ol" name="rank" class="mt-3 space-y-2">
+        <template v-else>
+        <!-- Encabezados: sin ellos «29» y «3:12,4» no se entendía qué eran. -->
+        <div class="mt-3 flex items-center gap-3 pr-4 pl-2.5 text-xs font-semibold" style="color: var(--muted)">
+          <span class="w-8 shrink-0 text-center">#</span>
+          <span class="flex-1">Jugador</span>
+          <span class="w-16 shrink-0 text-right">Correctas</span>
+          <span class="w-16 shrink-0 text-right">Tiempo</span>
+        </div>
+        <TransitionGroup tag="ol" name="rank" class="mt-1.5 space-y-2">
           <li
             v-for="r in ranking.top"
             :key="r.name + r.duration_ms"
@@ -542,17 +550,23 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
               {{ r.position }}
             </span>
             <span class="min-w-0 flex-1 truncate font-semibold">{{ r.name }}<template v-if="r.me"> (vos)</template></span>
-            <span class="shrink-0 font-bold tabular-nums">{{ r.correct }}</span>
-            <span class="w-14 shrink-0 text-right text-sm tabular-nums" style="color: var(--muted)">{{ formatDuration(r.duration_ms) }}</span>
+            <span class="w-16 shrink-0 text-right font-bold tabular-nums">
+              {{ r.correct }}<span class="text-xs font-semibold opacity-60">/{{ ranking.total }}</span>
+            </span>
+            <span class="w-16 shrink-0 text-right text-sm tabular-nums" style="color: var(--muted)">{{ formatDuration(r.duration_ms) }}</span>
           </li>
         </TransitionGroup>
+        <p class="mt-2 text-center text-xs" style="color: var(--muted)">Si empatan en correctas, gana quien tardó menos.</p>
+        </template>
         <div v-if="me && !meInTop" class="mt-2">
           <p class="text-center leading-none" style="color: var(--muted)">⋮</p>
           <div class="row mine mt-2 flex items-center gap-3 rounded-2xl py-2.5 pr-4 pl-2.5">
             <span class="place grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold">{{ me.position }}</span>
             <span class="min-w-0 flex-1 truncate font-semibold">{{ me.name }} (vos)</span>
-            <span class="shrink-0 font-bold tabular-nums">{{ me.correct }}</span>
-            <span class="w-14 shrink-0 text-right text-sm tabular-nums" style="color: var(--muted)">{{ formatDuration(me.duration_ms) }}</span>
+            <span class="w-16 shrink-0 text-right font-bold tabular-nums">
+              {{ me.correct }}<span class="text-xs font-semibold opacity-60">/{{ ranking.total }}</span>
+            </span>
+            <span class="w-16 shrink-0 text-right text-sm tabular-nums" style="color: var(--muted)">{{ formatDuration(me.duration_ms) }}</span>
           </div>
         </div>
 

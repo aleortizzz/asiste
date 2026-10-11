@@ -179,7 +179,14 @@ const medal = (pos) => ({ 1: 'bg-sulfur', 2: 'bg-pumice', 3: 'bg-[#f3d6b8]' })[p
       </span>
     </div>
 
-    <ol v-if="ranking.length" class="mt-4 space-y-1.5">
+    <div v-if="ranking.length" class="mt-4 flex items-center gap-3 pr-2 pl-2 text-xs font-bold text-obsidian/50">
+      <span class="w-8 shrink-0 text-center">#</span>
+      <span class="flex-1">Jugador</span>
+      <span class="w-20 shrink-0 text-right">Correctas</span>
+      <span class="w-16 shrink-0 text-right">Tiempo</span>
+      <span class="w-8 shrink-0"></span>
+    </div>
+    <ol v-if="ranking.length" class="mt-1.5 space-y-1.5">
       <li
         v-for="a in ranking"
         :key="a.id"
@@ -190,7 +197,7 @@ const medal = (pos) => ({ 1: 'bg-sulfur', 2: 'bg-pumice', 3: 'bg-[#f3d6b8]' })[p
           <template v-else>{{ a.position }}</template>
         </span>
         <span class="min-w-0 flex-1 truncate font-bold">{{ a.player_name }}</span>
-        <span class="shrink-0 text-sm">
+        <span class="w-20 shrink-0 text-right text-sm">
           <strong>{{ a.correct_count }}</strong><span class="text-obsidian/45">/{{ total }}</span>
         </span>
         <span class="w-16 shrink-0 text-right text-sm text-obsidian/55 tabular-nums">{{ formatDuration(a.duration_ms) }}</span>
