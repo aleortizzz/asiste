@@ -5,7 +5,7 @@ import QRCode from 'qrcode'
 import { supabase } from '../lib/supabase'
 import { useGuestTheme } from '../composables/useGuestTheme'
 import { formatDuration } from '../lib/trivia'
-import { Maximize, Users, Flag } from '@lucide/vue'
+import { Maximize, Users, Flag, Trophy } from '@lucide/vue'
 
 // Ranking de la trivia para el proyector de la fiesta (/juego/:eventId/ranking).
 // Sin login. Solo lectura: top 10 que se actualiza cada 5 s, estado del juego
@@ -129,15 +129,17 @@ function goFullscreen() {
           <span class="w-[10vw] shrink-0 text-right">Correctas</span>
           <span class="w-[10vw] shrink-0 text-right">Tiempo</span>
         </div>
-        <TransitionGroup tag="ol" name="rank" class="space-y-[1vh]">
+        <TransitionGroup appear tag="ol" name="rank" class="relative flex flex-col gap-[1vh]">
           <li
-            v-for="r in top"
+            v-for="(r, i) in top"
             :key="r.name + r.duration_ms"
+            :style="{ '--i': i }"
             class="row flex items-center gap-[1.5vw] rounded-[1.2vw] px-[1.5vw] py-[0.8vh]"
             :class="{ first: closed && r.position === 1 }"
           >
             <span class="place grid shrink-0 place-items-center rounded-full font-bold" :class="`p${r.position}`">
-              {{ r.position }}
+              <Trophy v-if="r.position === 1" class="trophy" :stroke-width="2.5" aria-label="1" />
+              <template v-else>{{ r.position }}</template>
             </span>
             <span class="name min-w-0 flex-1 truncate font-bold">{{ r.name }}</span>
             <span class="num w-[10vw] shrink-0 text-right font-bold">
@@ -225,6 +227,10 @@ function goFullscreen() {
   font-size: 2.8vh;
   background: var(--field);
 }
+.trophy {
+  width: 55%;
+  height: 55%;
+}
 .place.p1 {
   background: #fde68a;
   color: #92400e;
@@ -288,15 +294,40 @@ function goFullscreen() {
   }
 }
 
-.rank-move {
-  transition: transform 0.6s ease;
+/* Ranking en vivo: el que entra se desliza y brilla un momento, los demás se
+   acomodan sin saltos y el que sale del top se desvanece en su lugar
+   (absolute: deja de ocupar espacio enseguida). --i escalona si entran varios. */
+.rank-move,
+.rank-enter-active,
+.rank-leave-active {
+  transition:
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.6s ease;
 }
 .rank-enter-active {
-  transition: all 0.5s ease;
+  transition-delay: calc(var(--i, 0) * 60ms);
+  animation: rank-glow 2.2s ease-out calc(var(--i, 0) * 60ms) both;
 }
 .rank-enter-from {
   opacity: 0;
-  transform: translateX(3vw);
+  transform: translateX(4vw) scale(0.96);
+}
+.rank-leave-active {
+  position: absolute;
+  inset-inline: 0;
+}
+.rank-leave-to {
+  opacity: 0;
+  transform: scale(0.94);
+}
+@keyframes rank-glow {
+  0%,
+  35% {
+    box-shadow: 0 0 0 0.35vh var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 0.35vh transparent;
+  }
 }
 
 .fs {

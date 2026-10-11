@@ -547,8 +547,8 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
           <span class="w-16 shrink-0 text-right">Correctas</span>
           <span class="w-16 shrink-0 text-right">Tiempo</span>
         </div>
-        <TransitionGroup tag="ol" name="rank" class="mt-1.5 space-y-2">
-          <li v-for="r in ranking.top" :key="r.name + r.duration_ms">
+        <TransitionGroup appear tag="ol" name="rank" class="relative mt-1.5 flex flex-col gap-2">
+          <li v-for="(r, i) in ranking.top" :key="r.name + r.duration_ms" :style="{ '--i': i }">
             <RankRow :row="r" :total="ranking.total" :mine="r.me" />
           </li>
         </TransitionGroup>
@@ -857,8 +857,42 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
 .sheet-leave-to {
   transform: translateY(100%);
 }
-.rank-move {
-  transition: transform 0.4s ease;
+/* Ranking en vivo: el que entra se desliza y brilla un momento, los demás se
+   acomodan sin saltos y el que sale del top se desvanece en su lugar
+   (absolute: deja de ocupar espacio enseguida). --i escalona si entran varios. */
+.rank-move,
+.rank-enter-active,
+.rank-leave-active {
+  transition:
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.5s ease;
+}
+.rank-enter-active {
+  transition-delay: calc(var(--i, 0) * 45ms);
+}
+.rank-enter-from {
+  opacity: 0;
+  transform: translateX(1.5rem) scale(0.96);
+}
+.rank-leave-active {
+  position: absolute;
+  inset-inline: 0;
+}
+.rank-leave-to {
+  opacity: 0;
+  transform: scale(0.94);
+}
+.rank-enter-active > * {
+  animation: rank-glow 1.8s ease-out calc(var(--i, 0) * 45ms) both;
+}
+@keyframes rank-glow {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
 }
 
 .spinner {
