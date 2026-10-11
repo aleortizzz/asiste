@@ -70,7 +70,10 @@ jobs:
             # Primero assets/ (JS y CSS con nombre nuevo) y después el resto:
             # así el index.html nuevo nunca apunta a un archivo que todavía
             # no subió (el CDN guardaba esa respuesta rota por horas).
-            mirror -R --verbose ./dist/assets/ /assets
+            # --ignore-time: en assets/ cada nombre es único por build, así
+            # que si ya existe con el mismo tamaño es el mismo archivo y no se
+            # vuelve a subir (re-subirlo lo dejaba un instante sin archivo).
+            mirror -R --verbose --ignore-time ./dist/assets/ /assets
             mirror -R --verbose --exclude-glob .git/ ./dist/ /
             bye
             LFTP
