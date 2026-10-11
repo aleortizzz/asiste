@@ -517,7 +517,7 @@ async function copyLink(group) {
         </div>
 
         <!-- ============ ACTIVIDAD ============ -->
-        <div class="mt-3 grid gap-3 sm:grid-cols-3">
+        <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <!-- Canciones -->
           <router-link
             :to="{ name: 'admin-canciones' }"
@@ -601,7 +601,7 @@ async function copyLink(group) {
         </div>
 
         <!-- ============ RECORDATORIOS + MESAS ============ -->
-        <div class="mt-3 grid gap-3 lg:grid-cols-5">
+        <div class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-5">
           <!-- Recordatorios -->
           <section id="falta-que-respondan" class="scroll-mt-24 rounded-[2rem] bg-limestone p-6 sm:p-8 lg:col-span-3">
             <div class="flex items-center justify-between gap-3">
