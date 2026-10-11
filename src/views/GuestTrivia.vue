@@ -93,13 +93,25 @@ watch(screen, (s) => {
 })
 
 // --- Inicio -----------------------------------------------------------------------------
-const name = ref(read(NAME_KEY) || '')
+// Nombre y apellido por separado y obligatorios (en un solo campo algunos
+// ponían solo el nombre y en el ranking había tres «Sofi»). Se guardan
+// juntos: el ranking muestra «Nombre Apellido». Si ya lo escribió en la
+// página de fotos, se precarga partido en la primera palabra.
+const [savedFirst = '', ...savedLast] = (read(NAME_KEY) || '').trim().split(/\s+/)
+const firstName = ref(savedFirst)
+const lastName = ref(savedLast.join(' '))
+const nameErrors = ref({ first: false, last: false })
 const starting = ref(false)
 
 async function start() {
   if (starting.value) return
-  const clean = name.value.trim()
-  if (!clean) return (message.value = 'Escribí tu nombre para jugar.')
+  const first = firstName.value.trim()
+  const last = lastName.value.trim()
+  nameErrors.value = { first: !first, last: !last }
+  if (!first || !last) {
+    return (message.value = !first && !last ? 'Escribí tu nombre y tu apellido.' : !first ? 'Escribí tu nombre.' : 'Escribí tu apellido.')
+  }
+  const clean = `${first} ${last}`
   message.value = ''
   starting.value = true
   const { data, error } = await supabase.rpc('empezar_juego', { p_event_id: eventId, p_name: clean })
@@ -386,16 +398,38 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
         <li>Hay <strong>una sola partida</strong> por celular.</li>
         <li>Al tocar una opción vas a ver si acertaste. <strong>No se puede cambiar</strong>, así que pensala bien.</li>
       </ul>
-      <label class="mt-6 block text-sm font-semibold" for="trivia-name">Tu nombre (así aparecés en el ranking)</label>
-      <input
-        id="trivia-name"
-        v-model="name"
-        type="text"
-        autocomplete="name"
-        maxlength="40"
-        placeholder="Nombre y apellido"
-        class="field mt-2 w-full rounded-full px-5 py-3.5 text-base"
-      />
+      <p class="mt-6 text-sm font-semibold">Así vas a aparecer en el ranking</p>
+      <!-- 18 + 21 + el espacio = 40, lo que guarda empezar_juego. -->
+      <div class="mt-2 grid grid-cols-2 gap-2">
+        <label class="block min-w-0">
+          <span class="sr-only">Nombre</span>
+          <input
+            v-model="firstName"
+            @input="nameErrors.first = false"
+            type="text"
+            autocomplete="given-name"
+            autocapitalize="words"
+            maxlength="18"
+            placeholder="Nombre"
+            :aria-invalid="nameErrors.first"
+            class="field w-full rounded-full px-5 py-3.5 text-base"
+          />
+        </label>
+        <label class="block min-w-0">
+          <span class="sr-only">Apellido</span>
+          <input
+            v-model="lastName"
+            @input="nameErrors.last = false"
+            type="text"
+            autocomplete="family-name"
+            autocapitalize="words"
+            maxlength="21"
+            placeholder="Apellido"
+            :aria-invalid="nameErrors.last"
+            class="field w-full rounded-full px-5 py-3.5 text-base"
+          />
+        </label>
+      </div>
       <p v-if="message" class="mt-3 text-sm font-semibold" style="color: #dc2626">{{ message }}</p>
       <button type="submit" :disabled="starting" class="cta mt-5 w-full rounded-full py-4 text-lg font-bold disabled:opacity-60">
         {{ starting ? 'Preparando…' : 'Empezar' }}
@@ -688,6 +722,9 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
 }
 .field:focus {
   border-color: var(--accent);
+}
+.field[aria-invalid='true'] {
+  border-color: #dc2626;
 }
 .cta {
   background: var(--accent);
