@@ -14,6 +14,7 @@ import AdminActividad from '../views/AdminActividad.vue'
 import AdminJuego from '../views/AdminJuego.vue'
 import GuestPhotos from '../views/GuestPhotos.vue'
 import GuestTrivia from '../views/GuestTrivia.vue'
+import TriviaProyector from '../views/TriviaProyector.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { useAuth } from '../composables/useAuth'
 
@@ -68,6 +69,7 @@ const router = createRouter({
     { path: '/i/:slug', name: 'public-invite', component: PublicInvite },
     { path: '/fotos/:eventId', name: 'guest-photos', component: GuestPhotos },
     { path: '/juego/:eventId', name: 'guest-trivia', component: GuestTrivia },
+    { path: '/juego/:eventId/ranking', name: 'trivia-proyector', component: TriviaProyector },
     { path: '/', redirect: '/admin/login' },
   ],
 })

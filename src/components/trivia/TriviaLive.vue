@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Play, Square, RotateCcw, Trash2, Trophy, Users, Hourglass } from '@lucide/vue'
+import { Play, Square, RotateCcw, Trash2, Trophy, Users, Hourglass, MonitorPlay } from '@lucide/vue'
 import { supabase } from '../../lib/supabase'
 import { confirmDialog } from '../../composables/useConfirm'
 import { formatDuration, rankAttempts } from '../../lib/trivia'
@@ -56,7 +56,7 @@ async function setStatus(status) {
     .from('trivia_games')
     .update({ status })
     .eq('id', props.game.id)
-    .select('id, title, time_limit_seconds, status')
+    .select('id, event_id, title, time_limit_seconds, status')
     .single()
   if (err) error.value = `No se pudo cambiar el estado: ${err.message}`
   else {
@@ -143,6 +143,15 @@ const medal = (pos) => ({ 1: 'bg-sulfur', 2: 'bg-pumice', 3: 'bg-[#f3d6b8]' })[p
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <!-- Ranking grande para el proyector de la fiesta (TriviaProyector.vue). -->
+        <a
+          :href="`/juego/${game.event_id}/ranking`"
+          target="_blank"
+          rel="noopener"
+          class="admin-btn-secondary !py-2"
+        >
+          <MonitorPlay :size="16" /> Pantalla para proyector
+        </a>
         <button
           v-if="attempts.length && game.status !== 'abierto'"
           type="button"

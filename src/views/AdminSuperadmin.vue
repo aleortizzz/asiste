@@ -1,11 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, ShieldCheck, ArrowRight, CalendarDays } from '@lucide/vue'
+import { Search, ShieldCheck, ArrowRight, CalendarDays, Trash2, TriangleAlert } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
 import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
+import { confirmDialog } from '../composables/useConfirm'
+import { PHOTO_SLOTS } from '../composables/useEventPhotos'
 
 // Lista de todos los eventos (solo superadmin): entrar al panel de un
 // cliente para ayudarlo y activarle el plan.
@@ -90,6 +92,110 @@ const filtered = computed(() => {
 
 const isMine = (row) => row.owner_email && row.owner_email === user.value?.email
 const isViewing = (row) => viewing.value?.id === row.event_id
+
+// --- Eliminar un evento ---------------------------------------------------------------
+// Dos pasos para no borrar sin querer: un aviso con todo lo que se pierde y
+// después hay que escribir ELIMINAR (el diálogo común confirma con Enter).
+// La base borra en cascada (mesas, invitaciones, invitados, canciones, fotos,
+// juego…); los archivos de Storage los borramos acá. La cuenta del cliente
+// no se toca: puede volver a entrar y crear otro evento.
+const DELETE_WORD = 'ELIMINAR'
+const toDelete = ref(null) // fila en el paso 2
+const deleteText = ref('')
+const deleteBusy = ref(false)
+const deleteError = ref('')
+const canDelete = computed(() => deleteText.value.trim().toUpperCase() === DELETE_WORD)
+
+async function askDelete(row) {
+  error.value = ''
+  const [groups, photos] = await Promise.all([
+    supabase.from('invitation_groups').select('id', { count: 'exact', head: true }).eq('event_id', row.event_id),
+    supabase.from('event_photos').select('id', { count: 'exact', head: true }).eq('event_id', row.event_id),
+  ])
+  const n = groups.count ?? 0
+  const f = photos.count ?? 0
+  const ok = await confirmDialog({
+    title: '¿Eliminar este evento?',
+    message:
+      `Se borra «${row.event_name}» (${row.owner_email}) con todo lo que tiene: ` +
+      `${n} ${n === 1 ? 'invitación' : 'invitaciones'} con sus respuestas, mesas, canciones, ` +
+      `${f} ${f === 1 ? 'foto' : 'fotos'} de invitados, el juego y las fotos de la invitación. ` +
+      'No se puede deshacer.',
+    confirmText: 'Continuar',
+    tone: 'danger',
+  })
+  if (!ok) return
+  deleteText.value = ''
+  deleteError.value = ''
+  toDelete.value = row
+  await nextTick()
+  deleteInput.value?.focus()
+}
+const deleteInput = ref(null)
+
+function cancelDelete() {
+  if (deleteBusy.value) return
+  toDelete.value = null
+}
+
+// Las fotos de la invitación están en event-photos/<dueño>/<sección>/… (un
+// evento por cuenta, así que esa carpeta es solo de este evento).
+async function listInvitationPhotos(ownerId) {
+  const paths = []
+  for (const slot of PHOTO_SLOTS) {
+    const { data } = await supabase.storage.from('event-photos').list(`${ownerId}/${slot}`, { limit: 1000 })
+    for (const file of data ?? []) if (file.id) paths.push(`${ownerId}/${slot}/${file.name}`)
+  }
+  return paths
+}
+
+// Devuelve cuántos archivos no se pudieron borrar.
+async function removeFiles(bucket, paths) {
+  let failed = 0
+  for (let i = 0; i < paths.length; i += 100) {
+    const chunk = paths.slice(i, i + 100)
+    const { error: err } = await supabase.storage.from(bucket).remove(chunk)
+    if (err) failed += chunk.length
+  }
+  return failed
+}
+
+async function confirmDelete() {
+  const row = toDelete.value
+  if (!row || !canDelete.value || deleteBusy.value) return
+  deleteBusy.value = true
+  deleteError.value = ''
+  try {
+    // 1) Antes de borrar juntamos los archivos: después ya no está el catálogo.
+    const [{ data: ev }, { data: guestPhotos }] = await Promise.all([
+      supabase.from('events').select('owner_user_id').eq('id', row.event_id).single(),
+      supabase.from('event_photos').select('path').eq('event_id', row.event_id),
+    ])
+    const invitationPaths = ev?.owner_user_id ? await listInvitationPhotos(ev.owner_user_id) : []
+
+    // 2) El evento (y todo lo de la base, en cascada).
+    const { data: gone, error: err } = await supabase.from('events').delete().eq('id', row.event_id).select('id')
+    if (err) throw err
+    if (!gone?.length) throw new Error('la base no lo borró (¿permisos?)')
+
+    // 3) Los archivos. Si alguno falla, el evento ya no está: solo avisamos.
+    const failed =
+      (await removeFiles('guest-uploads', (guestPhotos ?? []).map((p) => p.path))) +
+      (await removeFiles('event-photos', invitationPaths))
+    if (failed) {
+      error.value = `Se eliminó «${row.event_name}», pero ${failed} archivos de fotos no se pudieron borrar del almacenamiento.`
+    }
+
+    rows.value = rows.value.filter((r) => r.event_id !== row.event_id)
+    // Si era el que estaba viendo (o el mío), que el panel no lo siga mostrando.
+    if (isViewing(row) || isMine(row)) setViewingEvent(null)
+    toDelete.value = null
+  } catch (err) {
+    deleteError.value = `No se pudo eliminar: ${err.message}`
+  } finally {
+    deleteBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -193,6 +299,15 @@ const isViewing = (row) => viewing.value?.id === row.event_id
                 Entrar
                 <ArrowRight :size="16" />
               </button>
+              <button
+                type="button"
+                @click="askDelete(row)"
+                :aria-label="`Eliminar ${row.event_name}`"
+                title="Eliminar evento"
+                class="grid h-10 w-10 place-items-center rounded-full text-obsidian/45 transition-colors hover:bg-nogo/15 hover:text-nogo"
+              >
+                <Trash2 :size="17" />
+              </button>
             </div>
           </div>
         </li>
@@ -202,5 +317,69 @@ const isViewing = (row) => viewing.value?.id === row.event_id
         Ordenados por fecha de creación, del más nuevo al más viejo.
       </p>
     </div>
+
+    <!-- Paso 2 del borrado: escribir ELIMINAR -->
+    <Transition name="del">
+      <div
+        v-if="toDelete"
+        class="fixed inset-0 z-[80] flex items-end justify-center bg-obsidian/40 p-4 backdrop-blur-[2px] sm:items-center"
+        @click.self="cancelDelete"
+        @keydown.esc="cancelDelete"
+      >
+        <form
+          @submit.prevent="confirmDelete"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Confirmar eliminación"
+          class="del-card w-full max-w-sm rounded-[2rem] bg-limestone p-6 text-obsidian sm:p-7"
+        >
+          <span class="grid h-11 w-11 place-items-center rounded-full bg-nogo/15 text-nogo">
+            <TriangleAlert :size="20" />
+          </span>
+          <h2 class="admin-display mt-4 text-3xl">Última confirmación</h2>
+          <p class="mt-3 text-[0.95rem] leading-relaxed text-obsidian/65">
+            Vas a eliminar <strong class="text-obsidian">«{{ toDelete.event_name }}»</strong> de
+            {{ toDelete.owner_email }} para siempre. Para confirmar, escribí
+            <strong class="text-obsidian">{{ DELETE_WORD }}</strong>.
+          </p>
+          <input
+            ref="deleteInput"
+            v-model="deleteText"
+            type="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            :placeholder="DELETE_WORD"
+            class="admin-input mt-4 text-center font-bold tracking-widest"
+          />
+          <p v-if="deleteError" class="mt-3 rounded-[1rem] bg-nogo/15 px-3 py-2 text-sm font-bold">{{ deleteError }}</p>
+          <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" @click="cancelDelete" :disabled="deleteBusy" class="admin-btn-secondary">Cancelar</button>
+            <button type="submit" :disabled="!canDelete || deleteBusy" class="admin-btn-primary !bg-nogo !text-chalk">
+              <Trash2 :size="16" /> {{ deleteBusy ? 'Eliminando…' : 'Eliminar para siempre' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.del-enter-active,
+.del-leave-active {
+  transition: opacity 0.2s ease;
+}
+.del-enter-active .del-card,
+.del-leave-active .del-card {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.del-enter-from,
+.del-leave-to {
+  opacity: 0;
+}
+.del-enter-from .del-card,
+.del-leave-to .del-card {
+  transform: translateY(1rem);
+}
+</style>

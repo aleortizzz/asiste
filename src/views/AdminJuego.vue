@@ -27,7 +27,7 @@ onMounted(async () => {
 async function fetchGame() {
   const { data, error: err } = await supabase
     .from('trivia_games')
-    .select('id, title, time_limit_seconds, status')
+    .select('id, event_id, title, time_limit_seconds, status')
     .eq('event_id', event.value.id)
     .maybeSingle()
   if (err) {
@@ -64,7 +64,7 @@ async function ensureGame() {
   const { data, error: err } = await supabase
     .from('trivia_games')
     .insert({ event_id: event.value.id, title: title.value.trim() || defaultTitle.value, time_limit_seconds: minutes.value * 60 })
-    .select('id, title, time_limit_seconds, status')
+    .select('id, event_id, title, time_limit_seconds, status')
     .single()
   if (err) throw err
   game.value = data
@@ -100,7 +100,7 @@ async function saveSettings() {
         .from('trivia_games')
         .update(fields)
         .eq('id', game.value.id)
-        .select('id, title, time_limit_seconds, status')
+        .select('id, event_id, title, time_limit_seconds, status')
         .single()
       if (err) throw err
       game.value = data
