@@ -165,9 +165,11 @@ function setupPlay(data) {
   deadline = Date.parse(data.started_at) + data.time_limit_seconds * 1000
   now.value = Date.now()
 
+  // Si ya había respondido todas (se cortó justo antes de enviar), se envía.
   const firstOpen = questions.value.findIndex((q) => answers.value[q.id] == null)
-  current.value = firstOpen >= 0 ? firstOpen : 0
-  screen.value = firstOpen >= 0 ? 'playing' : 'summary'
+  if (firstOpen < 0) return submit()
+  current.value = firstOpen
+  screen.value = 'playing'
 
   startTick()
 }
@@ -209,12 +211,12 @@ async function choose(option) {
   // Sin conexión queda elegida sin color; se manda igual al enviar.
 
   // Pasa sola a la próxima sin responder (después de ver el color). Si no
-  // queda ninguna, al resumen para enviar.
+  // queda ninguna, se envía sola: que nadie decida no enviar porque le fue mal.
   clearTimeout(advanceTimer)
   advanceTimer = setTimeout(() => {
     if (screen.value !== 'playing' || question.value?.id !== q.id) return
     const next = unanswered.value.find((i) => i > current.value) ?? unanswered.value[0]
-    if (next == null) screen.value = 'summary'
+    if (next == null) submit()
     else current.value = next
   }, 900)
 }
@@ -231,7 +233,8 @@ function optionState(q, opt) {
 function go(delta) {
   clearTimeout(advanceTimer)
   const target = current.value + delta
-  if (target >= questions.value.length) screen.value = 'summary'
+  // Pasado el final: si salteó alguna, el resumen con las que faltan; si no, se envía.
+  if (target >= questions.value.length) unanswered.value.length ? (screen.value = 'summary') : submit()
   else if (target >= 0) current.value = target
 }
 
@@ -445,7 +448,8 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             Te {{ unanswered.length === 1 ? 'falta 1 pregunta' : `faltan ${unanswered.length} preguntas` }}. Tocá un número para
             ir, o enviá así.
           </template>
-          <template v-else>Respondiste todas. Enviá ya: el tiempo sigue corriendo.</template>
+          <!-- Solo se llega acá con todas respondidas si falló el envío. -->
+          <template v-else>Respondiste todas.</template>
         </p>
         <div class="mt-5 flex flex-wrap justify-center gap-2">
           <button
@@ -515,6 +519,9 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
             <template v-if="closed && me.position === 1">¡Ganaste!</template>
             <template v-else>¡Listo, {{ me.name.split(' ')[0] }}!</template>
           </h1>
+          <p class="sent mt-2 inline-flex items-center gap-1.5 text-sm font-bold">
+            <Check :size="16" /> Respuestas enviadas
+          </p>
           <p class="mt-4 text-5xl font-bold tabular-nums">
             {{ me.correct }}<span class="text-2xl" style="color: var(--muted)">/{{ ranking.total }}</span>
           </p>
@@ -785,6 +792,9 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
   border: 2px dashed var(--muted);
 }
 
+.sent {
+  color: #16a34a;
+}
 .pos {
   background: var(--accent);
   color: var(--accent-on);
