@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
 import { supabase } from '../lib/supabase'
 import { useGuestTheme } from '../composables/useGuestTheme'
 import { formatDuration } from '../lib/trivia'
+import WinnerCelebration from '../components/trivia/WinnerCelebration.vue'
 import { Maximize, Users, Flag, Trophy } from '@lucide/vue'
 
 // Ranking de la trivia para el proyector de la fiesta (/juego/:eventId/ranking).
@@ -24,6 +25,11 @@ const closed = computed(() => status.value === 'cerrado')
 const title = computed(() => ranking.value?.title || game.value?.title || 'Trivia')
 const top = computed(() => ranking.value?.top ?? [])
 const winner = computed(() => (closed.value ? top.value[0] : null))
+
+// Al cerrarse el juego (o si la pantalla se abre ya cerrado): festejo a
+// pantalla completa hasta que se toque «Ver ranking final».
+const celebrating = ref(false)
+watch(closed, (isClosed) => (celebrating.value = isClosed))
 const displayFont = computed(() => ({ fontFamily: theme.value.display, fontWeight: theme.value.displayWeight }))
 
 async function refresh() {
@@ -151,6 +157,14 @@ function goFullscreen() {
         <p class="hint mt-[2vh] text-center">Si empatan en correctas, gana quien tardó menos.</p>
       </template>
     </main>
+
+    <WinnerCelebration
+      v-if="celebrating && winner"
+      :winner="winner"
+      :total="ranking.total"
+      button-text="Ver ranking final"
+      @close="celebrating = false"
+    />
 
     <button
       v-if="!fullscreen"

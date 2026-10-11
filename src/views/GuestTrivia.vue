@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useGuestTheme } from '../composables/useGuestTheme'
 import { seededShuffle, formatDuration } from '../lib/trivia'
 import RankRow from '../components/trivia/RankRow.vue'
+import WinnerCelebration from '../components/trivia/WinnerCelebration.vue'
 import { Trophy, Timer, ChevronLeft, ChevronRight, Check, X, Send, Camera, Hourglass, RotateCw, ListChecks, Flag } from '@lucide/vue'
 
 // Trivia para los invitados (/juego/:eventId, se llega desde la página de
@@ -305,6 +306,21 @@ async function showResult() {
 const me = computed(() => ranking.value?.me)
 const closed = computed(() => ranking.value?.status === 'cerrado')
 const meInTop = computed(() => ranking.value?.top?.some((r) => r.me))
+
+// Festejo del ganador cuando se cierra el juego. Una vez por celular: se
+// recuerda a qué ganador ya se festejó (si reinician y vuelven a jugar, el
+// ganador nuevo se festeja de nuevo).
+const SEEN_KEY = `trivia-winner-seen-${eventId}`
+const champion = computed(() => (closed.value ? ranking.value?.top?.[0] : null))
+const championId = computed(() => (champion.value ? `${champion.value.name}|${champion.value.duration_ms}` : ''))
+const celebrating = ref(false)
+watch(championId, (id) => {
+  if (id && read(SEEN_KEY) !== id) celebrating.value = true
+})
+function closeCelebration() {
+  celebrating.value = false
+  write(SEEN_KEY, championId.value)
+}
 const ord = (n) => `${n}.º`
 
 const reviewOpen = ref(false)
@@ -578,6 +594,15 @@ const photosLink = { name: 'guest-photos', params: { eventId } }
         </router-link>
       </template>
     </div>
+
+    <!-- ============ FESTEJO DEL GANADOR ============ -->
+    <WinnerCelebration
+      v-if="celebrating && champion && screen === 'result'"
+      :winner="champion"
+      :total="ranking.total"
+      :is-me="champion.me"
+      @close="closeCelebration"
+    />
 
     <!-- ============ MIS RESPUESTAS ============ -->
     <transition name="sheet">
