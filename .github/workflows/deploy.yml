@@ -67,6 +67,10 @@ jobs:
             set mirror:parallel-transfer-count 1
             set ftp:use-mdtm false
             debug 3
+            # Primero assets/ (JS y CSS con nombre nuevo) y después el resto:
+            # así el index.html nuevo nunca apunta a un archivo que todavía
+            # no subió (el CDN guardaba esa respuesta rota por horas).
+            mirror -R --verbose ./dist/assets/ /assets
             mirror -R --verbose --exclude-glob .git/ ./dist/ /
             bye
             LFTP

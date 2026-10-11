@@ -14,6 +14,12 @@
   # Archivos internos de la vista previa: no se sirven directo.
   RewriteRule ^og-(config|lib)\.php$ - [F,L]
 
+  # Un archivo de assets/ que no existe da 404, no la página: si un deploy
+  # todavía está subiendo, el CDN guardaba el index.html con el nombre del
+  # .js y la app quedaba en blanco por horas.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^assets/ - [R=404,L]
+
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
