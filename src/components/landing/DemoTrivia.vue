@@ -61,7 +61,9 @@ const confetti = Array.from({ length: 28 }, (_, i) => ({
   '--spin': `${(Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 360)}deg`,
 }))
 
-onMounted(start)
+// paused: copia invisible que la landing usa solo para medir el alto (sin animar).
+const props = defineProps({ paused: Boolean })
+onMounted(() => (props.paused ? (done.value = [...FIRST]) : start()))
 onUnmounted(() => clearInterval(timer))
 </script>
 

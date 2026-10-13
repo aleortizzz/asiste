@@ -30,7 +30,10 @@ function like(p) {
   p.likes += p.liked ? 1 : -1
 }
 
+// paused: copia invisible que la landing usa solo para medir el alto (sin animar).
+const props = defineProps({ paused: Boolean })
 onMounted(() => {
+  if (props.paused) return
   timer = setInterval(() => add(NAMES[seq % NAMES.length]), 3200)
 })
 onUnmounted(() => {

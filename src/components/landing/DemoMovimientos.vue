@@ -39,7 +39,10 @@ const shown = computed(() =>
     .slice(0, 5),
 )
 
+// paused: copia invisible que la landing usa solo para medir el alto (sin animar).
+const props = defineProps({ paused: Boolean })
 onMounted(() => {
+  if (props.paused) return
   timer = setInterval(() => {
     items.value = [make(next++, 'recién'), ...items.value].slice(0, 12)
   }, 2400)

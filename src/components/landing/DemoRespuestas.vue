@@ -44,7 +44,11 @@ function copy(f) {
   setTimeout(() => copied.value === f.name && (copied.value = null), 1300)
 }
 
-onMounted(() => (timer = setInterval(tick, 2200)))
+// paused: copia invisible que la landing usa solo para medir el alto (sin animar).
+const props = defineProps({ paused: Boolean })
+onMounted(() => {
+  if (!props.paused) timer = setInterval(tick, 2200)
+})
 onUnmounted(() => {
   clearInterval(timer)
   clearTimeout(toastTimer)

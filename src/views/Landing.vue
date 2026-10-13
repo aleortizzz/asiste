@@ -261,13 +261,21 @@ const verdict = computed(() => {
           </div>
 
           <div id="feat-panel" role="tabpanel" :aria-labelledby="`feat-tab-${features[active].id}`" class="mt-3 rounded-[2rem] bg-limestone p-4 sm:p-5">
-            <div class="min-h-[21rem]" @pointerdown="stopAutoplay" @keydown="stopAutoplay">
-              <component :is="features[active].demo" :key="features[active].id" class="feat-in" />
+            <!-- Todas las demos apiladas en la misma celda: las copias invisibles (quietas) le dan
+                 al recuadro el alto de la más grande, así no salta al cambiar de pestaña. -->
+            <div class="grid" @pointerdown="stopAutoplay" @keydown="stopAutoplay">
+              <div v-for="f in features" :key="`medida-${f.id}`" class="invisible col-start-1 row-start-1" aria-hidden="true" inert>
+                <component :is="f.demo" paused />
+              </div>
+              <component :is="features[active].demo" :key="features[active].id" class="feat-in col-start-1 row-start-1 self-start" />
             </div>
-            <p class="mt-3 flex items-start gap-2 border-t-[1.5px] border-dotted border-obsidian/20 pt-3 text-sm text-obsidian/65">
-              <span class="min-w-0 flex-1">{{ features[active].caption }}</span>
-              <span class="flex shrink-0 items-center gap-1 text-xs font-bold text-accent"><Hand :size="13" /> Probalo</span>
-            </p>
+            <div class="mt-3 grid border-t-[1.5px] border-dotted border-obsidian/20 pt-3 text-sm text-obsidian/65">
+              <p v-for="f in features" :key="`texto-${f.id}`" class="invisible col-start-1 row-start-1 pr-20" aria-hidden="true">{{ f.caption }}</p>
+              <p class="col-start-1 row-start-1 flex items-start gap-2">
+                <span class="min-w-0 flex-1">{{ features[active].caption }}</span>
+                <span class="flex shrink-0 items-center gap-1 text-xs font-bold text-accent"><Hand :size="13" /> Probalo</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
