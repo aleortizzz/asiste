@@ -299,32 +299,32 @@ const verdict = computed(() => {
 
         <!-- Particulares -->
         <div v-if="audience === 'fiesta'" class="space-y-6">
-          <div class="grid items-start gap-4 md:grid-cols-3">
-            <article class="space-y-4 rounded-[2rem] bg-limestone p-6">
+          <div class="grid gap-4 pt-3 md:grid-cols-3">
+            <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Invitación</h3>
-              <p class="text-obsidian/60">Para mandar una invitación linda.</p>
+              <p class="min-h-12 text-obsidian/60">Para mandar una invitación linda.</p>
               <p class="admin-display text-5xl">$35.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
-              <ul class="space-y-2 text-[0.95rem]">
+              <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.invitacion.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
               <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary w-full">Elegir Invitación</router-link>
             </article>
-            <article class="space-y-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
-              <span class="inline-block rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">El más elegido</span>
+            <article class="relative flex flex-col gap-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
+              <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">El más elegido</span>
               <h3 class="text-lg font-bold">Plus</h3>
-              <p class="text-obsidian/60">Para saber quién viene y organizar la fiesta.</p>
+              <p class="min-h-12 text-obsidian/60">Para saber quién viene y organizar la fiesta.</p>
               <p class="admin-display text-5xl">$70.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
-              <ul class="space-y-2 text-[0.95rem]">
+              <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />Todo lo de Invitación</li>
                 <li v-for="i in PLANS.plus.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
               <router-link :to="{ name: 'admin-signup' }" class="admin-btn-primary w-full">Elegir Plus</router-link>
             </article>
-            <article class="space-y-4 rounded-[2rem] bg-limestone p-6">
+            <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Premium</h3>
-              <p class="text-obsidian/60">Para que la fiesta también se viva con Asiste.</p>
+              <p class="min-h-12 text-obsidian/60">Para que la fiesta también se viva con Asiste.</p>
               <p class="admin-display text-5xl">$120.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
-              <ul class="space-y-2 text-[0.95rem]">
+              <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.premium.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
               <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary w-full">Elegir Premium</router-link>
@@ -370,24 +370,24 @@ const verdict = computed(() => {
 
         <!-- Salones -->
         <div v-else class="space-y-6">
-          <div class="grid items-start gap-4 md:grid-cols-2">
-            <article class="space-y-4 rounded-[2rem] bg-limestone p-6">
+          <div class="grid gap-4 pt-3 md:grid-cols-2">
+            <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Por fiesta</h3>
-              <p class="text-obsidian/60">Pagás solo las fiestas que usás.</p>
+              <p class="min-h-12 text-obsidian/60">Pagás solo las fiestas que usás.</p>
               <p class="admin-display text-5xl">$70.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por fiesta</span></p>
-              <ul class="space-y-2 text-[0.95rem]">
+              <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in ['Todo lo del Premium en cada fiesta', 'Tu logo en cada invitación', 'Usuarios para tu personal de recepción', 'La primera fiesta, gratis']" :key="i" class="flex gap-2">
                   <Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}
                 </li>
               </ul>
               <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary w-full">Quiero probarlo</router-link>
             </article>
-            <article class="space-y-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
-              <span class="inline-block rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">Desde 4 fiestas por mes</span>
+            <article class="relative flex flex-col gap-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
+              <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">Desde 4 fiestas por mes</span>
               <h3 class="text-lg font-bold">Abono</h3>
-              <p class="text-obsidian/60">Para salones con movimiento todos los fines de semana.</p>
+              <p class="min-h-12 text-obsidian/60">Para salones con movimiento todos los fines de semana.</p>
               <p class="admin-display text-5xl">$250.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por mes</span></p>
-              <ul class="space-y-2 text-[0.95rem]">
+              <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li
                   v-for="i in ['Fiestas ilimitadas', 'Sin permanencia: mes a mes', 'En un mes flojo, volvés a pagar por fiesta', 'Lo que pagaste por fiesta el último mes se descuenta del primer abono']"
                   :key="i"
