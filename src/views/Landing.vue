@@ -37,7 +37,7 @@ import DemoMesas from '../components/landing/DemoMesas.vue'
 // a la siguiente después de `ms` (lo que tarda en verse lo que pasa en ella),
 // hasta que la persona toca algo: desde ahí, solo cambia si elige otra.
 const features = [
-  { id: 'invitacion', label: 'Invitación', icon: Smartphone, demo: DemoInvitacion, ms: 10000, caption: 'Tu invitación digital: foto, música, cuenta regresiva, cómo llegar y la confirmación, todo en un link. Deslizá para verla.' },
+  { id: 'invitacion', label: 'Invitación', icon: Smartphone, demo: DemoInvitacion, ms: 10000, caption: 'Una invitación real, la de los XV de Antonella: fotos, cuenta regresiva, cómo llegar y la confirmación, todo en un link. Deslizá para verla.' },
   { id: 'respuestas', label: 'Quién falta', icon: MailQuestion, demo: DemoRespuestas, ms: 9000, caption: 'Las respuestas llegan solas: sabés quién confirmó, quién no va y quién todavía ni abrió el link.' },
   { id: 'mesas', label: 'Mesas', icon: Table2, demo: DemoMesas, ms: 8000, caption: 'Armás las mesas arrastrando a cada invitado, con los lugares contados.' },
   { id: 'album', label: 'Álbum', icon: Images, demo: DemoAlbum, ms: 8000, caption: 'Los invitados escanean el QR de la mesa y suben sus fotos a un mismo álbum.' },

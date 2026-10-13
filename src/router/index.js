@@ -79,6 +79,8 @@ const router = createRouter({
     { path: '/juego/:eventId/ranking', name: 'trivia-proyector', component: TriviaProyector },
     // Página pública con los planes. Con sesión se saltea (ver beforeEach).
     { path: '/', name: 'landing', component: Landing },
+    // La invitación de ejemplo que la landing muestra dentro del celular.
+    { path: '/demo/invitacion', name: 'invitacion-demo', component: () => import('../views/InvitacionDemo.vue') },
   ],
 })
 
