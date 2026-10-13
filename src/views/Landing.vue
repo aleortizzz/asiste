@@ -39,7 +39,7 @@ const features = [
   { id: 'respuestas', label: 'Quién falta', icon: MailQuestion, demo: DemoRespuestas, ms: 9000, caption: 'Las respuestas llegan solas: sabés quién confirmó, quién no va y quién todavía ni abrió el link.' },
   { id: 'movimientos', label: 'Movimientos', icon: History, demo: DemoMovimientos, ms: 8000, caption: 'Cada respuesta, cambio o canción pedida, en el momento.' },
   { id: 'album', label: 'Álbum', icon: Images, demo: DemoAlbum, ms: 8000, caption: 'Los invitados escanean el QR de la mesa y suben sus fotos a un mismo álbum.' },
-  { id: 'trivia', label: 'Trivia', icon: Trophy, demo: DemoTrivia, ms: 18000, caption: 'Trivia en vivo el día de la fiesta: los invitados juegan desde el celular, el ranking sale en la pantalla del salón y al final se festeja al ganador.' },
+  { id: 'trivia', label: 'Trivia', icon: Trophy, demo: DemoTrivia, ms: 12000, caption: 'Trivia en vivo el día de la fiesta: los invitados juegan desde el celular, el ranking sale en la pantalla del salón y al final se festeja al ganador.' },
   { id: 'mesas', label: 'Mesas', icon: Table2, demo: DemoMesas, ms: 8000, caption: 'Armás las mesas arrastrando a cada invitado, con los lugares contados.' },
 ]
 const active = ref(0)
@@ -237,7 +237,7 @@ const verdict = computed(() => {
             <router-link :to="{ name: 'admin-signup' }" class="admin-btn-primary">Crear mi invitación</router-link>
             <a href="#conviene" class="admin-btn-secondary">¿Cuál me conviene?</a>
           </div>
-          <p class="mt-4 text-sm text-obsidian/55">Pago único por evento. Sin abonos ni costo por invitado.</p>
+          <p class="mt-4 text-sm text-obsidian/55">Armala gratis y pagás recién cuando la querés mandar a todos. Pago único por evento.</p>
         </div>
 
         <!-- Carrusel de funciones -->
@@ -276,7 +276,10 @@ const verdict = computed(() => {
       <section id="planes" class="scroll-mt-4 space-y-6 py-12" aria-labelledby="h-planes">
         <div class="max-w-2xl">
           <h2 id="h-planes" class="admin-display text-5xl sm:text-6xl">Planes</h2>
-          <p class="mt-3 text-lg text-obsidian/65">Un solo pago por evento, sin abonos ni costo por invitado.</p>
+          <p class="mt-3 text-lg text-obsidian/65">
+            Armá tu invitación gratis y probala con hasta 5 familias. Para mandarla a todos, elegís un plan: un solo pago por
+            evento, sin abonos ni costo por invitado.
+          </p>
         </div>
 
         <div class="inline-flex gap-1 rounded-full bg-limestone p-1" role="tablist" aria-label="Tipo de cliente">
@@ -527,6 +530,7 @@ const verdict = computed(() => {
         <div class="space-y-2">
           <details v-for="q in [
             { q: '¿Es un pago por mes?', a: 'No. Para tu fiesta pagás una sola vez por evento. El abono mensual es solo para salones.' },
+            { q: '¿Puedo probarlo gratis?', a: 'Sí. Armás tu invitación completa sin pagar y la probás con hasta 5 familias. Mientras es de prueba lleva un cartel que lo indica, y el link se cierra a las 15 visitas o a las 24 horas de que la abre la primera persona. Cuando elegís un plan se levantan los límites y el mismo link sigue andando, sin perder nada de lo que armaste.' },
             { q: '¿Qué es la reunión del Plus?', a: 'Una videollamada de una hora con nosotros para armar la invitación y la lista de invitados juntos, y sacarte todas las dudas.' },
             { q: '¿Cómo funciona la trivia?', a: 'Es para jugar en vivo el día de la fiesta. Vos armás las preguntas antes; en la fiesta la abrís, los invitados juegan desde su celular escaneando el QR de la mesa, el ranking se ve en la pantalla del salón y al cerrarla se festeja al ganador.' },
             { q: '¿Mis invitados tienen que bajarse una app?', a: 'No. Abren el link desde WhatsApp y confirman desde el navegador del celular.' },

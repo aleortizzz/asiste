@@ -15,13 +15,9 @@ const FIRST = [
   { name: 'Morena Iglesias', correct: 15, time: '2:55,1', ms: 175100 },
 ]
 const LATER = [
-  { name: 'Camila Paz', correct: 13, time: '3:30,4', ms: 210400 },
   { name: 'Lola Benítez', correct: 17, time: '2:30,6', ms: 150600 },
   { name: 'Julieta Ramos', correct: 19, time: '2:41,3', ms: 161300 },
-  { name: 'Ignacio Vera', correct: 15, time: '3:20,2', ms: 200200 },
   { name: 'Tomás Aguirre', correct: 18, time: '2:59,9', ms: 179900 },
-  { name: 'Mateo Suárez', correct: 11, time: '4:02,5', ms: 242500 },
-  { name: 'Valentín Torres', correct: 18, time: '3:15,0', ms: 195000 },
   { name: 'Facundo Ledesma', correct: 19, time: '3:05,8', ms: 185800 },
 ]
 const STEP_MS = 1250
