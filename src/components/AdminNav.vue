@@ -13,6 +13,7 @@ import {
   Camera,
   Music2,
   Trophy,
+  DoorOpen,
   Menu,
   X,
 } from '@lucide/vue'
@@ -69,6 +70,13 @@ const items = [
     icon: Table2,
     to: { name: 'admin-mesas' },
     match: ['admin-mesas', 'admin-asignar-mesas'],
+  },
+  {
+    label: 'Recepción',
+    hint: 'Quién ya llegó',
+    icon: DoorOpen,
+    to: { name: 'admin-recepcion' },
+    match: ['admin-recepcion'],
   },
   {
     label: 'Fotos del evento',

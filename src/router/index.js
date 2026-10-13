@@ -12,11 +12,14 @@ import AdminFotosEvento from '../views/AdminFotosEvento.vue'
 import AdminCanciones from '../views/AdminCanciones.vue'
 import AdminActividad from '../views/AdminActividad.vue'
 import AdminJuego from '../views/AdminJuego.vue'
+import AdminRecepcion from '../views/AdminRecepcion.vue'
+import Recepcion from '../views/Recepcion.vue'
 import GuestPhotos from '../views/GuestPhotos.vue'
 import GuestTrivia from '../views/GuestTrivia.vue'
 import TriviaProyector from '../views/TriviaProyector.vue'
 import PublicInvite from '../views/PublicInvite.vue'
 import { useAuth } from '../composables/useAuth'
+import { isStaffUser } from '../lib/staff'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -66,6 +69,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     { path: '/admin/juego', name: 'admin-juego', component: AdminJuego, meta: { requiresAuth: true } },
+    { path: '/admin/recepcion', name: 'admin-recepcion', component: AdminRecepcion, meta: { requiresAuth: true } },
+    // Pantalla del personal del salón. Sin :eventId elige entre sus eventos.
+    { path: '/recepcion/:eventId?', name: 'recepcion', component: Recepcion, meta: { requiresAuth: true, staff: true } },
     { path: '/i/:slug', name: 'public-invite', component: PublicInvite },
     { path: '/fotos/:eventId', name: 'guest-photos', component: GuestPhotos },
     { path: '/juego/:eventId', name: 'guest-trivia', component: GuestTrivia },
@@ -94,6 +100,11 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { name: 'admin-login' }
+  }
+  // El personal de recepción solo tiene su pantalla: el panel no le sirve (no
+  // tiene evento propio) y los permisos igual se validan en la base.
+  if (isStaffUser(user.value) && to.meta.requiresAuth && !to.meta.staff) {
+    return { name: 'recepcion' }
   }
   if ((to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
     return { name: 'admin-dashboard' }

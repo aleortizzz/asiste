@@ -8,6 +8,7 @@ import PasswordInput from '../components/PasswordInput.vue'
 import { useAuth } from '../composables/useAuth'
 import { useFormValidation, emailError } from '../composables/useFormValidation'
 import { authErrorMessage } from '../lib/authErrors'
+import { usernameToEmail, usernameError } from '../lib/staff'
 
 const router = useRouter()
 const { login, sendPasswordReset } = useAuth()
@@ -19,10 +20,17 @@ const error = ref('') // errores del servidor (mail o contraseña incorrectos, e
 const loading = ref(false)
 const resetSent = ref(false)
 
+// El personal de recepción entra con un usuario (sin @) en vez de un mail:
+// se traduce al mail interno de su cuenta (ver lib/staff.js).
+const isUsername = () => !email.value.includes('@')
+
 // Ingresar: la contraseña solo tiene que estar; el largo mínimo se valida al
 // crearla, no acá (si no, alguien con una contraseña vieja no podría entrar).
 const loginForm = useFormValidation({
-  email: { id: 'login-email', check: () => emailError(email.value) },
+  email: {
+    id: 'login-email',
+    check: () => (email.value.trim() && isUsername() ? usernameError(email.value) : emailError(email.value)),
+  },
   password: { id: 'login-password', check: () => (password.value ? '' : 'Escribí tu contraseña.') },
 })
 
@@ -35,10 +43,13 @@ async function onSubmit() {
   if (!loginForm.validate()) return
   loading.value = true
   try {
-    await login(email.value.trim(), password.value)
+    await login(isUsername() ? usernameToEmail(email.value) : email.value.trim(), password.value)
+    // El router manda al personal de recepción a su pantalla.
     router.push({ name: 'admin-dashboard' })
   } catch (err) {
-    error.value = authErrorMessage(err, 'Mail o contraseña incorrectos.')
+    const wrong = err?.code === 'invalid_credentials' || /invalid login credentials/i.test(err?.message ?? '')
+    error.value =
+      wrong && isUsername() ? 'Usuario o contraseña incorrectos.' : authErrorMessage(err, 'Mail o contraseña incorrectos.')
   } finally {
     loading.value = false
   }
@@ -76,13 +87,15 @@ function showLogin() {
   <!-- Ingresar -->
   <AuthLayout v-if="mode === 'login'" title="Ingresar" subtitle="Entrá para armar tu invitación y ver quién confirma.">
     <form @submit.prevent="onSubmit" novalidate class="space-y-5">
-      <FormField id="login-email" label="Mail" :error="loginForm.errorFor('email')" v-slot="{ a11y }">
+      <FormField id="login-email" label="Mail o usuario" :error="loginForm.errorFor('email')" v-slot="{ a11y }">
         <input
           v-bind="a11y"
           v-model="email"
-          type="email"
+          type="text"
           inputmode="email"
-          autocomplete="email"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
           placeholder="nombre@gmail.com"
           @blur="loginForm.touch('email', email)"
           class="admin-input"
