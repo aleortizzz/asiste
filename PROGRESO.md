@@ -66,6 +66,15 @@ Esos robots no ejecutan JS, así que `.htaccess` manda **solo a los robots** (po
 - Se corren **pegando el archivo en Supabase → SQL Editor** (proyecto "asiste"). Alternativa: `run-sql.mjs` / `query.mjs` (en `.gitignore`) con las variables `SUPA_HOST`, `SUPA_PORT`, `SUPA_USER`, `SUPA_PASSWORD`.
 - Tablas: `events`, `tables`, `invitation_groups` (un link = un grupo/familia), `guests` (la mesa se asigna por persona: `guests.table_id`), `invitation_views`, `rsvp_log`, `event_photos`, `song_requests`, `superadmins`.
 
+### Revisión de seguridad (2026-10-13)
+Probado contra producción como visitante sin cuenta: ninguna tabla se puede leer directo (todo lo público va por RPC). Sin `v-html`, el PHP escapa la salida y og-image solo baja fotos del storage propio, sin secretos en el historial de git. Se arregló en `migrations/20261013_seguridad.sql` (probado con PGlite, 10 casos):
+- `event-photos` se podía **listar** sin cuenta (carpetas = ids de cuentas de clientes → fotos de todas las invitaciones). Ahora solo lista el dueño de su carpeta o el superadmin; las fotos se siguen viendo por URL.
+- `guest-uploads` aceptaba subidas a cualquier ruta: ahora solo a la carpeta de un evento con fotos habilitadas (`fotos_invitados_habilitadas`).
+- `agregar_foto_invitados` aceptaba cualquier URL (imágenes de otros sitios en la galería): ahora arma la URL ella misma con un archivo que existe en la carpeta del evento.
+- Topes de largo: nombres al confirmar (80) y textos de canciones (en `20261013_planes.sql`).
+- Antes, en `20261013_planes.sql`: el dueño podía cambiarse el plan desde la consola (policy de events sin restricción de columnas).
+Regla: todo lo que se paga o es privado se controla en la base, y cada cambio se prueba como `authenticated` / `anon` (no como superusuario).
+
 ### Aprendizajes que conviene no olvidar
 - **GRANT**: las tablas creadas por SQL no les dan permisos a `authenticated`. Sin `grant select/insert/update/delete ... to authenticated` da "permission denied" aunque las policies de RLS estén bien.
 - **Funciones `language sql`**: nombrar las tablas con schema (`public.events`). Postgres valida el cuerpo al crearlas y en el SQL Editor da «relation does not exist» aunque la función tenga `set search_path = public`.
@@ -131,7 +140,12 @@ Hay una reunión con el salón de los 15 unos días antes del 31/10 para ofrecer
     - **Plus, $70.000** (el más elegido): link por familia, panel de confirmaciones, mesas, lista de la entrada y **reunión de 1 hora** para armar todo juntos («si se complica, se cambia»).
     - **Premium, $120.000**: + canciones para el DJ, fotos de los invitados, trivia, recepción en vivo, «te cargamos los invitados y armamos la invitación» y soporte prioritario.
     - Las invitaciones sorpresa no van en ningún plan (fueron solo para lo de Anto). Idea: precio de lanzamiento ~20% menos para los primeros clientes.
-  - Para programar: hoy `events.plan` es 'basico' | 'plus' y solo canciones mira el plan. Faltan el estado gratis con sus 4 límites (ver arriba; se controla en la base, en `obtener_invitacion` y al crear invitaciones), los planes 'invitacion' / 'plus' / 'premium', la confirmación por WhatsApp del plan Invitación (un solo link + botón que abre WhatsApp con el mensaje armado al teléfono del organizador) y bloquear cada función según el plan (en la pantalla y en la base).
+  - **Hecho (2026-10-13, pasos 1 y 2)**, `migrations/20261013_planes.sql`, probado con PGlite (32 casos):
+    - Planes 'gratis' | 'invitacion' | 'plus' | 'premium'. Los eventos de antes del 13/10 pasaron a premium; los nuevos arrancan gratis. Qué incluye cada uno: `plan_incluye()` en la base y `src/lib/plans.js` en la app.
+    - **El plan solo lo cambia el superadmin** (trigger `events_proteger_plan`; antes la policy del dueño le dejaba editarlo). Selector de los 4 planes en Superadmin.
+    - Prueba gratis con contadores en el evento que solo suben (`prueba_invitaciones`, `prueba_visitas`, `prueba_primera_visita`): borrar invitaciones no devuelve lugares ni visitas. Tope de 5 invitaciones; link cerrado a las 15 visitas o 24 h (`obtener_invitacion` devuelve `{ locked }` y PublicInvite muestra «todavía no está publicada»); cartel «Invitación de prueba · Creada con Asiste» en InvitationView; aviso con los contadores en Invitados.
+    - Canciones pasó a premium (y gratis).
+  - Falta (pasos 3 y 4): bloquear mesas / lista de la entrada / fotos / trivia / recepción según el plan, y el plan Invitación (un solo link + botón que abre WhatsApp con el mensaje armado al teléfono del organizador).
   - **B2B decidido el 2026-10-13**: al salón siempre se le da el **Premium completo** + su logo + usuarios para su personal.
     - **$70.000 por fiesta**, o **abono $250.000/mes con fiestas ilimitadas, sin permanencia** (mes a mes: en temporada baja vuelve a pagar por fiesta). Le conviene desde 4 fiestas por mes.
     - Precio al público de referencia $120.000; el salón decide cuánto le cobra a su cliente (lo revende, lo regala o lo incluye en su paquete).
