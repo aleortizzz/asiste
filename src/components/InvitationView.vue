@@ -33,9 +33,23 @@ const props = defineProps({
 defineEmits(['submit-generic', 'submit-named', 'submit-song'])
 
 const templateComponent = computed(() => TEMPLATES[props.invite?.template] || ClasicoTemplate)
+
+// Prueba gratis: un cartel fijo arriba (también sobre el sobre), en todas las
+// plantillas. Se va al elegir un plan. Ver migrations/20261013_planes.sql.
+const isTrial = computed(() => props.invite?.plan === 'gratis')
 </script>
 
 <template>
+  <a
+    v-if="isTrial"
+    href="https://asiste.tizdigital.com"
+    target="_blank"
+    rel="noopener"
+    class="fixed inset-x-0 top-0 z-[300] block bg-[#4e1f6e] px-4 py-2 text-center text-xs font-bold tracking-wide text-white"
+    style="font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif"
+  >
+    Invitación de prueba · Creada con Asiste
+  </a>
   <component
     :is="templateComponent"
     :invite="invite"

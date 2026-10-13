@@ -85,6 +85,22 @@ async function enviarCancion(payload) {
     No encontramos esta invitación.
   </p>
 
+  <!-- Prueba gratis que llegó al tope de visitas o de horas (ver migrations/20261013_planes.sql) -->
+  <div
+    v-else-if="invite.locked"
+    class="flex min-h-screen items-center justify-center px-6 text-center"
+    :style="{ background: invite.bg_color || '#fdf7f1' }"
+  >
+    <div class="max-w-sm">
+      <p class="text-sm tracking-[0.2em] uppercase opacity-60" :style="{ color: invite.primary_color || '#7c3aed' }">Invitación</p>
+      <h1 class="mt-2 text-4xl" style="font-family: 'Playfair Display', serif" :style="{ color: invite.primary_color || '#7c3aed' }">
+        {{ invite.hero_title || invite.event_name }}
+      </h1>
+      <p class="mt-6 text-lg text-black/70">Esta invitación todavía no está publicada.</p>
+      <p class="mt-2 text-sm text-black/50">Si la armaste vos, entrá a tu panel y elegí un plan para mandársela a todos.</p>
+    </div>
+  </div>
+
   <InvitationView
     v-else
     :invite="invite"

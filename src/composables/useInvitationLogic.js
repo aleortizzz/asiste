@@ -2,6 +2,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { searchYoutubeVideos } from '../lib/youtube'
 import { lighten, darken, contrastText } from '../lib/color'
 import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
+import { hasFeature } from '../lib/plans'
 
 // Toda la lógica de la invitación pública, compartida entre las distintas
 // plantillas visuales (ver src/components/invitation-templates/). Cada
@@ -203,7 +204,7 @@ export function useInvitationLogic(props, emit) {
   const showIntro = computed(() => shows('saludo'))
   const showClosing = computed(() => shows('cierre'))
   const showFinePrint = computed(() => shows('intransferible'))
-  const showSongs = computed(() => props.invite?.plan === 'plus' && shows('canciones'))
+  const showSongs = computed(() => hasFeature(props.invite?.plan, 'canciones') && shows('canciones'))
 
   // --- Portada (sobre) + música ---------------------------------------------
   // `entered` = ya se abrió el sobre. En preview arranca abierto para no tapar

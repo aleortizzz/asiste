@@ -6,6 +6,7 @@ import { useEvent } from '../composables/useEvent'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
 import { timeAgo } from '../lib/timeAgo'
+import { hasFeature, planFor } from '../lib/plans'
 
 // Pedidos de canciones de los invitados (plan Plus), del más reciente al más
 // viejo. «Lista para el DJ» la copia como texto (para WhatsApp) o la exporta
@@ -31,7 +32,7 @@ async function fetchSongs() {
   else songs.value = data
 }
 
-const isPlus = computed(() => event.value?.plan === 'plus')
+const isPlus = computed(() => hasFeature(event.value?.plan, 'canciones'))
 
 const norm = (s) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
 const people = computed(() => new Set(songs.value.map((s) => norm(s.requested_by))).size)
@@ -267,7 +268,7 @@ async function removeSong(song) {
       </div>
 
       <template v-else>
-        <!-- Sin plan Plus -->
+        <!-- Sin el plan que trae canciones -->
         <div v-if="!isPlus" class="mt-6 flex items-start gap-4 rounded-[2rem] bg-limestone p-6 sm:p-8">
           <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
             <Music2 :size="20" />
@@ -275,11 +276,11 @@ async function removeSong(song) {
           <div>
             <p class="font-bold">
               Pedido de canciones
-              <span class="ml-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">Plan Plus</span>
+              <span class="ml-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">Plan {{ planFor('canciones') }}</span>
             </p>
             <p class="mt-1 text-sm text-obsidian/60">
-              Con el plan Plus, tus invitados pueden sugerir canciones desde la invitación y vos las ves acá. Todavía no
-              está activado para tu evento, así que la sección no aparece en la invitación.
+              Con el plan {{ planFor('canciones') }}, tus invitados pueden sugerir canciones desde la invitación y vos las ves
+              acá. Tu plan no lo incluye, así que la sección no aparece en la invitación.
             </p>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { useWording } from '../composables/useWording'
 import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
+import { FREE_LIMITS } from '../lib/plans'
 
 // Pantalla única de invitados: crear invitaciones, copiar links, editar
 // (solo antes de que respondan), eliminar, y ver/corregir la respuesta de
@@ -28,8 +29,34 @@ onMounted(async () => {
   loading.value = false
 })
 
+// Prueba gratis: cuánto se usó (contadores del evento, que la base sube sola;
+// ver migrations/20261013_planes.sql). Se relee con cada cambio de la lista.
+const trial = ref(null) // { plan, prueba_invitaciones, prueba_visitas, prueba_primera_visita }
+async function fetchTrial() {
+  const { data } = await supabase
+    .from('events')
+    .select('plan, prueba_invitaciones, prueba_visitas, prueba_primera_visita')
+    .eq('id', event.value.id)
+    .single()
+  trial.value = data?.plan === 'gratis' ? data : null
+}
+const trialClosesAt = computed(() => {
+  const first = trial.value?.prueba_primera_visita
+  if (!first) return null
+  const d = new Date(new Date(first).getTime() + FREE_LIMITS.hours * 3600 * 1000)
+  return d.toLocaleString('es-AR', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+})
+const trialClosed = computed(
+  () =>
+    trial.value &&
+    (trial.value.prueba_visitas >= FREE_LIMITS.views ||
+      (trial.value.prueba_primera_visita &&
+        Date.now() > new Date(trial.value.prueba_primera_visita).getTime() + FREE_LIMITS.hours * 3600 * 1000)),
+)
+
 async function fetchGroups() {
   if (!event.value) return
+  fetchTrial()
   // guests completos: nombres, respuesta y orden. invitation_views: cuándo
   // entró cada familia al link por última vez.
   const { data, error: err } = await supabase
@@ -610,6 +637,27 @@ async function saveAdding(group, row) {
       </div>
 
       <template v-else>
+        <!-- ============ PRUEBA GRATIS ============ -->
+        <section v-if="trial" class="mt-6 rounded-[2rem] p-5 sm:p-6" :class="trialClosed ? 'bg-nogo/15' : 'bg-sulfur/70'">
+          <p class="font-bold">{{ trialClosed ? 'Tu prueba gratis terminó' : 'Estás en la prueba gratis' }}</p>
+          <ul class="mt-2 space-y-1 text-sm">
+            <li>
+              Invitaciones creadas: <strong>{{ trial.prueba_invitaciones }} de {{ FREE_LIMITS.invitations }}</strong>
+            </li>
+            <li>
+              Visitas a tus links: <strong>{{ trial.prueba_visitas }} de {{ FREE_LIMITS.views }}</strong>
+              <template v-if="trialClosesAt && !trialClosed"> · se cierran el {{ trialClosesAt }}</template>
+            </li>
+          </ul>
+          <p class="mt-2 text-sm text-obsidian/70">
+            {{
+              trialClosed
+                ? 'Los links ya no abren. Elegí un plan y vuelven a andar, sin perder nada de lo que armaste.'
+                : 'Para mandarla a todos tus invitados, elegí un plan: se levantan los límites y los mismos links siguen andando.'
+            }}
+          </p>
+        </section>
+
         <!-- ============ AGREGAR ============ -->
         <section v-if="addPanel" class="mt-6 rounded-[2rem] bg-limestone p-6 sm:p-8">
           <div class="flex items-center justify-between gap-3">

@@ -8,6 +8,7 @@ import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
 import { PHOTO_SLOTS } from '../composables/useEventPhotos'
+import { PLANS, PLAN_IDS } from '../lib/plans'
 
 // Lista de todos los eventos (solo superadmin): entrar al panel de un
 // cliente para ayudarlo y activarle el plan.
@@ -19,7 +20,7 @@ const rows = ref([])
 const loading = ref(true)
 const error = ref('')
 const search = ref('')
-const filter = ref('todos') // 'todos' | 'plus' | 'basico'
+const filter = ref('todos') // 'todos' | un plan (ver lib/plans.js)
 const savingId = ref(null)
 
 onMounted(async () => {
@@ -73,20 +74,15 @@ const isPast = (row) => row.event_date && daysLabel(row.event_date) === 'ya pas�
 // --- Filtros ----------------------------------------------------------------------
 const counts = computed(() => ({
   todos: rows.value.length,
-  plus: rows.value.filter((r) => r.plan === 'plus').length,
-  basico: rows.value.filter((r) => r.plan !== 'plus').length,
+  ...Object.fromEntries(PLAN_IDS.map((p) => [p, rows.value.filter((r) => r.plan === p).length])),
 }))
 
-const FILTERS = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'plus', label: 'Plus' },
-  { id: 'basico', label: 'Básico' },
-]
+const FILTERS = [{ id: 'todos', label: 'Todos' }, ...PLAN_IDS.map((p) => ({ id: p, label: PLANS[p].label }))]
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return rows.value
-    .filter((r) => filter.value === 'todos' || (filter.value === 'plus') === (r.plan === 'plus'))
+    .filter((r) => filter.value === 'todos' || r.plan === filter.value)
     .filter((r) => !q || r.owner_email?.toLowerCase().includes(q) || r.event_name?.toLowerCase().includes(q))
 })
 
@@ -276,22 +272,22 @@ async function confirmDelete() {
                 :aria-label="`Plan de ${row.event_name}`"
               >
                 <button
+                  v-for="p in PLAN_IDS"
+                  :key="p"
                   type="button"
                   :disabled="savingId === row.event_id"
-                  @click="setPlan(row, 'basico')"
-                  :class="row.plan !== 'plus' ? 'bg-chalk' : 'text-obsidian/55 hover:text-obsidian'"
+                  @click="setPlan(row, p)"
+                  :aria-pressed="row.plan === p"
+                  :class="
+                    row.plan === p
+                      ? p === 'gratis'
+                        ? 'bg-chalk'
+                        : 'bg-accent text-chalk'
+                      : 'text-obsidian/55 hover:text-obsidian'
+                  "
                   class="rounded-full px-3 py-1.5 transition-colors"
                 >
-                  Básico
-                </button>
-                <button
-                  type="button"
-                  :disabled="savingId === row.event_id"
-                  @click="setPlan(row, 'plus')"
-                  :class="row.plan === 'plus' ? 'bg-accent text-chalk' : 'text-obsidian/55 hover:text-obsidian'"
-                  class="rounded-full px-3 py-1.5 transition-colors"
-                >
-                  Plus
+                  {{ p === 'gratis' ? 'Gratis' : PLANS[p].label }}
                 </button>
               </div>
 

@@ -6,6 +6,7 @@ import { useEvent } from '../composables/useEvent'
 import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
 import { timeAgo } from '../lib/timeAgo'
+import { hasFeature, planFor } from '../lib/plans'
 
 const { event, loadEvent } = useEvent()
 const { w } = useWording()
@@ -122,7 +123,7 @@ async function fetchPhotos() {
   photos.value = error ? { count: null, latest: [] } : { count, latest: data }
 }
 
-const isPlus = computed(() => event.value?.plan === 'plus')
+const isPlus = computed(() => hasFeature(event.value?.plan, 'canciones'))
 
 // --- Actividad reciente -----------------------------------------------------
 // Dos fuentes: la hora de respuesta de cada familia (responded_at, columna
@@ -542,7 +543,7 @@ async function copyLink(group) {
             </template>
             <p v-else class="mt-2 text-sm text-obsidian/55">
               Tus invitados pueden sugerir canciones para la fiesta. Viene con el
-              <span class="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent">Plan Plus</span>
+              <span class="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent">Plan {{ planFor('canciones') }}</span>
             </p>
           </router-link>
 

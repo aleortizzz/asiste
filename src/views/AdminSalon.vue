@@ -12,6 +12,7 @@ import { deriveEnvelopePalette, deriveEnvelopeMonogram } from '../lib/envelope'
 import { confirmDialog } from '../composables/useConfirm'
 import { trimImage } from '../lib/trimImage'
 import { RSVP_FIELDS } from '../composables/useInvitationLogic'
+import { hasFeature, planFor } from '../lib/plans'
 
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
@@ -814,7 +815,7 @@ const previewInvite = computed(() => ({
   status: 'pending',
   guests: [],
   // Solo lectura: el plan lo activa TizDigital, no es un campo del form.
-  plan: event.value?.plan ?? 'basico',
+  plan: event.value?.plan ?? 'gratis',
 }))
 
 function pushPreview() {
@@ -1702,12 +1703,12 @@ onUnmounted(() => {
               <SectionSwitch
                 label="Pedido de canciones"
                 :help="
-                  event?.plan === 'plus'
+                  hasFeature(event?.plan, 'canciones')
                     ? 'Tus invitados sugieren canciones desde la invitación.'
-                    : 'Viene con el plan Plus, que todavía no está activado para tu evento.'
+                    : `Viene con el plan ${planFor('canciones')}, que tu evento no tiene.`
                 "
-                :disabled="event?.plan !== 'plus'"
-                :on="event?.plan === 'plus' && !isHidden('canciones')"
+                :disabled="!hasFeature(event?.plan, 'canciones')"
+                :on="hasFeature(event?.plan, 'canciones') && !isHidden('canciones')"
                 @toggle="toggleSection('canciones')"
               />
             </template>
