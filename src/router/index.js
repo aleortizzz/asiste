@@ -18,6 +18,7 @@ import GuestPhotos from '../views/GuestPhotos.vue'
 import GuestTrivia from '../views/GuestTrivia.vue'
 import TriviaProyector from '../views/TriviaProyector.vue'
 import PublicInvite from '../views/PublicInvite.vue'
+import Landing from '../views/Landing.vue'
 import { useAuth } from '../composables/useAuth'
 import { isStaffUser } from '../lib/staff'
 
@@ -76,7 +77,8 @@ const router = createRouter({
     { path: '/fotos/:eventId', name: 'guest-photos', component: GuestPhotos },
     { path: '/juego/:eventId', name: 'guest-trivia', component: GuestTrivia },
     { path: '/juego/:eventId/ranking', name: 'trivia-proyector', component: TriviaProyector },
-    { path: '/', redirect: '/admin/login' },
+    // Página pública con los planes. Con sesión se saltea (ver beforeEach).
+    { path: '/', name: 'landing', component: Landing },
   ],
 })
 
@@ -106,7 +108,7 @@ router.beforeEach(async (to) => {
   if (isStaffUser(user.value) && to.meta.requiresAuth && !to.meta.staff) {
     return { name: 'recepcion' }
   }
-  if ((to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
+  if ((to.name === 'landing' || to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
     return { name: 'admin-dashboard' }
   }
   if (to.meta.requiresSuperadmin && !isSuperadmin.value) {
