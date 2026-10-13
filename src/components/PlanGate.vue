@@ -21,7 +21,12 @@ const { event } = useEvent()
 // Sin evento cargado todavía no bloqueamos (la pantalla muestra su propio «cargando»).
 const locked = computed(() => !!event.value && !hasFeature(event.value.plan, props.feature))
 const plan = computed(() => cheapestPlanWith(props.feature))
-const price = computed(() => (plan.value ? `$${PLANS[plan.value].price.toLocaleString('es-AR')}` : ''))
+// Si ya pagó un plan, solo la diferencia (Plus → Premium: $50.000).
+const paid = computed(() => PLANS[event.value?.plan]?.price ?? 0)
+const isUpgrade = computed(() => paid.value > 0)
+const price = computed(() =>
+  plan.value ? `$${Math.max(PLANS[plan.value].price - paid.value, 0).toLocaleString('es-AR')}` : '',
+)
 </script>
 
 <template>
@@ -47,6 +52,7 @@ const price = computed(() => (plan.value ? `$${PLANS[plan.value].price.toLocaleS
           Pasate al plan <strong class="text-obsidian">{{ PLANS[plan]?.label }}</strong> por
           <strong class="text-obsidian">{{ price }}</strong>.
         </p>
+        <p v-if="isUpgrade" class="mt-1 text-xs text-obsidian/50">Pagás solo la diferencia con tu plan.</p>
         <router-link
           :to="{ name: 'landing', query: { planes: 1 }, hash: '#planes' }"
           target="_blank"
