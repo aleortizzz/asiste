@@ -325,27 +325,21 @@ async function toggleSorpresa(group) {
 }
 
 // --- Editar la invitación ------------------------------------------------------
-// Solo mientras está pendiente: una vez que respondieron, cambiar nombres o
-// cantidad pisaría lo que eligieron ellos (las respuestas se corrigen persona
-// por persona, más abajo).
+// Mientras está pendiente se edita todo. Una vez que respondieron, solo los
+// nombres (ej. agregar apellidos): sumar o sacar gente, o cambiar la cantidad,
+// pisaría lo que eligieron ellos (las respuestas se corrigen persona por
+// persona, más abajo).
 const editingId = ref(null)
 const editForm = ref(null)
 const editError = ref('')
 
-function isLocked(group) {
-  return group.status !== 'pending'
-}
-
-function lockedReason(group) {
-  if (group.status === 'declined') return 'No se puede editar porque ya respondieron que no asisten.'
-  return 'No se puede editar porque ya confirmaron su asistencia.'
-}
+const namesOnly = (group) => group.status !== 'pending'
 
 function startEdit(group) {
-  if (isLocked(group)) return
   editError.value = ''
   editingId.value = group.id
   editForm.value = {
+    namesOnly: namesOnly(group),
     family_name: group.family_name,
     allowed_guests: group.allowed_guests,
     useNames: group.named_by_host,
@@ -370,6 +364,8 @@ async function saveEdit(group) {
     editError.value = 'El nombre no puede quedar vacío.'
     return
   }
+
+  if (f.namesOnly) return saveNames(group, familyName)
 
   const names = f.useNames
     ? f.names.map((n) => ({ ...n, full_name: n.full_name.trim() })).filter((n) => n.full_name)
@@ -435,6 +431,35 @@ async function saveEdit(group) {
       if (insErr) throw insErr
     }
 
+    cancelEdit()
+  } catch (err) {
+    editError.value = err.message
+  } finally {
+    await fetchGroups()
+    savingKey.value = null
+  }
+}
+
+// Ya respondieron: solo se renombran la invitación y las personas que ya
+// están (sin tocar respuestas, cantidad ni quién va).
+async function saveNames(group, familyName) {
+  const names = editForm.value.names.filter((n) => n.id).map((n) => ({ ...n, full_name: n.full_name.trim() }))
+  if (names.some((n) => !n.full_name)) {
+    editError.value = 'Ningún nombre puede quedar vacío.'
+    return
+  }
+
+  savingKey.value = `edit-${group.id}`
+  try {
+    if (familyName !== group.family_name) {
+      const { error: err } = await supabase.from('invitation_groups').update({ family_name: familyName }).eq('id', group.id)
+      if (err) throw err
+    }
+    const originalNames = new Map(group.guests.map((g) => [g.id, g.full_name]))
+    for (const n of names.filter((n) => originalNames.get(n.id) !== n.full_name)) {
+      const { error: err } = await supabase.from('guests').update({ full_name: n.full_name }).eq('id', n.id)
+      if (err) throw err
+    }
     cancelEdit()
   } catch (err) {
     editError.value = err.message
@@ -781,10 +806,8 @@ async function saveAdding(group, row) {
                   <button
                     type="button"
                     @click="editingId === group.id ? cancelEdit() : startEdit(group)"
-                    :aria-disabled="isLocked(group)"
                     :aria-label="`Editar ${group.family_name}`"
-                    :class="isLocked(group) ? 'cursor-not-allowed text-obsidian/25' : 'hover:bg-chalk'"
-                    class="grid h-9 w-9 place-items-center rounded-full transition-colors"
+                    class="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-chalk"
                   >
                     <Pencil :size="16" />
                   </button>
@@ -792,7 +815,7 @@ async function saveAdding(group, row) {
                     role="tooltip"
                     class="pointer-events-none invisible absolute right-0 bottom-full z-10 mb-2 w-56 rounded-[1rem] bg-obsidian px-3 py-2 text-xs text-chalk group-focus-within/lock:visible group-hover/lock:visible"
                   >
-                    {{ isLocked(group) ? lockedReason(group) : 'Editar nombre y cantidad' }}
+                    {{ namesOnly(group) ? 'Corregir los nombres' : 'Editar nombre y cantidad' }}
                   </span>
                 </span>
                 <button
@@ -812,35 +835,54 @@ async function saveAdding(group, row) {
                 <label class="admin-label" :for="`e-name-${group.id}`">Nombre de la invitación</label>
                 <input :id="`e-name-${group.id}`" v-model="editForm.family_name" class="admin-input !bg-limestone" />
               </div>
-              <label class="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" v-model="editForm.useNames" class="h-4 w-4 accent-[var(--color-accent)]" />
-                Con nombres cargados
-              </label>
-              <div v-if="!editForm.useNames">
-                <label class="admin-label" :for="`e-count-${group.id}`">Cantidad de invitaciones</label>
-                <input :id="`e-count-${group.id}`" v-model.number="editForm.allowed_guests" type="number" min="1" class="admin-input !w-40 !bg-limestone" />
+
+              <!-- Ya respondieron: solo los nombres de quienes ya están -->
+              <div v-if="editForm.namesOnly" class="space-y-2">
+                <p class="text-sm text-obsidian/60">
+                  Ya respondieron, así que solo se pueden corregir los nombres. Sus respuestas no cambian.
+                </p>
+                <template v-for="name in editForm.names" :key="name.key">
+                  <input
+                    v-if="name.id"
+                    v-model="name.full_name"
+                    :aria-label="`Nombre de ${group.guests.find((g) => g.id === name.id)?.full_name}`"
+                    placeholder="Nombre y apellido"
+                    class="admin-input !bg-limestone"
+                  />
+                </template>
               </div>
-              <div v-else class="space-y-2">
-                <div v-for="(name, i) in editForm.names" :key="name.key" class="flex gap-2">
-                  <input v-model="name.full_name" placeholder="Nombre y apellido" class="admin-input !bg-limestone" />
+
+              <template v-else>
+                <label class="flex items-center gap-2 text-sm font-bold">
+                  <input type="checkbox" v-model="editForm.useNames" class="h-4 w-4 accent-[var(--color-accent)]" />
+                  Con nombres cargados
+                </label>
+                <div v-if="!editForm.useNames">
+                  <label class="admin-label" :for="`e-count-${group.id}`">Cantidad de invitaciones</label>
+                  <input :id="`e-count-${group.id}`" v-model.number="editForm.allowed_guests" type="number" min="1" class="admin-input !w-40 !bg-limestone" />
+                </div>
+                <div v-else class="space-y-2">
+                  <div v-for="(name, i) in editForm.names" :key="name.key" class="flex gap-2">
+                    <input v-model="name.full_name" placeholder="Nombre y apellido" class="admin-input !bg-limestone" />
+                    <button
+                      v-if="editForm.names.length > 1"
+                      type="button"
+                      @click="editForm.names.splice(i, 1)"
+                      aria-label="Quitar"
+                      class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-limestone"
+                    >
+                      <X :size="16" />
+                    </button>
+                  </div>
                   <button
-                    v-if="editForm.names.length > 1"
                     type="button"
-                    @click="editForm.names.splice(i, 1)"
-                    aria-label="Quitar"
-                    class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-limestone"
+                    @click="editForm.names.push({ key: nanoid(), id: null, full_name: '' })"
+                    class="flex items-center gap-1 text-sm font-bold underline underline-offset-4"
                   >
-                    <X :size="16" />
+                    <Plus :size="15" /> Otro nombre
                   </button>
                 </div>
-                <button
-                  type="button"
-                  @click="editForm.names.push({ key: nanoid(), id: null, full_name: '' })"
-                  class="flex items-center gap-1 text-sm font-bold underline underline-offset-4"
-                >
-                  <Plus :size="15" /> Otro nombre
-                </button>
-              </div>
+              </template>
               <p v-if="editError" class="rounded-[1rem] bg-nogo/15 px-3 py-2 text-sm font-bold">{{ editError }}</p>
               <div class="flex flex-wrap gap-2">
                 <button type="submit" :disabled="savingKey === `edit-${group.id}`" class="admin-btn-primary !px-5 !py-2.5">
