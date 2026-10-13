@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
@@ -32,9 +32,25 @@ function setViewingEvent(target) {
   event.value = null // fuerza a releer en el próximo loadEvent()
 }
 
+// Al cambiar de cuenta (cerrar sesión, o entrar con otra en la misma pestaña)
+// no queda nada de la anterior: ni su evento en memoria ni el modo «viendo a
+// otro cliente». Solo cuando había una cuenta antes: al recargar la página el
+// usuario pasa de null a su id y el modo superadmin tiene que sobrevivir.
+watch(
+  () => useAuth().user.value?.id ?? null,
+  (id, prev) => {
+    if (prev && id !== prev) {
+      event.value = null
+      setViewingEvent(null)
+    }
+  },
+)
+
 async function loadEvent() {
   loading.value = true
-  const { user } = useAuth()
+  const { user, isSuperadmin } = useAuth()
+  // «Viendo a otro cliente» es solo del superadmin: cualquier otra cuenta lo descarta.
+  if (viewing.value && !isSuperadmin.value) setViewingEvent(null)
   const query = supabase.from('events').select('*')
   const { data, error } = viewing.value
     ? await query.eq('id', viewing.value.id).maybeSingle()

@@ -23,9 +23,10 @@ const FEATURES = {
 
 export const hasFeature = (plan, feature) => FEATURES[feature]?.includes(plan) ?? false
 
-// El plan más barato que trae una función (para «Viene con el plan X»).
+// El plan pago más barato que trae una función (id, o el nombre con planFor).
+export const cheapestPlanWith = (feature) => ['invitacion', 'plus', 'premium'].find((p) => hasFeature(p, feature)) ?? null
 export function planFor(feature) {
-  const id = ['invitacion', 'plus', 'premium'].find((p) => hasFeature(p, feature))
+  const id = cheapestPlanWith(feature)
   return id ? PLANS[id].label : null
 }
 

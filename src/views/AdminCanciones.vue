@@ -2,11 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { Trash2, Music2, Search, ClipboardCopy, Check, ExternalLink, ListMusic, ChevronDown, FileText, FileSpreadsheet } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import PlanGate from '../components/PlanGate.vue'
 import { useEvent } from '../composables/useEvent'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
 import { timeAgo } from '../lib/timeAgo'
-import { hasFeature, planFor } from '../lib/plans'
+import { hasFeature } from '../lib/plans'
 
 // Pedidos de canciones de los invitados (plan Plus), del más reciente al más
 // viejo. «Lista para el DJ» la copia como texto (para WhatsApp) o la exporta
@@ -187,6 +188,7 @@ async function removeSong(song) {
 <template>
   <div class="admin-page">
     <AdminNav />
+    <PlanGate feature="canciones" action="que tus invitados le pidan canciones al DJ">
     <div class="mx-auto max-w-3xl px-4 pt-4 pb-16 lg:px-8 lg:pt-8">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -268,23 +270,6 @@ async function removeSong(song) {
       </div>
 
       <template v-else>
-        <!-- Sin el plan que trae canciones -->
-        <div v-if="!isPlus" class="mt-6 flex items-start gap-4 rounded-[2rem] bg-limestone p-6 sm:p-8">
-          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
-            <Music2 :size="20" />
-          </span>
-          <div>
-            <p class="font-bold">
-              Pedido de canciones
-              <span class="ml-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">Plan {{ planFor('canciones') }}</span>
-            </p>
-            <p class="mt-1 text-sm text-obsidian/60">
-              Con el plan {{ planFor('canciones') }}, tus invitados pueden sugerir canciones desde la invitación y vos las ves
-              acá. Tu plan no lo incluye, así que la sección no aparece en la invitación.
-            </p>
-          </div>
-        </div>
-
         <p v-if="error" class="mt-4 rounded-[1.25rem] bg-nogo/15 px-4 py-3 text-sm font-bold">{{ error }}</p>
 
         <div v-if="isPlus && !songs.length && !error" class="mt-6 rounded-[2rem] bg-limestone p-8 text-center">
@@ -348,5 +333,6 @@ async function removeSong(song) {
         </template>
       </template>
     </div>
+    </PlanGate>
   </div>
 </template>

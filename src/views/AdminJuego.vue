@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Trophy, Plus, Pencil, Trash2, Check, CircleCheck, Circle, Timer, Shuffle } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import PlanGate from '../components/PlanGate.vue'
 import QuestionEditor from '../components/trivia/QuestionEditor.vue'
 import TriviaLive from '../components/trivia/TriviaLive.vue'
 import { useEvent } from '../composables/useEvent'
@@ -209,6 +210,7 @@ async function removeQuestion(q) {
 <template>
   <div class="admin-page">
     <AdminNav />
+    <PlanGate feature="trivia" action="jugar una trivia en vivo el día de la fiesta">
     <div class="mx-auto max-w-3xl px-4 pt-4 pb-16 lg:px-8 lg:pt-8">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -385,5 +387,6 @@ async function removeQuestion(q) {
         </button>
       </template>
     </div>
+    </PlanGate>
   </div>
 </template>

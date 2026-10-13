@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { Plus, X, Pencil, Trash2, Search, Armchair, Check, EyeOff } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import PlanGate from '../components/PlanGate.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
 import { useWording } from '../composables/useWording'
@@ -334,6 +335,7 @@ async function removeTable(table) {
 <template>
   <div class="admin-page">
     <AdminNav />
+    <PlanGate feature="mesas" action="armar las mesas y sentar a cada invitado">
     <div class="mx-auto max-w-6xl px-4 pt-4 pb-32 lg:px-8 lg:pt-8">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -597,6 +599,7 @@ async function removeTable(table) {
         </div>
       </template>
     </div>
+    </PlanGate>
 
     <!-- Barra de selección -->
     <div

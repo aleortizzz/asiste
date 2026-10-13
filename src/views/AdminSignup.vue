@@ -40,6 +40,12 @@ async function onSubmit() {
   })
   if (err) {
     error.value = authErrorMessage(err, 'No se pudo crear la cuenta. Probá de nuevo en un rato.')
+  } else if (data.user && data.user.identities?.length === 0) {
+    // Ese mail ya tiene cuenta. Supabase no lo dice con un error (para no
+    // revelar qué mails están registrados) ni manda mail de confirmación:
+    // devuelve un usuario sin identidades. Antes acá decíamos «te mandamos
+    // un mail» y nunca llegaba nada.
+    error.value = 'Ya hay una cuenta con ese mail. Ingresá, o si no te acordás la contraseña, recuperala desde «¿Te la olvidaste?».'
   } else if (data.session) {
     // Si el proyecto tiene desactivada la confirmación por email,
     // signUp ya devuelve una sesión activa — no hace falta esperar nada.

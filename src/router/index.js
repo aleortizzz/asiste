@@ -24,6 +24,13 @@ import { isStaffUser } from '../lib/staff'
 
 const router = createRouter({
   history: createWebHistory(),
+  // Anclas de la landing (#planes, #conviene). Solo ahí: el link de recuperar
+  // contraseña también trae un hash (#access_token=…) que no es un elemento.
+  scrollBehavior(to, from, saved) {
+    if (saved) return saved
+    if (to.name === 'landing' && /^#[a-z-]+$/.test(to.hash)) return { el: to.hash, top: 16 }
+    return { top: 0 }
+  },
   routes: [
     { path: '/admin/login', name: 'admin-login', component: AdminLogin },
     { path: '/admin/registro', name: 'admin-signup', component: AdminSignup },
@@ -110,7 +117,10 @@ router.beforeEach(async (to) => {
   if (isStaffUser(user.value) && to.meta.requiresAuth && !to.meta.staff) {
     return { name: 'recepcion' }
   }
-  if ((to.name === 'landing' || to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn) {
+  // ?planes: el «Enterate de todo lo que incluye» del panel (PlanGate) abre la
+  // landing en los planes aunque haya sesión.
+  const landingParaVerPlanes = to.name === 'landing' && 'planes' in to.query
+  if ((to.name === 'landing' || to.name === 'admin-login' || to.name === 'admin-signup') && isLoggedIn && !landingParaVerPlanes) {
     return { name: 'admin-dashboard' }
   }
   if (to.meta.requiresSuperadmin && !isSuperadmin.value) {

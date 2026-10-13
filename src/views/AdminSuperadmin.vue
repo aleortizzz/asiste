@@ -23,12 +23,22 @@ const search = ref('')
 const filter = ref('todos') // 'todos' | un plan (ver lib/plans.js)
 const savingId = ref(null)
 
+// Cuentas que se registraron pero todavía no guardaron su invitación (no
+// tienen evento, así que no están en `rows`): a quiénes conviene escribirles.
+const pendingAccounts = ref([])
+
 onMounted(async () => {
-  const { data, error: err } = await supabase.rpc('listar_eventos_superadmin')
-  if (err) error.value = err.message
-  else rows.value = data ?? []
+  const [ev, acc] = await Promise.all([
+    supabase.rpc('listar_eventos_superadmin'),
+    supabase.rpc('listar_cuentas_sin_evento_superadmin'),
+  ])
+  if (ev.error) error.value = ev.error.message
+  else rows.value = ev.data ?? []
+  if (!acc.error) pendingAccounts.value = acc.data ?? []
   loading.value = false
 })
+
+const registeredOn = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
 
 function entrar(row) {
   setViewingEvent({ id: row.event_id, name: row.event_name, owner_email: row.owner_email })
@@ -312,6 +322,32 @@ async function confirmDelete() {
       <p v-if="!loading && rows.length" class="mt-6 text-center text-xs text-obsidian/45">
         Ordenados por fecha de creación, del más nuevo al más viejo.
       </p>
+
+      <!-- Registrados sin invitación -->
+      <section v-if="!loading && pendingAccounts.length" class="mt-10">
+        <h2 class="text-lg font-bold">Cuentas sin invitación todavía ({{ pendingAccounts.length }})</h2>
+        <p class="mt-1 text-sm text-obsidian/55">
+          Se registraron pero nunca guardaron su invitación, así que todavía no tienen evento ni plan.
+        </p>
+        <ul class="mt-4 space-y-2">
+          <li
+            v-for="a in pendingAccounts"
+            :key="a.user_id"
+            class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-[1.5rem] bg-limestone px-5 py-3"
+          >
+            <div class="min-w-0">
+              <p class="truncate font-bold select-all">{{ a.email }}</p>
+              <p class="text-xs text-obsidian/55">Se registró el {{ registeredOn(a.created_at) }}</p>
+            </div>
+            <span
+              class="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold"
+              :class="a.email_confirmado ? 'bg-chalk' : 'bg-sulfur'"
+            >
+              {{ a.email_confirmado ? 'Confirmó el mail, no armó la invitación' : 'Falta que confirme el mail' }}
+            </span>
+          </li>
+        </ul>
+      </section>
     </div>
 
     <!-- Paso 2 del borrado: escribir ELIMINAR -->

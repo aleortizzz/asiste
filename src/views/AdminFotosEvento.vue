@@ -19,6 +19,7 @@ import {
   Archive,
 } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import PlanGate from '../components/PlanGate.vue'
 import { useEvent } from '../composables/useEvent'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
@@ -314,6 +315,7 @@ onUnmounted(() => {
 <template>
   <div class="admin-page">
     <AdminNav />
+    <PlanGate feature="fotos" action="que tus invitados suban sus fotos de la fiesta">
     <div class="mx-auto max-w-5xl px-4 pt-4 pb-32 lg:px-8 lg:pt-8">
       <h1 class="admin-display text-5xl sm:text-6xl">Fotos del evento</h1>
       <p class="mt-3 max-w-xl text-obsidian/60">
@@ -500,6 +502,7 @@ onUnmounted(() => {
         </section>
       </template>
     </div>
+    </PlanGate>
 
     <!-- Barra de selección -->
     <div v-if="selecting" class="font-ui fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 lg:left-[16.5rem]">

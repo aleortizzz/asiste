@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { DoorOpen, UserPlus, Trash2, ExternalLink, Check, Copy, KeyRound, Clock, RotateCcw, ChevronDown } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import PlanGate from '../components/PlanGate.vue'
 import FormField from '../components/FormField.vue'
 import PasswordInput from '../components/PasswordInput.vue'
 import { useEvent } from '../composables/useEvent'
@@ -189,6 +190,7 @@ async function copyCredentials() {
 <template>
   <div class="admin-page">
     <AdminNav />
+    <PlanGate feature="recepcion" action="que el personal marque quién llega y le diga su mesa">
     <div class="mx-auto max-w-4xl px-4 pt-4 pb-16 lg:px-8 lg:pt-8">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -403,5 +405,6 @@ async function copyCredentials() {
         </section>
       </template>
     </div>
+    </PlanGate>
   </div>
 </template>

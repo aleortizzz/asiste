@@ -7,6 +7,7 @@ import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
 import { timeAgo } from '../lib/timeAgo'
 import { hasFeature, planFor } from '../lib/plans'
+import PlanGate from '../components/PlanGate.vue'
 
 const { event, loadEvent } = useEvent()
 const { w } = useWording()
@@ -520,6 +521,7 @@ async function copyLink(group) {
         <!-- ============ ACTIVIDAD ============ -->
         <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <!-- Canciones -->
+          <PlanGate feature="canciones" action="recibir pedidos de canciones" compact>
           <router-link
             :to="{ name: 'admin-canciones' }"
             class="group flex flex-col rounded-[1.75rem] bg-limestone p-5 transition-colors hover:bg-chalk"
@@ -546,8 +548,10 @@ async function copyLink(group) {
               <span class="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent">Plan {{ planFor('canciones') }}</span>
             </p>
           </router-link>
+          </PlanGate>
 
           <!-- Fotos de invitados -->
+          <PlanGate feature="fotos" action="juntar las fotos de tus invitados" compact>
           <router-link
             :to="{ name: 'admin-fotos-evento' }"
             class="group flex flex-col rounded-[1.75rem] bg-limestone p-5 transition-colors hover:bg-chalk"
@@ -574,6 +578,7 @@ async function copyLink(group) {
               Aparecen acá cuando las suban el día de la fiesta.
             </p>
           </router-link>
+          </PlanGate>
 
           <!-- Aperturas del link -->
           <router-link
@@ -697,6 +702,7 @@ async function copyLink(group) {
           </section>
 
           <!-- Mesas -->
+          <PlanGate feature="mesas" action="armar las mesas" compact>
           <section class="rounded-[2rem] bg-limestone p-6 sm:p-8">
             <div class="flex items-center justify-between gap-3">
               <h2 class="admin-display text-3xl">Mesas</h2>
@@ -746,6 +752,7 @@ async function copyLink(group) {
               </li>
             </ul>
           </section>
+          </PlanGate>
           </div>
         </div>
       </template>
