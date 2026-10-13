@@ -13,6 +13,7 @@ import {
 } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
 import EnvelopeCover from '../EnvelopeCover.vue'
+import RsvpWhatsapp from '../RsvpWhatsapp.vue'
 
 // Plantilla "Clásica" — la invitación original de asiste (sobre animado,
 // paleta rosa/ámbar, tipografía cursiva). 100% presentacional: toda la
@@ -664,7 +665,9 @@ const {
         </p>
 
         <!-- Respuesta enviada -->
-        <div v-if="submitted" class="py-4 text-center">
+        <!-- Plan Invitación: se confirma por WhatsApp, no se guarda nada -->
+        <RsvpWhatsapp v-if="invite.rsvp_mode === 'whatsapp'" :invite="invite" />
+        <div v-else-if="submitted" class="py-4 text-center">
           <p class="text-5xl">💌</p>
           <p class="pc-heading mt-4 text-lg" style="font-family: 'Playfair Display', serif">
             ¡Gracias! Registramos tu respuesta.

@@ -6,6 +6,7 @@ import { isDark } from '../../lib/color'
 import { googleCalendarUrl, openGoogleCalendar, downloadIcs, isIOS } from '../../lib/calendar'
 import EjecutivaCarousel from './EjecutivaCarousel.vue'
 import EnvelopeCover from '../EnvelopeCover.vue'
+import RsvpWhatsapp from '../RsvpWhatsapp.vue'
 
 // Plantilla «Ejecutiva» — para eventos empresariales: tarjeta impresa con
 // marco fino doble, serif fina (Cormorant Garamond) y versalitas espaciadas
@@ -726,7 +727,9 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
       <div class="ej-panel mt-10 p-6 sm:p-9">
         <p v-if="preview" class="ej-muted mb-5 text-xs">{{ L.previewNote }}</p>
 
-        <div v-if="submitted" class="py-2">
+        <!-- Plan Invitación: se confirma por WhatsApp, no se guarda nada -->
+        <RsvpWhatsapp v-if="invite.rsvp_mode === 'whatsapp'" :invite="invite" />
+        <div v-else-if="submitted" class="py-2">
           <p class="ej-lead">{{ t.thanks }}</p>
         </div>
 

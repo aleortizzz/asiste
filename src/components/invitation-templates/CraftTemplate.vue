@@ -15,6 +15,7 @@ import {
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
 import { darken } from '../../lib/color'
 import EnvelopeCover from '../EnvelopeCover.vue'
+import RsvpWhatsapp from '../RsvpWhatsapp.vue'
 
 // Plantilla "Craft" - invernadero botánico sobre papel crema: bone linen,
 // un único momento oscuro (forest depths) al abrir, verde lima como acento
@@ -445,7 +446,9 @@ const heroDeep = computed(() => darken(primaryColor.value, 0.72))
           Vista previa. La confirmación funciona en la invitación real.
         </p>
 
-        <div v-if="submitted" class="py-4">
+        <!-- Plan Invitación: se confirma por WhatsApp, no se guarda nada -->
+        <RsvpWhatsapp v-if="invite.rsvp_mode === 'whatsapp'" :invite="invite" />
+        <div v-else-if="submitted" class="py-4">
           <p class="text-5xl">🌿</p>
           <p class="craft-heading-sm mt-4">¡Gracias! Registramos tu respuesta.</p>
           <p class="mt-2 text-sm text-[#645757]">Nos vemos muy pronto.</p>

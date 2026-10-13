@@ -17,7 +17,11 @@ const songError = ref('')
 onMounted(async () => {
   const { data, error: err } = await supabase.rpc('obtener_invitacion', { p_slug: route.params.slug })
   if (err || !data) {
-    notFound.value = true
+    // No es el link de una familia: puede ser el link único que eligió el
+    // organizador (plan Invitación, se confirma por WhatsApp).
+    const { data: byLink } = await supabase.rpc('obtener_invitacion_link', { p_link: route.params.slug })
+    if (byLink) invite.value = byLink
+    else notFound.value = true
   } else {
     // Si el evento cierra las confirmaciones pasada la fecha límite (ver
     // migrations/20260928_cierre_confirmaciones.sql). Si la función no

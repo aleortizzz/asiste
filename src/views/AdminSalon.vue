@@ -13,6 +13,8 @@ import { confirmDialog } from '../composables/useConfirm'
 import { trimImage } from '../lib/trimImage'
 import { RSVP_FIELDS } from '../composables/useInvitationLogic'
 import { hasFeature, planFor } from '../lib/plans'
+import { normalizeWhatsapp } from '../lib/whatsapp'
+import { supabase } from '../lib/supabase'
 
 const { event, loadEvent, saveEvent } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
@@ -441,6 +443,9 @@ const EMPTY = {
   rsvp_deadline_strict: false,
   notes: '',
   gift_alias: '',
+  // Plan Invitación: link único elegido por el organizador y WhatsApp donde le llegan las confirmaciones.
+  link_slug: '',
+  whatsapp_rsvp: '',
   accent_color: '',
   theme_mode: 'claro',
   tono: 'vos',
@@ -618,6 +623,28 @@ const guestLimit = ref(1)
 const saving = ref(false)
 const saveError = ref('')
 
+// --- Link del plan Invitación ----------------------------------------------------------
+// Mientras escribe, le avisamos si está libre (link_disponible mira todos los
+// eventos y los links de familia). La base igual lo vuelve a controlar al guardar.
+const LINK_RULE = 'el link puede tener de 3 a 40 letras minúsculas, números y guiones (sin espacios ni acentos).'
+const linkStatus = ref('') // '' | 'chequeando' | 'libre' | 'tomado' | 'invalido'
+let linkTimer = null
+watch(
+  () => form.value.link_slug,
+  (raw) => {
+    clearTimeout(linkTimer)
+    const link = (raw || '').trim().toLowerCase()
+    if (!link || link === event.value?.link_slug) return (linkStatus.value = link ? 'libre' : '')
+    if (!/^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$/.test(link)) return (linkStatus.value = 'invalido')
+    linkStatus.value = 'chequeando'
+    linkTimer = setTimeout(async () => {
+      const { data } = await supabase.rpc('link_disponible', { p_link: link, p_event_id: event.value?.id ?? null })
+      if ((form.value.link_slug || '').trim().toLowerCase() === link) linkStatus.value = data ? 'libre' : 'tomado'
+    }, 400)
+  },
+)
+const inviteBaseUrl = `${window.location.host}/i/`
+
 // --- Cambios sin guardar ---------------------------------------------------
 // Foto del formulario tal como quedó guardado, para avisar si hay cambios
 // pendientes y no perderlos al salir. Las fotos no cuentan: se guardan solas.
@@ -691,6 +718,8 @@ onMounted(async () => {
       rsvp_deadline_strict: event.value.rsvp_deadline_strict ?? false,
       notes: event.value.notes ?? '',
       gift_alias: event.value.gift_alias ?? '',
+      link_slug: event.value.link_slug ?? '',
+      whatsapp_rsvp: event.value.whatsapp_rsvp ?? '',
       accent_color: event.value.accent_color ?? '',
       theme_mode: event.value.theme_mode ?? 'claro',
       tono: event.value.tono ?? 'vos',
@@ -758,6 +787,19 @@ async function onSubmit() {
       delete fields.bilingual
       delete fields.texts_en
     }
+    // Link y WhatsApp del plan Invitación (columnas de 20261013_plan_invitacion.sql).
+    if (!event.value || !('link_slug' in event.value)) {
+      delete fields.link_slug
+      delete fields.whatsapp_rsvp
+    } else {
+      const link = form.value.link_slug.trim().toLowerCase()
+      if (link && linkStatus.value === 'tomado') throw new Error('ese link ya lo usa otra invitación. Elegí otro.')
+      if (link && linkStatus.value === 'invalido') throw new Error(LINK_RULE)
+      const wa = form.value.whatsapp_rsvp.trim()
+      if (wa && !normalizeWhatsapp(wa)) throw new Error('el WhatsApp no parece válido. Escribilo con código de área, por ejemplo 11 2233 4455.')
+      fields.link_slug = emptyAsNull(link)
+      fields.whatsapp_rsvp = wa ? normalizeWhatsapp(wa) : null
+    }
     // Las fotos (logo y sponsors incluidos) y sus interruptores se guardan solos.
     delete fields.logo
     delete fields.sponsors
@@ -786,7 +828,9 @@ async function onSubmit() {
     })
     await markSaved()
   } catch (err) {
-    saveError.value = `No se pudo guardar: ${err.message}`
+    saveError.value = /events_link_slug_key|ya está en uso/.test(err.message ?? '')
+      ? 'No se pudo guardar: ese link ya lo usa otra invitación. Elegí otro.'
+      : `No se pudo guardar: ${err.message}`
   } finally {
     saving.value = false
   }
@@ -816,6 +860,10 @@ const previewInvite = computed(() => ({
   guests: [],
   // Solo lectura: el plan lo activa TizDigital, no es un campo del form.
   plan: event.value?.plan ?? 'gratis',
+  // Plan Invitación: la vista previa muestra la confirmación por WhatsApp.
+  ...(event.value?.plan === 'invitacion'
+    ? { rsvp_mode: 'whatsapp', whatsapp: normalizeWhatsapp(form.value.whatsapp_rsvp) }
+    : {}),
 }))
 
 function pushPreview() {
@@ -1619,6 +1667,53 @@ onUnmounted(() => {
 
             <!-- ========== 6. CONFIRMACIONES ========== -->
             <template v-else-if="step.id === 'confirmacion'">
+              <!-- Plan Invitación: un solo link y confirmación por WhatsApp -->
+              <div v-if="event?.plan === 'invitacion'" class="space-y-4 rounded-[1.5rem] bg-accent-soft/60 p-4 sm:p-5">
+                <div>
+                  <label class="admin-label" for="f-link">Tu link</label>
+                  <p class="admin-help">Es el que vas a mandar a todos tus invitados. Elegilo corto y fácil de leer.</p>
+                  <div class="flex items-center overflow-hidden rounded-full bg-chalk pl-4 focus-within:ring-[1.5px] focus-within:ring-accent">
+                    <span class="shrink-0 text-sm text-obsidian/45">{{ inviteBaseUrl }}</span>
+                    <input
+                      id="f-link"
+                      data-preview="rsvp"
+                      v-model="form.link_slug"
+                      autocomplete="off"
+                      autocapitalize="none"
+                      spellcheck="false"
+                      placeholder="xv-valentina"
+                      class="min-w-0 flex-1 bg-transparent py-3 pr-4 pl-0.5 font-medium outline-none"
+                    />
+                  </div>
+                  <p v-if="linkStatus" class="mt-1.5 px-2 text-sm font-bold" :class="{
+                    'text-obsidian/50': linkStatus === 'chequeando',
+                    'text-[#1e7a4a]': linkStatus === 'libre',
+                    'text-nogo-ink': linkStatus === 'tomado' || linkStatus === 'invalido',
+                  }">
+                    <template v-if="linkStatus === 'chequeando'">Fijándonos si está libre…</template>
+                    <template v-else-if="linkStatus === 'libre'">¡Está libre! Tu invitación va a estar en {{ inviteBaseUrl }}{{ form.link_slug.trim().toLowerCase() }}</template>
+                    <template v-else-if="linkStatus === 'tomado'">Ese link ya lo usa otra invitación. Probá con otro.</template>
+                    <template v-else>Usá de 3 a 40 letras minúsculas, números y guiones, sin espacios ni acentos.</template>
+                  </p>
+                </div>
+                <div>
+                  <label class="admin-label" for="f-whatsapp">Tu WhatsApp</label>
+                  <p class="admin-help">Ahí te llegan las confirmaciones: cada invitado te manda un mensaje armado con su nombre y cuántos van.</p>
+                  <input
+                    id="f-whatsapp"
+                    data-preview="rsvp"
+                    v-model="form.whatsapp_rsvp"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    placeholder="Ej. 11 2233 4455"
+                    class="admin-input"
+                  />
+                  <p v-if="form.whatsapp_rsvp.trim() && !normalizeWhatsapp(form.whatsapp_rsvp)" class="mt-1.5 px-2 text-sm font-bold text-nogo-ink">
+                    Escribilo con código de área, por ejemplo 11 2233 4455 o 351 555 1234.
+                  </p>
+                </div>
+              </div>
               <div>
                 <label class="admin-label" for="f-deadline">Fecha límite para confirmar</label>
                 <p class="admin-help">Se muestra en la invitación para que no se olviden de responder.</p>

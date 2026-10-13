@@ -13,6 +13,7 @@ import {
 } from '@lucide/vue'
 import { useInvitationLogic } from '../../composables/useInvitationLogic'
 import EnvelopeCover from '../EnvelopeCover.vue'
+import RsvpWhatsapp from '../RsvpWhatsapp.vue'
 
 // Plantilla "Partiful" — negro/blanco con washes de gradiente pastel,
 // tipografía grotesca (Space Grotesk + Inter como sustitutos de las
@@ -436,7 +437,9 @@ const {
           Vista previa — la confirmación funciona en la invitación real.
         </p>
 
-        <div v-if="submitted" class="py-4 text-center">
+        <!-- Plan Invitación: se confirma por WhatsApp, no se guarda nada -->
+        <RsvpWhatsapp v-if="invite.rsvp_mode === 'whatsapp'" :invite="invite" />
+        <div v-else-if="submitted" class="py-4 text-center">
           <p class="text-5xl">🎉</p>
           <p class="pf-heading-sm mt-4">¡Gracias! Registramos tu respuesta.</p>
           <p class="mt-2 text-sm text-[#666666]">Nos vemos muy pronto.</p>

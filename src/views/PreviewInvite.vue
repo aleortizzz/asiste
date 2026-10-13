@@ -22,6 +22,8 @@ async function loadSaved() {
     allowed_guests: 2,
     status: 'pending',
     guests: [],
+    // Plan Invitación: se confirma por WhatsApp (como en obtener_invitacion_link).
+    ...(e.plan === 'invitacion' ? { rsvp_mode: 'whatsapp', whatsapp: e.whatsapp_rsvp } : {}),
   }
 }
 

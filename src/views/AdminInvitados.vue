@@ -9,7 +9,9 @@ import { useWording } from '../composables/useWording'
 import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
 import { confirmDialog } from '../composables/useConfirm'
-import { FREE_LIMITS } from '../lib/plans'
+import { FREE_LIMITS, hasFeature } from '../lib/plans'
+import PlanGate from '../components/PlanGate.vue'
+import InvitacionLinkCard from '../components/InvitacionLinkCard.vue'
 
 // Pantalla única de invitados: crear invitaciones, copiar links, editar
 // (solo antes de que respondan), eliminar, y ver/corregir la respuesta de
@@ -620,7 +622,7 @@ async function saveAdding(group, row) {
             <span v-if="declinedCount > 0"> · {{ declinedCount }} liberados por cancelaciones</span>
           </p>
         </div>
-        <div v-if="event && !loading" class="flex flex-wrap gap-2">
+        <div v-if="event && !loading && hasFeature(event.plan, 'panel')" class="flex flex-wrap gap-2">
           <ExportEntryList />
           <button type="button" @click="addPanel = addPanel ? null : 'invitacion'" class="admin-btn-primary">
             <UserPlus :size="18" />
@@ -637,6 +639,9 @@ async function saveAdding(group, row) {
       </div>
 
       <template v-else>
+        <InvitacionLinkCard v-if="event.plan === 'invitacion'" class="mt-6" />
+        <PlanGate feature="panel" action="saber quién viene, con un link por familia">
+        <div>
         <!-- ============ PRUEBA GRATIS ============ -->
         <section v-if="trial" class="mt-6 rounded-[2rem] p-5 sm:p-6" :class="trialClosed ? 'bg-nogo/15' : 'bg-sulfur/70'">
           <p class="font-bold">{{ trialClosed ? 'Tu prueba gratis terminó' : 'Estás en la prueba gratis' }}</p>
@@ -1032,6 +1037,8 @@ async function saveAdding(group, row) {
             </ul>
           </section>
         </div>
+        </div>
+        </PlanGate>
       </template>
     </div>
   </div>

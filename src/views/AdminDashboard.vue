@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { timeAgo } from '../lib/timeAgo'
 import { hasFeature, planFor } from '../lib/plans'
 import PlanGate from '../components/PlanGate.vue'
+import InvitacionLinkCard from '../components/InvitacionLinkCard.vue'
 
 const { event, loadEvent } = useEvent()
 const { w } = useWording()
@@ -452,9 +453,11 @@ async function copyLink(group) {
           </router-link>
         </div>
 
+        <InvitacionLinkCard v-if="event.plan === 'invitacion'" class="mt-3" />
         <!-- ============ MÉTRICAS ============ -->
         <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <!-- Principal: confirmados -->
+          <PlanGate feature="panel" action="saber quién viene y quién falta" compact title="Confirmados" hint="Cuántos vienen, cuántos no y cuántos faltan responder, actualizado solo." class="col-span-2 lg:row-span-2">
           <div class="col-span-2 flex flex-col justify-between rounded-[2rem] bg-accent p-6 text-chalk sm:p-8 lg:row-span-2">
             <div>
               <p class="flex items-center gap-2 text-sm font-bold text-chalk/70">
@@ -488,6 +491,7 @@ async function copyLink(group) {
               </router-link>
             </div>
           </div>
+          </PlanGate>
 
           <div class="rounded-[1.75rem] bg-limestone p-5">
             <p class="flex items-center gap-2 text-sm font-bold text-obsidian/55">
@@ -521,7 +525,7 @@ async function copyLink(group) {
         <!-- ============ ACTIVIDAD ============ -->
         <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <!-- Canciones -->
-          <PlanGate feature="canciones" action="recibir pedidos de canciones" compact>
+          <PlanGate feature="canciones" action="recibir pedidos de canciones" compact title="Canciones pedidas" hint="Tus invitados te sugieren canciones desde la invitación y vos se las pasás al DJ.">
           <router-link
             :to="{ name: 'admin-canciones' }"
             class="group flex flex-col rounded-[1.75rem] bg-limestone p-5 transition-colors hover:bg-chalk"
@@ -551,7 +555,7 @@ async function copyLink(group) {
           </PlanGate>
 
           <!-- Fotos de invitados -->
-          <PlanGate feature="fotos" action="juntar las fotos de tus invitados" compact>
+          <PlanGate feature="fotos" action="juntar las fotos de tus invitados" compact title="Fotos de invitados" hint="Escanean el QR de su mesa y suben las fotos que sacan en la fiesta, todas en un mismo álbum.">
           <router-link
             :to="{ name: 'admin-fotos-evento' }"
             class="group flex flex-col rounded-[1.75rem] bg-limestone p-5 transition-colors hover:bg-chalk"
@@ -581,6 +585,7 @@ async function copyLink(group) {
           </PlanGate>
 
           <!-- Aperturas del link -->
+          <PlanGate feature="panel" action="saber quién viene y quién falta" compact title="Abrieron la invitación" hint="Cuántas familias ya abrieron su link, para saber a quién recordarle.">
           <router-link
             :to="{ name: 'admin-invitados' }"
             class="group flex flex-col rounded-[1.75rem] bg-limestone p-5 transition-colors hover:bg-chalk"
@@ -604,11 +609,13 @@ async function copyLink(group) {
               <template v-else>{{ w.enteredLink }}</template>
             </p>
           </router-link>
+          </PlanGate>
         </div>
 
         <!-- ============ RECORDATORIOS + MESAS ============ -->
         <div class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-5">
           <!-- Recordatorios -->
+          <PlanGate feature="panel" action="saber quién viene y quién falta" compact title="Falta que respondan" hint="Las familias que todavía no respondieron, con su link a mano para mandárselo de nuevo." class="lg:col-span-3">
           <section id="falta-que-respondan" class="scroll-mt-24 rounded-[2rem] bg-limestone p-6 sm:p-8 lg:col-span-3">
             <div class="flex items-center justify-between gap-3">
               <h2 class="admin-display text-3xl">Falta que respondan</h2>
@@ -661,9 +668,11 @@ async function copyLink(group) {
               {{ showAllReminders ? 'Ver menos' : `Ver ${pendingReminders.length - REMINDERS_PREVIEW} más` }}
             </button>
           </section>
+          </PlanGate>
 
           <div class="flex flex-col gap-3 lg:col-span-2">
           <!-- Actividad reciente -->
+          <PlanGate feature="panel" action="saber quién viene y quién falta" compact title="Últimos movimientos" hint="Cada respuesta o cambio de tus invitados, con día y hora.">
           <section class="rounded-[2rem] bg-limestone p-6 sm:p-8">
             <div class="flex items-center justify-between gap-3">
               <h2 class="admin-display text-3xl">Últimos movimientos</h2>
@@ -700,9 +709,10 @@ async function copyLink(group) {
               </li>
             </ul>
           </section>
+          </PlanGate>
 
           <!-- Mesas -->
-          <PlanGate feature="mesas" action="armar las mesas" compact>
+          <PlanGate feature="mesas" action="armar las mesas" compact title="Mesas" hint="Armás las mesas y sentás a cada invitado arrastrando, con los lugares contados.">
           <section class="rounded-[2rem] bg-limestone p-6 sm:p-8">
             <div class="flex items-center justify-between gap-3">
               <h2 class="admin-display text-3xl">Mesas</h2>
