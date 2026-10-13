@@ -6,7 +6,7 @@ Plan original (modelo de datos, rutas, roadmap): `C:\Users\aleor\.claude\plans\p
 
 Modo de trabajo: **aprender haciendo** — explicar el porqué de cada decisión, no solo tirar código hecho. El usuario viene de HTML/CSS/Tailwind fuerte, está aprendiendo JS/Vue. El usuario prueba cada cosa y recién ahí pide commit/push.
 
-_Última actualización: 2026-10-02._
+_Última actualización: 2026-10-12._
 
 ## Stack
 
@@ -54,8 +54,8 @@ Cada `git push` a `main` dispara `.github/workflows/deploy.yml`: `npm ci` → `n
 - **Cuenta FTP dedicada** (`u452496377.asiste`), con raíz directo en `.../domains/tizdigital.com/public_html/asiste`. La cuenta FTP "genérica" del hosting **no** está conectada a ese sitio: ningún `server-dir` funcionaba con ella.
 - `public/.htaccess`: fallback de SPA a `index.html` + reglas de la vista previa de links.
 - Otros workflows: `keepalive.yml` (evita que Supabase pause el proyecto por inactividad) y `backup.yml` (pg_dump diario al repo privado `tizdigital-backups`).
-- **Sitio en blanco o sin estilos después de un deploy** (pasó tres veces, la última el 2026-10-11): el index.html nuevo pedía un .js/.css que en ese momento no estaba (todavía subiendo, o re-subiéndose), el servidor respondía con la página y el CDN (Cloudflare, cuenta propia, y el hCDN de Hostinger) guardaba esa respuesta 4 h con el nombre del archivo. Arreglo: todos los archivos de `assets/` llevan una marca única por build (`vite.config.js`), el deploy sube `assets/` primero y sin re-subir lo que ya está (`--ignore-time`), y `.htaccess` da 404 en vez de la página para un asset que no existe. Si igual pasa: Cloudflare → Caching → Purge Everything.
-- **HTTP 429 en todo tizdigital.com** (2026-10-11, unos minutos): lo cortó el hCDN de Hostinger; el uso de recursos del servidor estaba en cero. Se levantó solo. Pendiente: preguntar al soporte por qué (request id `57b4cf2ffbb2f3af5559be7cef90fd55-asc-edge11`).
+- **Sitio en blanco o sin estilos después de un deploy** (pasó tres veces, la última el 2026-10-11): el index.html nuevo pedía un .js/.css que en ese momento no estaba (todavía subiendo, o re-subiéndose), el servidor respondía con la página y el CDN (Cloudflare, cuenta propia, y en ese momento también el hCDN de Hostinger) guardaba esa respuesta 4 h con el nombre del archivo. Arreglo: todos los archivos de `assets/` llevan una marca única por build (`vite.config.js`), el deploy sube `assets/` primero y sin re-subir lo que ya está (`--ignore-time`), y `.htaccess` da 404 en vez de la página para un asset que no existe. Si igual pasa: Cloudflare → Caching → Purge Everything.
+- **HTTP 429 en todo tizdigital.com** (2026-10-11, 17:44–17:48; también dos el 8/10): lo cortó el hCDN de Hostinger con el servidor en cero. Causa probable: **dos CDN en cadena** (Cloudflare con nube naranja → hCDN → servidor); el hCDN veía todo el tráfico llegar desde pocas IPs de Cloudflare. **Arreglado el 2026-10-12**: en Cloudflare, tizdigital.com, www, asiste, gstock, portfolio y pruebas pasaron a un registro **A → 147.93.39.226** (Proxied), sin los AAAA ni los CNAME a `*.cdn.hstgr.net`, y el soporte desactivó el hCDN para esos sitios. Ahora la única CDN es Cloudflare (verificar: `curl -sIL https://asiste.tizdigital.com` no tiene que traer `x-hcdn-cache-status`). Quedan con el hCDN, a propósito por ahora: **website-jc** (doble CDN igual que antes: para arreglarlo, primero su registro en Cloudflare y después pedir que apaguen el hCDN) y **sinfila** (DNS only, va directo al servidor).
 
 ### Vista previa de links (WhatsApp, Telegram, etc.)
 Esos robots no ejecutan JS, así que `.htaccess` manda **solo a los robots** (por User-Agent) a `public/og.php`, que agrega título, descripción y foto al `index.html`. La foto pasa por `og-image.php` (recorte 1200×630 en JPG liviano, con caché en `og-cache/`). Usa las RPC de solo lectura `vista_previa_invitacion` / `vista_previa_fotos` — **no** `obtener_invitacion`, que registra una visita. Las personas reciben la app directo. WhatsApp cachea la vista previa por link: para probar cambios, agregar `?v=2` al link.
@@ -106,7 +106,34 @@ Pasos:
 - [x] **6 · Invitados: resultado y top en vivo**: «X/30 correctas en m:ss,d · Vas N.º de M», top 10 que se actualiza cada 5 s (mi fila resaltada, y si no estoy en el top, abajo aparte). Cerrado: «¡Ganaste!» o el ganador destacado, y «Tus respuestas» con la correcta y la mía tachada si le erré.
 - [x] **6b · Feedback** (`migrations/20261012_trivia_feedback.sql`): `responder_pregunta` devuelve `{ ok, correct }` y no deja cambiar una respuesta; `enviar_juego` ya no pisa lo guardado; `mi_intento_juego` trae `results` (colores al recargar); `ranking_juego` trae `review` apenas se envía (`is_correct`, `chosen`; `correct_index` solo cerrado). En la pantalla: borde verde / rojo con «¡Correcto!» / «Incorrecto», números del resumen en verde / rojo y hoja «Ver mis respuestas» (solo con el juego cerrado). Probado con PGlite (14 casos).
 - [ ] **7 · Prueba de punta a punta** con varios celulares a la vez (empates, se acaba el tiempo, cerrar la pestaña a la mitad, juego cerrado mientras alguien juega).
+  - [x] En familia con 4–5 celulares (2026-10-12): anduvo bien.
+  - [x] **Prueba de carga** (2026-10-12, script de Node con la clave pública contra el juego de Antonella, 30 preguntas): 300 jugadores entrando en 20 s, 12.964 llamadas en 3,5 min, pico de ~85 pedidos/s, **0 errores**, mediana ~185 ms y p95 ~220 ms en todas las RPC (casi todo es la latencia de red; no subió con la carga). Para 110–120 invitados sobra margen. El script no se guardó.
+  - [x] Demo en vivo con los 103 confirmados jugando al azar, para ver el proyector y el festejo.
+  - [ ] Jugar una partida con Chrome en «Slow 3G» y cortar la conexión a la mitad. Ojo: cada respuesta espera al servidor antes de pasar a la próxima, así que con muy mala señal se pierde tiempo en cada pregunta (cuenta para el desempate). Si molesta: avanzar enseguida y pintar el color cuando llegue la respuesta.
+  - [ ] Revisar la señal de datos móviles adentro del salón (los invitados juegan con sus datos, no con WiFi).
+  - [ ] Antes del 31: «Reiniciar» y dejar el juego cerrado.
 - [ ] (A decidir para cuando se venda) ¿El juego es del plan Plus como las canciones?
+
+### Hito · Comercializar: salones (B2B) y particulares (B2C) (acordado el 2026-10-12)
+
+Hay una reunión con el salón de los 15 unos días antes del 31/10 para ofrecerles el sistema. Orden acordado:
+- [ ] **1 · Recepción en vivo** (para usarla el 31 y mostrarla funcionando): el personal del salón entra con **usuario y contraseña**, busca al invitado, ve su mesa y marca «Llegó»; la familia ve las llegadas en vivo desde el panel. Las sorpresas aparecen con nombre en Recepción (también en el panel del dueño: el día del evento lo mira la familia, no Anto); en Invitados, Mesas, etc. siguen ocultas. **Hecho el código (2026-10-12), falta correr la migración y probarlo:**
+  - Base (`migrations/20261012_recepcion.sql`): `guests.arrived_at` / `arrived_by`, tabla `event_staff` (personal por evento), `acceso_recepcion()` ('personal' / 'superadmin' / 'duenio' / null) y RPC `agregar_recepcionista`, `mis_eventos_recepcion`, `recepcion_lista`, `recepcion_marcar` (conserva la primera hora si dos marcan a la vez) y `reiniciar_llegadas`. Al principio el dueño no veía las sorpresas (`llegadas_reservadas` las contaba sin nombre); se cambió en `migrations/20261012_recepcion_sorpresas.sql`.
+  - Cuentas sin mail (`lib/staff.js`): el usuario se guarda como `<usuario>@recepcion.tizdigital.com` y `user_metadata.role = 'recepcion'`. El login acepta «Mail o usuario»; el router manda a esas cuentas siempre a `/recepcion`.
+  - **Las cuentas las crea la base** (`migrations/20261012_recepcion_cuentas.sql`): `crear_recepcionista` inserta en `auth.users` + `auth.identities` ya confirmada (tokens en `''`, no null, o el login falla) con `extensions.crypt`. Primero se probó con `signUp` desde el navegador, pero **el proyecto tiene «Confirm email» activado**: Supabase mandó un mail de confirmación a la dirección inventada (rebota, y muchos rebotes pueden hacer que Supabase frene los mails del proyecto) y la cuenta quedó sin poder entrar. También `quitar_recepcionista` (borra la cuenta, el usuario queda libre) y `cambiar_clave_recepcionista` (el personal no tiene mail para recuperarla; cierra sus sesiones). Probado con PGlite (39 casos en total).
+  - Panel (`AdminRecepcion.vue`, ítem «Recepción»): llegadas en vivo cada 15 s con `recepcion_lista` (total, últimos en llegar, por mesa), «Reiniciar llegadas», alta/baja de personal con «Copiar para WhatsApp».
+  - Recepción (`Recepcion.vue`, `/recepcion/:eventId?`): buscador sin acentos, filtros Todos / Faltan / Llegaron, por familia con «Llegaron todos», mesa bien visible, desmarcar con confirmación, se refresca cada 10 s.
+  - Para después: cuando exista la cuenta de salón (paso 3), el personal pasa a ser del salón y no de cada evento. Invitados que llegan sin estar en la lista: por ahora no se pueden agregar desde recepción.
+- [ ] **2 · Planes**: B2C (Básico / Plus / Premium) para quien contrata su fiesta directo, y B2B (Salón) para un salón que compra el sistema y lo usan sus empleados. Precios: los decide el usuario.
+- [ ] **3 · Cuenta de salón**: hoy una cuenta = un evento (`useEvent` busca por `owner_user_id`). Hace falta un salón con varios eventos, sus empleados y acceso del cliente a su fiesta.
+- [ ] **4 · Landing + Mercado Pago**: página pública con los planes y compra; el pago aprobado activa el plan solo. Necesita Edge Functions de Supabase (las claves de MP no pueden ir en el navegador) y una cuenta de vendedor de MP.
+
+Ideas a futuro (no ahora; se anotaron para no perderlas):
+- Lista para cocina: menús especiales por mesa (celíacos, vegetarianos, infantiles). La Ejecutiva ya pide restricciones (`guests.dietary`).
+- «Buscá tu mesa»: pantalla/tablet en la entrada donde el invitado escribe su nombre y ve su mesa.
+- Fotos de los invitados en la pantalla grande (presentación automática de la galería).
+- Cronograma de la noche para el personal (entrada, vals, torta, carioca).
+- Invitaciones con el logo del salón (white label) como argumento de venta B2B.
 
 Otros:
 
