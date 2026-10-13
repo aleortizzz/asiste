@@ -124,9 +124,22 @@ Hay una reunión con el salón de los 15 unos días antes del 31/10 para ofrecer
   - Panel (`AdminRecepcion.vue`, ítem «Recepción»): llegadas en vivo cada 15 s con `recepcion_lista` (total, últimos en llegar, por mesa), «Reiniciar llegadas», alta/baja de personal con «Copiar para WhatsApp».
   - Recepción (`Recepcion.vue`, `/recepcion/:eventId?`): buscador sin acentos, filtros Todos / Faltan / Llegaron, por familia con «Llegaron todos», mesa bien visible, desmarcar con confirmación, se refresca cada 10 s.
   - Para después: cuando exista la cuenta de salón (paso 3), el personal pasa a ser del salón y no de cada evento. Invitados que llegan sin estar en la lista: por ahora no se pueden agregar desde recepción.
-- [ ] **2 · Planes**: B2C (Básico / Plus / Premium) para quien contrata su fiesta directo, y B2B (Salón) para un salón que compra el sistema y lo usan sus empleados. Precios: los decide el usuario.
+- [ ] **2 · Planes**: B2C (Básico / Plus / Premium) para quien contrata su fiesta directo, y B2B (Salón) para un salón que compra el sistema y lo usan sus empleados. Estudio de mercado (2026-10-13, competidores, precios y links): https://claude.ai/artifact/GVToFWVqKBZoBje4ETZjQE
+  - **B2C decidido el 2026-10-13** (pago único por evento; «cualquier cosa se cambia»):
+    - **Sin plan ni prueba gratis** (se sacó el 2026-10-13: primero era un «Básico gratis» con 20 invitados y después una prueba de cualquier plan con 20 invitados; ninguna convenció).
+    - **Invitación, $35.000**: invitación completa con un solo link para todos; confirman **por WhatsApp** (mensaje armado al organizador), sin panel ni mesas. Para competir con los baratos (Koinos, Fiestly, NosCasamos). Soporte por WhatsApp.
+    - **Plus, $70.000** (el más elegido): link por familia, panel de confirmaciones, mesas, lista de la entrada y **reunión de 1 hora** para armar todo juntos («si se complica, se cambia»).
+    - **Premium, $120.000**: + canciones para el DJ, fotos de los invitados, trivia, recepción en vivo, «te cargamos los invitados y armamos la invitación» y soporte prioritario.
+    - Las invitaciones sorpresa no van en ningún plan (fueron solo para lo de Anto). Idea: precio de lanzamiento ~20% menos para los primeros clientes.
+  - Para programar: hoy `events.plan` es 'basico' | 'plus' y solo canciones mira el plan. Faltan los planes 'invitacion' / 'plus' / 'premium', la confirmación por WhatsApp del plan Invitación (un solo link + botón que abre WhatsApp con el mensaje armado al teléfono del organizador) y bloquear cada función según el plan (en la pantalla y en la base).
+  - **B2B decidido el 2026-10-13**: al salón siempre se le da el **Premium completo** + su logo + usuarios para su personal.
+    - **$70.000 por fiesta**, o **abono $250.000/mes con fiestas ilimitadas, sin permanencia** (mes a mes: en temporada baja vuelve a pagar por fiesta). Le conviene desde 4 fiestas por mes.
+    - Precio al público de referencia $120.000; el salón decide cuánto le cobra a su cliente (lo revende, lo regala o lo incluye en su paquete).
+    - Para salones, la carga de invitados y el armado los hacen ellos o sus clientes (no el servicio a mano del Premium).
+    - Incentivos: primera fiesta gratis; al pasarse al abono, lo pagado por fiesta el último mes se descuenta. Más adelante: abono con permanencia de 6 meses más barato (~$220.000).
 - [ ] **3 · Cuenta de salón**: hoy una cuenta = un evento (`useEvent` busca por `owner_user_id`). Hace falta un salón con varios eventos, sus empleados y acceso del cliente a su fiesta.
 - [ ] **4 · Landing + Mercado Pago**: página pública con los planes y compra; el pago aprobado activa el plan solo. Necesita Edge Functions de Supabase (las claves de MP no pueden ir en el navegador) y una cuenta de vendedor de MP.
+  - [x] Landing (`views/Landing.vue`, ruta `/`; con sesión manda al panel): carrusel de funciones en la portada con **demos que se pueden tocar** (`components/landing/Demo*.vue`: recepción con buscador y «Llegó», familias que responden solas, movimientos en vivo con filtros, álbum con likes y «Subir foto», trivia que arma el ranking y festeja al ganador, mesas arrastrando o tocando; nombres inventados, fotos de `public/fondos`). Pasa sola según lo que dura cada demo y se frena cuando la persona toca algo, planes con pestañas particulares / salones, cuadro comparativo, «¿Cuál me conviene?», calculadora del abono para salones, con / sin Asiste y preguntas. Los botones de compra por ahora llevan al registro. Ojo: los planes que muestra todavía no están programados (ver paso 2): hoy cualquiera que se registra puede usar casi todo.
 
 Ideas a futuro (no ahora; se anotaron para no perderlas):
 - Lista para cocina: menús especiales por mesa (celíacos, vegetarianos, infantiles). La Ejecutiva ya pide restricciones (`guests.dietary`).
@@ -134,6 +147,7 @@ Ideas a futuro (no ahora; se anotaron para no perderlas):
 - Fotos de los invitados en la pantalla grande (presentación automática de la galería).
 - Cronograma de la noche para el personal (entrada, vals, torta, carioca).
 - Invitaciones con el logo del salón (white label) como argumento de venta B2B.
+- Pie «Invitación creada por» + logo al final de cada invitación (visto en una invitación de «SAINZ Invitación digital», 2026-10-13): publicidad gratis en cada fiesta. Para salones, que diga «creada por» el salón (se cruza con el white label).
 
 Otros:
 
