@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   DoorOpen,
+  Smartphone,
   MailQuestion,
   History,
   Images,
@@ -19,6 +20,7 @@ import {
   ArrowLeft,
   RotateCcw,
 } from '@lucide/vue'
+import DemoInvitacion from '../components/landing/DemoInvitacion.vue'
 import DemoRecepcion from '../components/landing/DemoRecepcion.vue'
 import DemoRespuestas from '../components/landing/DemoRespuestas.vue'
 import DemoMovimientos from '../components/landing/DemoMovimientos.vue'
@@ -35,12 +37,13 @@ import DemoMesas from '../components/landing/DemoMesas.vue'
 // a la siguiente después de `ms` (lo que tarda en verse lo que pasa en ella),
 // hasta que la persona toca algo: desde ahí, solo cambia si elige otra.
 const features = [
-  { id: 'recepcion', label: 'Recepción', icon: DoorOpen, demo: DemoRecepcion, ms: 6000, caption: 'El personal busca a cada invitado, ve su mesa y marca que llegó. Vos lo ves en vivo.' },
+  { id: 'invitacion', label: 'Invitación', icon: Smartphone, demo: DemoInvitacion, ms: 10000, caption: 'Tu invitación digital: foto, música, cuenta regresiva, cómo llegar y la confirmación, todo en un link. Deslizá para verla.' },
   { id: 'respuestas', label: 'Quién falta', icon: MailQuestion, demo: DemoRespuestas, ms: 9000, caption: 'Las respuestas llegan solas: sabés quién confirmó, quién no va y quién todavía ni abrió el link.' },
-  { id: 'movimientos', label: 'Movimientos', icon: History, demo: DemoMovimientos, ms: 8000, caption: 'Cada respuesta, cambio o canción pedida, en el momento.' },
+  { id: 'mesas', label: 'Mesas', icon: Table2, demo: DemoMesas, ms: 8000, caption: 'Armás las mesas arrastrando a cada invitado, con los lugares contados.' },
   { id: 'album', label: 'Álbum', icon: Images, demo: DemoAlbum, ms: 8000, caption: 'Los invitados escanean el QR de la mesa y suben sus fotos a un mismo álbum.' },
   { id: 'trivia', label: 'Trivia', icon: Trophy, demo: DemoTrivia, ms: 12000, caption: 'Trivia en vivo el día de la fiesta: los invitados juegan desde el celular, el ranking sale en la pantalla del salón y al final se festeja al ganador.' },
-  { id: 'mesas', label: 'Mesas', icon: Table2, demo: DemoMesas, ms: 8000, caption: 'Armás las mesas arrastrando a cada invitado, con los lugares contados.' },
+  { id: 'recepcion', label: 'Recepción', icon: DoorOpen, demo: DemoRecepcion, ms: 6000, caption: 'El personal busca a cada invitado, ve su mesa y marca que llegó. Vos lo ves en vivo.' },
+  { id: 'movimientos', label: 'Movimientos', icon: History, demo: DemoMovimientos, ms: 8000, caption: 'Cada respuesta, cambio o canción pedida, en el momento.' },
 ]
 const active = ref(0)
 const autoplay = ref(true)
