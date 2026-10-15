@@ -8,6 +8,10 @@
 @theme {
   --color-accent: #4e1f6e;
   --color-accent-soft: #ebe3f1;
+  /* Escala del violeta para los paneles «de noche» de la landing: un solo
+     tono, de más claro a más oscuro (nada de mezclar colores en un degradé). */
+  --color-accent-light: #6a3a8a;
+  --color-accent-deep: #2f1043;
   /* Estados de respuesta en gráficos: van / no van. */
   --color-go: #3fcb7f;
   --color-nogo: #f2685c;
@@ -205,44 +209,40 @@
     }
   }
 
-  /* Panel «de noche»: el violeta con brillos del cierre, reusable. */
+  /* Panel «de noche»: un solo violeta, de un poco más claro arriba a la
+     izquierda a más oscuro abajo a la derecha, con una luz muy suave. Sobrio:
+     nada de manchas de otros colores. */
   .night {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    background: var(--color-accent);
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgb(106 58 138 / 0.55), transparent 60%),
+      linear-gradient(155deg, var(--color-accent) 0%, var(--color-accent) 45%, var(--color-accent-deep) 100%);
     color: var(--color-chalk);
   }
-  .night::before,
-  .night::after {
+  /* Un filo de luz arriba, como el borde de una tarjeta impresa. */
+  .night::before {
     content: '';
     position: absolute;
+    inset: 0;
     z-index: -1;
-    border-radius: 999px;
-    filter: blur(70px);
+    border-radius: inherit;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
     pointer-events: none;
   }
-  .night::before {
-    width: 26rem;
-    height: 26rem;
-    top: -9rem;
-    left: -8rem;
-    background: rgb(82 74 233 / 0.55);
-  }
-  .night::after {
-    width: 22rem;
-    height: 22rem;
-    right: -6rem;
-    bottom: -10rem;
-    background: rgb(245 242 142 / 0.28);
-  }
 
+  @media (prefers-reduced-motion: no-preference) {
+    html:has(.landing) {
+      scroll-behavior: smooth;
+    }
+  }
   .landing ::selection {
     background: var(--color-sulfur);
     color: var(--color-obsidian);
   }
   .landing :focus-visible {
-    outline: 2.5px solid var(--color-plasma);
+    outline: 2.5px solid var(--color-accent-light);
     outline-offset: 3px;
   }
 }

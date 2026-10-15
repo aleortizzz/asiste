@@ -31,7 +31,8 @@ const router = createRouter({
   scrollBehavior(to, from, saved) {
     if (saved) return saved
     if (['landing', 'terminos', 'privacidad'].includes(to.name) && /^#[a-z-]+$/.test(to.hash)) {
-      return { el: to.hash, top: to.name === 'landing' ? 88 : 16 }
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      return { el: to.hash, top: to.name === 'landing' ? 88 : 16, behavior: smooth ? 'smooth' : 'auto' }
     }
     return { top: 0 }
   },
