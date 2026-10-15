@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { MailCheck, ArrowLeft } from '@lucide/vue'
 import AuthLayout from '../components/AuthLayout.vue'
 import FormField from '../components/FormField.vue'
@@ -9,8 +9,12 @@ import { useAuth } from '../composables/useAuth'
 import { useFormValidation, emailError } from '../composables/useFormValidation'
 import { authErrorMessage } from '../lib/authErrors'
 import { usernameToEmail, usernameError } from '../lib/staff'
+import { PLANS } from '../lib/plans'
 
 const router = useRouter()
+// Vino a comprar un plan (landing → registro → «Ya tenés cuenta»): después de entrar, a pagarlo.
+const route = useRoute()
+const buyPlan = PLANS[route.query.plan]?.price ? route.query.plan : null
 const { login, sendPasswordReset } = useAuth()
 
 const mode = ref('login') // 'login' | 'reset'
@@ -45,7 +49,7 @@ async function onSubmit() {
   try {
     await login(isUsername() ? usernameToEmail(email.value) : email.value.trim(), password.value)
     // El router manda al personal de recepción a su pantalla.
-    router.push({ name: 'admin-dashboard' })
+    router.push(buyPlan ? { name: 'admin-plan', query: { plan: buyPlan, pagar: 1 } } : { name: 'admin-dashboard' })
   } catch (err) {
     const wrong = err?.code === 'invalid_credentials' || /invalid login credentials/i.test(err?.message ?? '')
     error.value =

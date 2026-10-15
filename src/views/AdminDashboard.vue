@@ -6,7 +6,8 @@ import { useEvent } from '../composables/useEvent'
 import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
 import { timeAgo } from '../lib/timeAgo'
-import { hasFeature, planFor } from '../lib/plans'
+import { hasFeature, planFor, PLANS } from '../lib/plans'
+import { useAuth } from '../composables/useAuth'
 import PlanGate from '../components/PlanGate.vue'
 import InvitacionLinkCard from '../components/InvitacionLinkCard.vue'
 
@@ -21,9 +22,17 @@ const refreshing = ref(false)
 const updatedAt = ref(null)
 const copiedId = ref(null)
 
+// Sin invitación todavía: si ya pagó un plan (se puede pagar antes de
+// armarla), se lo mostramos; la invitación nace con ese plan.
+const paidPlan = ref('gratis')
+
 onMounted(async () => {
   if (!event.value) await loadEvent()
   if (event.value) await fetchAll()
+  else {
+    const { data } = await supabase.rpc('plan_pagado_sin_evento', { p_user: useAuth().user.value.id })
+    paidPlan.value = data ?? 'gratis'
+  }
   loading.value = false
 })
 
@@ -369,15 +378,24 @@ async function copyLink(group) {
 
       <!-- Sin evento todavía -->
       <div v-else-if="!event" class="mt-8 rounded-[2rem] bg-limestone p-8 sm:rounded-[2.5rem] sm:p-10">
+        <p v-if="paidPlan !== 'gratis'" class="mb-4 inline-flex rounded-full bg-go/20 px-3 py-1 text-sm font-bold">
+          Ya tenés el plan {{ PLANS[paidPlan]?.label }}
+        </p>
         <h2 class="admin-display text-4xl">Empezá por tu invitación</h2>
         <p class="mt-3 max-w-md text-obsidian/60">
           Cargá los datos de tu evento y guardalos. Después vas a poder sumar invitados y ver acá
           quién confirma.
+          <template v-if="paidPlan !== 'gratis'">Nace con tu plan, sin límites.</template>
         </p>
-        <router-link :to="{ name: 'admin-salon' }" class="admin-btn-primary mt-6">
-          <PenSquare :size="18" />
-          Creá tu invitación
-        </router-link>
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <router-link :to="{ name: 'admin-salon' }" class="admin-btn-primary">
+            <PenSquare :size="18" />
+            Creá tu invitación
+          </router-link>
+          <router-link v-if="paidPlan === 'gratis'" :to="{ name: 'admin-plan' }" class="admin-btn-secondary">
+            Elegir un plan
+          </router-link>
+        </div>
       </div>
 
       <template v-else>

@@ -209,7 +209,7 @@ const recommendation = computed(() => {
         ? 'Nos pasás la lista y las fotos, y nosotros armamos todo. Incluye todo lo de la fiesta.'
         : 'Tenés todo: organización y la noche de la fiesta, con soporte prioritario.'
   }
-  return { ...PLANS[key], why }
+  return { ...PLANS[key], id: key, why }
 })
 
 // --- Calculadora para salones ------------------------------------------------------------
@@ -241,9 +241,9 @@ const verdict = computed(() => {
       <header class="flex items-center justify-between gap-4 py-5">
         <span class="admin-display text-4xl">Asiste</span>
         <nav class="flex items-center gap-2 sm:gap-3">
-          <a href="#planes" class="hidden rounded-full px-3 py-2 font-bold sm:inline">Planes</a>
+          <router-link :to="{ name: 'admin-signup' }" class="hidden rounded-full px-3 py-2 font-bold sm:inline">Probar gratis</router-link>
           <router-link :to="{ name: 'admin-login' }" class="rounded-full px-3 py-2 font-bold">Ingresar</router-link>
-          <router-link :to="{ name: 'admin-signup' }" class="admin-btn-primary !px-4 !py-2 text-sm">Crear mi invitación</router-link>
+          <a href="#planes" class="admin-btn-primary !px-4 !py-2 text-sm">Ver planes</a>
         </nav>
       </header>
 
@@ -256,10 +256,10 @@ const verdict = computed(() => {
             llegó, sin planillas ni mensajes sueltos.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
-            <router-link :to="{ name: 'admin-signup' }" class="admin-btn-primary">Crear mi invitación</router-link>
-            <a href="#conviene" class="admin-btn-secondary">¿Cuál me conviene?</a>
+            <a href="#planes" class="admin-btn-primary">Ver planes</a>
+            <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary">Probar gratis</router-link>
           </div>
-          <p class="mt-4 text-sm text-obsidian/55">Armala gratis y pagás recién cuando la querés mandar a todos. Pago único por evento.</p>
+          <p class="mt-4 text-sm text-obsidian/55">Pago único por evento. ¿Querés verla antes? Probala gratis, sin tarjeta.</p>
         </div>
 
         <!-- Carrusel de funciones -->
@@ -307,8 +307,13 @@ const verdict = computed(() => {
         <div class="max-w-2xl">
           <h2 id="h-planes" class="admin-display text-5xl sm:text-6xl">Planes</h2>
           <p class="mt-3 text-lg text-obsidian/65">
-            Armá tu invitación gratis y probala con hasta 5 familias. Para mandarla a todos, elegís un plan: un solo pago por
-            evento, sin abonos ni costo por invitado.
+            Elegí tu plan y pagalo de una: armás la invitación cuando quieras y ya nace con todo. Un solo pago por evento, sin
+            abonos ni costo por invitado.
+          </p>
+          <p class="mt-2 text-obsidian/55">
+            ¿Querés verla antes de pagar?
+            <router-link :to="{ name: 'admin-signup' }" class="font-bold text-accent hover:underline">Probala gratis</router-link>
+            con hasta 5 familias.
           </p>
         </div>
 
@@ -337,7 +342,7 @@ const verdict = computed(() => {
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.invitacion.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="buyLink('invitacion')" class="admin-btn-secondary w-full">Elegir Invitación</router-link>
+              <router-link :to="buyLink('invitacion')" class="admin-btn-secondary w-full">Comprar Invitación</router-link>
             </article>
             <article class="relative flex flex-col gap-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
               <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">El más elegido</span>
@@ -348,7 +353,7 @@ const verdict = computed(() => {
                 <li class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />Todo lo de Invitación</li>
                 <li v-for="i in PLANS.plus.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="buyLink('plus')" class="admin-btn-primary w-full">Elegir Plus</router-link>
+              <router-link :to="buyLink('plus')" class="admin-btn-primary w-full">Comprar Plus</router-link>
             </article>
             <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Premium</h3>
@@ -357,7 +362,7 @@ const verdict = computed(() => {
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.premium.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="buyLink('premium')" class="admin-btn-secondary w-full">Elegir Premium</router-link>
+              <router-link :to="buyLink('premium')" class="admin-btn-secondary w-full">Comprar Premium</router-link>
             </article>
           </div>
 
@@ -516,8 +521,8 @@ const verdict = computed(() => {
               <ul class="space-y-2 text-[0.95rem]">
                 <li v-for="i in recommendation.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="{ name: 'admin-signup' }" class="admin-btn-primary w-full">
-                Elegir {{ recommendation.name }}
+              <router-link :to="buyLink(recommendation.id)" class="admin-btn-primary w-full">
+                Comprar {{ recommendation.name }}
               </router-link>
               <button type="button" @click="restartFinder" class="mx-auto flex items-center gap-1 text-sm font-bold text-obsidian/55 hover:text-obsidian">
                 <RotateCcw :size="14" /> Volver a empezar
@@ -560,6 +565,7 @@ const verdict = computed(() => {
         <div class="space-y-2">
           <details v-for="q in [
             { q: '¿Es un pago por mes?', a: 'No. Para tu fiesta pagás una sola vez por evento. El abono mensual es solo para salones.' },
+            { q: '¿Tengo que armar la invitación antes de pagar?', a: 'No. Elegís el plan, creás tu cuenta y pagás con Mercado Pago en el momento. Después armás la invitación cuando quieras, y ya nace con todo lo del plan.' },
             { q: '¿Puedo probarlo gratis?', a: 'Sí. Armás tu invitación completa sin pagar y la probás con hasta 5 familias. Mientras es de prueba lleva un cartel que lo indica, y el link se cierra a las 15 visitas o a las 24 horas de que la abre la primera persona. Cuando elegís un plan se levantan los límites y el mismo link sigue andando, sin perder nada de lo que armaste.' },
             { q: '¿Qué es la reunión del Plus?', a: 'Una videollamada de una hora con nosotros para armar la invitación y la lista de invitados juntos, y sacarte todas las dudas.' },
             { q: '¿Cómo funciona la trivia?', a: 'Es para jugar en vivo el día de la fiesta. Vos armás las preguntas antes; en la fiesta la abrís, los invitados juegan desde su celular escaneando el QR de la mesa, el ranking se ve en la pantalla del salón y al cerrarla se festeja al ganador.' },

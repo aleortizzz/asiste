@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Check, CircleCheck, Clock, CircleAlert, LoaderCircle, Sparkles } from '@lucide/vue'
+import { ArrowLeft, Check, CircleCheck, Clock, CircleAlert, LoaderCircle, Sparkles, PenSquare } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
+import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
 import { PLANS, upgradePrice, formatPrice, chosenPlan, forgetChosenPlan } from '../lib/plans'
 
@@ -12,9 +13,13 @@ import { PLANS, upgradePrice, formatPrice, chosenPlan, forgetChosenPlan } from '
 // El cobro lo arma la Edge Function crear-pago y el plan lo sube mp-webhook
 // cuando MP confirma (ver migrations/20261015_pagos.sql). Esta pantalla solo
 // pide el link y después espera a que la base cambie.
+// Se puede pagar sin haber armado la invitación: el pago queda en la cuenta
+// y el evento nace con ese plan (migrations/20261015_pagar_sin_invitacion.sql).
+// Con ?plan=plus&pagar=1 (viene del registro) abre Mercado Pago sola.
 const route = useRoute()
 const router = useRouter()
 const { event, loadEvent, viewing } = useEvent()
+const { user } = useAuth()
 
 const loading = ref(true)
 const paying = ref(null) // plan que se está por pagar (botón con «cargando»)
@@ -28,10 +33,16 @@ const waitedTooLong = ref(false)
 let pollTimer = null
 
 const PAID = ['invitacion', 'plus', 'premium']
-const options = computed(() =>
-  event.value ? PAID.filter((p) => upgradePrice(event.value.plan, p) !== null) : [],
+// Sin evento, su plan es el mejor que ya pagó (o la prueba gratis).
+const paidWithoutEvent = computed(() =>
+  pagos.value
+    .filter((p) => p.estado === 'aprobado' && !p.event_id)
+    .map((p) => p.plan)
+    .sort((a, b) => PLANS[b].price - PLANS[a].price)[0],
 )
-const isUpgrade = computed(() => !!PLANS[event.value?.plan]?.price)
+const currentPlan = computed(() => event.value?.plan ?? paidWithoutEvent.value ?? 'gratis')
+const options = computed(() => PAID.filter((p) => upgradePrice(currentPlan.value, p) !== null))
+const isUpgrade = computed(() => !!PLANS[currentPlan.value]?.price)
 // Resaltado: el que vino en el link (PlanGate, landing) o el que eligió antes de registrarse.
 const highlighted = computed(() => {
   const wanted = route.query.plan ?? chosenPlan()
@@ -40,18 +51,29 @@ const highlighted = computed(() => {
 
 onMounted(async () => {
   if (!event.value) await loadEvent()
-  if (event.value) await fetchPagos()
+  await fetchPagos()
   loading.value = false
   if (returned.value && route.query.id) watchReturn(route.query.id)
+  // Viene de registrarse (o de entrar) para comprar: directo a Mercado Pago.
+  // Se saca pagar=1 de la URL para que «atrás» desde MP no vuelva a abrirlo.
+  const wanted = route.query.plan
+  if (route.query.pagar && !viewing.value && options.value.includes(wanted)) {
+    router.replace({ query: { plan: wanted } })
+    pay(wanted)
+  }
 })
 onUnmounted(() => clearTimeout(pollTimer))
 
+// Los de la cuenta (también los que todavía no tienen evento). El
+// superadmin mirando a un cliente ve los de ese evento.
 async function fetchPagos() {
-  const { data } = await supabase
+  const query = supabase
     .from('pagos')
-    .select('id, plan, plan_anterior, monto, estado, creado_en, aprobado_en')
-    .eq('event_id', event.value.id)
+    .select('id, event_id, plan, plan_anterior, monto, estado, creado_en, aprobado_en')
     .order('creado_en', { ascending: false })
+  const { data } = viewing.value
+    ? await query.eq('event_id', viewing.value.id)
+    : await query.eq('user_id', user.value.id)
   pagos.value = data ?? []
 }
 const approvedPagos = computed(() => pagos.value.filter((p) => p.estado === 'aprobado' || p.estado === 'devuelto'))
@@ -126,10 +148,6 @@ const formatDate = (iso) =>
 
       <p v-if="loading" class="mt-10 text-obsidian/55">Cargando…</p>
 
-      <div v-else-if="!event" class="mt-8 rounded-[2rem] bg-limestone p-8">
-        <p class="text-obsidian/60">Primero guardá tu invitación y después elegí el plan.</p>
-        <router-link :to="{ name: 'admin-salon' }" class="admin-btn-primary mt-4">Crear mi invitación</router-link>
-      </div>
 
       <template v-else>
         <!-- ============ VUELTA DE MERCADO PAGO ============ -->
@@ -153,8 +171,13 @@ const formatDate = (iso) =>
             <template v-else-if="confirmed">
               <p class="font-bold">¡Listo! Ya tenés el plan {{ PLANS[returnedPago.plan].label }}</p>
               <p class="mt-1 text-sm text-obsidian/70">
-                Se levantaron todos los límites. Te vamos a escribir por WhatsApp para lo que haga falta.
+                <template v-if="event">Se levantaron todos los límites.</template>
+                <template v-else>Ahora armá tu invitación: ya nace con el plan pago, sin límites.</template>
+                Te vamos a escribir por WhatsApp para lo que haga falta.
               </p>
+              <router-link v-if="!event" :to="{ name: 'admin-salon' }" class="admin-btn-primary mt-3 !py-2 text-sm">
+                <PenSquare :size="16" /> Armar mi invitación
+              </router-link>
             </template>
             <template v-else-if="returned === 'pendiente'">
               <p class="font-bold">Tu pago está pendiente</p>
@@ -181,9 +204,12 @@ const formatDate = (iso) =>
         <!-- ============ PLAN ACTUAL ============ -->
         <section class="mt-6 rounded-[2rem] bg-limestone p-6 sm:p-8">
           <p class="text-sm font-bold text-obsidian/55">Plan actual</p>
-          <p class="admin-display mt-1 text-4xl">{{ PLANS[event.plan]?.label ?? event.plan }}</p>
+          <p class="admin-display mt-1 text-4xl">{{ PLANS[currentPlan]?.label ?? currentPlan }}</p>
           <p class="mt-2 text-obsidian/65">
-            <template v-if="event.plan === 'gratis'">
+            <template v-if="currentPlan === 'gratis' && !event">
+              Elegí tu plan y pagalo ahora: la invitación la armás cuando quieras y ya nace con todo incluido.
+            </template>
+            <template v-else-if="currentPlan === 'gratis'">
               Podés armar y probar todo. Para mandarla a todos tus invitados, elegí un plan: se levantan los límites y los
               mismos links siguen andando.
             </template>
@@ -192,6 +218,13 @@ const formatDate = (iso) =>
             </template>
             <template v-else>Tenés el plan más completo. ¡Que lo disfrutes!</template>
           </p>
+          <router-link
+            v-if="!event && currentPlan !== 'gratis' && !viewing"
+            :to="{ name: 'admin-salon' }"
+            class="admin-btn-primary mt-4 !py-2 text-sm"
+          >
+            <PenSquare :size="16" /> Armar mi invitación
+          </router-link>
         </section>
 
         <p v-if="viewing" class="mt-6 rounded-[1.5rem] bg-sulfur/70 p-4 text-sm">
@@ -215,7 +248,7 @@ const formatDate = (iso) =>
             </span>
             <h2 class="text-lg font-bold">{{ PLANS[p].label }}</h2>
             <div>
-              <p class="admin-display text-5xl">{{ formatPrice(upgradePrice(event.plan, p)) }}</p>
+              <p class="admin-display text-5xl">{{ formatPrice(upgradePrice(currentPlan, p)) }}</p>
               <p class="mt-1 text-sm text-obsidian/55">
                 <template v-if="isUpgrade">
                   Pagás solo la diferencia

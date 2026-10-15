@@ -46,32 +46,40 @@ Deno.serve(async (req) => {
   const { plan } = await req.json().catch(() => ({}))
   if (!PLAN_LABELS[plan]) return json({ error: 'Plan inválido.' }, 400)
 
-  // Su propio evento (no el que un superadmin esté mirando).
+  // Su propio evento (no el que un superadmin esté mirando). Puede no
+  // tenerlo todavía: se puede comprar antes de armar la invitación, y el
+  // evento nace con el plan pagado (migrations/20261015_pagar_sin_invitacion.sql).
   const { data: event } = await userClient
     .from('events')
     .select('id, name, plan')
     .eq('owner_user_id', user.id)
     .maybeSingle()
-  if (!event) return json({ error: 'Primero guardá tu invitación.' }, 400)
 
   // Cliente con la service_role: puede escribir en pagos (el navegador no).
   const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
+  // Sin evento, su plan es el mejor que ya pagó (o 'gratis').
+  let planActual = event?.plan
+  if (!planActual) {
+    const { data } = await admin.rpc('plan_pagado_sin_evento', { p_user: user.id })
+    planActual = data ?? 'gratis'
+  }
+
   const { data: monto, error: precioError } = await admin.rpc('precio_cambio_plan', {
-    p_actual: event.plan,
+    p_actual: planActual,
     p_nuevo: plan,
   })
   if (precioError) return json({ error: 'No se pudo calcular el precio.' }, 500)
-  if (!monto) return json({ error: `Ya tenés el plan ${PLAN_LABELS[event.plan] ?? event.plan} o uno mejor.` }, 400)
+  if (!monto) return json({ error: `Ya tenés el plan ${PLAN_LABELS[planActual] ?? planActual} o uno mejor.` }, 400)
 
   const { data: pago, error: pagoError } = await admin
     .from('pagos')
-    .insert({ event_id: event.id, user_id: user.id, plan_anterior: event.plan, plan, monto })
+    .insert({ event_id: event?.id ?? null, user_id: user.id, plan_anterior: planActual, plan, monto })
     .select('id')
     .single()
   if (pagoError) return json({ error: 'No se pudo iniciar el pago.' }, 500)
 
-  const esCambio = event.plan !== 'gratis'
+  const esCambio = planActual !== 'gratis'
   const vuelta = (estado: string) => `${siteUrl}/admin/plan?pago=${estado}&id=${pago.id}`
 
   const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
@@ -87,7 +95,7 @@ Deno.serve(async (req) => {
         {
           id: plan,
           title: `Asiste · Plan ${PLAN_LABELS[plan]}${esCambio ? ' (diferencia)' : ''}`,
-          description: event.name ?? undefined,
+          description: event?.name ?? undefined,
           quantity: 1,
           currency_id: 'ARS',
           unit_price: monto,
