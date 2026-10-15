@@ -451,7 +451,9 @@ const verdict = computed(() => {
           </div>
 
           <!-- Resultado -->
-          <div v-else class="finder-in grid gap-6 sm:grid-cols-[1fr_1.1fr] sm:items-center">
+          <!-- key propia: si no, Vue le da la misma clave automática que la pregunta
+               (:key="step") y reusa su molde, mezclando los dos. -->
+          <div v-else key="resultado" class="finder-in grid gap-6 sm:grid-cols-[1fr_1.1fr] sm:items-center">
             <div class="space-y-2">
               <p class="text-sm font-bold text-chalk/60">Te conviene</p>
               <p class="admin-display text-6xl text-sulfur">{{ recommendation.name }}</p>
@@ -489,11 +491,11 @@ const verdict = computed(() => {
               </li>
             </ul>
           </div>
-          <div v-reveal="'right'" class="rounded-[2rem] bg-go p-6 text-obsidian shadow-[0_26px_50px_-30px_rgb(63_203_127/0.9)] sm:p-8">
-            <h3 class="admin-display text-3xl">Con Asiste</h3>
+          <div v-reveal="'right'" class="rounded-[2rem] bg-accent-soft p-6 text-obsidian shadow-[0_26px_50px_-30px_rgb(78_31_110/0.6)] ring-1 ring-accent/10 sm:p-8">
+            <h3 class="admin-display text-3xl text-accent">Con Asiste</h3>
             <ul class="mt-5 space-y-3.5">
               <li v-for="t in WITH" :key="t" class="flex gap-3 font-medium">
-                <span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-obsidian text-go"><Check :size="14" /></span>
+                <span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-chalk"><Check :size="14" /></span>
                 {{ t }}
               </li>
             </ul>
