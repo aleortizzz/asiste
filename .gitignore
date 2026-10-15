@@ -29,3 +29,7 @@ set-secret.mjs
 
 # Playwright MCP session snapshots
 .playwright-mcp/
+
+# Bocetos descartados del logo (quedan solo en la compu)
+branding/exploracion/
+branding/opciones/

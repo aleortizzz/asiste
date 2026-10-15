@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Menu, X } from '@lucide/vue'
+import BrandLogo from '../BrandLogo.vue'
 
 // Barra de la landing: queda fija arriba al bajar. En desktop, el menú con las
 // secciones; en celular, un botón que lo despliega. Las secciones llevan
@@ -31,7 +32,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     :class="scrolled || open ? 'bg-pumice/90 shadow-[0_1px_0_rgb(7_6_7/0.08)] backdrop-blur-md' : 'bg-pumice'"
   >
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:h-[4.5rem]">
-      <a href="#inicio" class="admin-display text-4xl" @click="open = false">Asiste</a>
+      <a href="#inicio" class="text-4xl text-accent" @click="open = false"><BrandLogo /></a>
 
       <nav aria-label="Secciones" class="hidden lg:block">
         <ul class="flex items-center gap-1">

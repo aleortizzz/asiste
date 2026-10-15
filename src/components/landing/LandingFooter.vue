@@ -1,6 +1,7 @@
 <script setup>
 import { MessageCircle } from '@lucide/vue'
 import { COMPANY, WHATSAPP_DISPLAY, waLink } from '../../lib/contact'
+import BrandLogo from '../BrandLogo.vue'
 
 // Pie de la landing (y de las páginas legales). Los links con # son anclas
 // de la landing: desde otra página se arman como /#seccion.
@@ -36,7 +37,7 @@ const COLUMNS = [
   <footer class="mt-6 border-t border-obsidian/10 py-12">
     <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
       <div>
-        <a :href="a('#inicio')" class="admin-display text-5xl">Asiste</a>
+        <a :href="a('#inicio')" class="text-5xl text-accent"><BrandLogo /></a>
         <p class="mt-3 max-w-xs text-obsidian/60">Invitaciones digitales y organización de fiestas, de punta a punta.</p>
         <p class="mt-4 text-sm text-obsidian/50">Un producto de {{ COMPANY }}, hecho en Argentina.</p>
       </div>

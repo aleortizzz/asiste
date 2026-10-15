@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, MessageCircle } from '@lucide/vue'
 import LandingFooter from '../components/landing/LandingFooter.vue'
+import BrandLogo from '../components/BrandLogo.vue'
 import { COMPANY, SITE, WHATSAPP_DISPLAY, waLink } from '../lib/contact'
 
 // Términos y condiciones (/terminos) y Política de privacidad (/privacidad).
@@ -130,7 +131,7 @@ const doc = computed(() => DOCS[route.name] ?? DOCS.terminos)
   <div class="landing font-ui min-h-dvh bg-pumice text-obsidian">
     <div class="mx-auto max-w-6xl px-4">
       <header class="flex h-16 items-center justify-between sm:h-[4.5rem]">
-        <router-link :to="{ name: 'landing' }" class="admin-display text-4xl">Asiste</router-link>
+        <router-link :to="{ name: 'landing' }" class="text-4xl text-accent"><BrandLogo /></router-link>
         <router-link :to="{ name: 'landing' }" class="inline-flex items-center gap-1.5 text-sm font-bold text-obsidian/60 hover:text-obsidian">
           <ArrowLeft :size="15" /> Volver al inicio
         </router-link>

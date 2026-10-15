@@ -36,6 +36,8 @@ const fondoCel = azar(FONDOS_CEL)
 </script>
 
 <script setup>
+import BrandLogo from './BrandLogo.vue'
+
 defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
@@ -64,7 +66,7 @@ defineProps({
     >
       <!-- Marca -->
       <div class="text-center text-chalk lg:mb-4 lg:self-end lg:text-left">
-        <span class="admin-display block text-6xl drop-shadow-sm lg:text-9xl">Asiste</span>
+        <BrandLogo class="text-6xl drop-shadow-sm lg:text-9xl" />
         <span class="mx-auto mt-2 block max-w-xs text-sm text-chalk/85 lg:mx-0 lg:mt-4 lg:max-w-sm lg:text-lg">
           Invitaciones digitales con confirmación de asistencia, mesas y fotos de la fiesta.
         </span>

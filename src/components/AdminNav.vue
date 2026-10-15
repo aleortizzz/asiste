@@ -3,6 +3,7 @@ import { ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { useEvent } from '../composables/useEvent'
+import BrandLogo from './BrandLogo.vue'
 import {
   LayoutDashboard,
   PenSquare,
@@ -152,7 +153,7 @@ async function onLogout() {
     style="top: var(--banner-h, 0px)"
     class="font-ui fixed inset-x-0 z-40 flex h-16 items-center justify-between bg-pumice px-4 lg:hidden"
   >
-    <span class="admin-display text-3xl">Asiste</span>
+    <BrandLogo class="text-3xl text-accent" />
     <button
       type="button"
       @click="mobileOpen = !mobileOpen"
@@ -181,7 +182,7 @@ async function onLogout() {
   >
     <div class="flex h-full flex-col rounded-[2rem] bg-limestone p-3">
       <div class="px-3 pt-3 pb-5">
-        <span class="admin-display block text-[2.5rem]">Asiste</span>
+        <BrandLogo class="text-[2.5rem] text-accent" />
         <span class="mt-1 block text-xs text-obsidian/50">Tu panel de invitaciones</span>
       </div>
 

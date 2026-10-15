@@ -30,6 +30,10 @@ if (!$data) {
   exit;
 }
 
+// El index.html trae la vista previa de la home (bloque og:default): se saca
+// para que no queden dos og:title u og:image y el robot elija el equivocado.
+$html = preg_replace('#\s*<!-- og:default.*?<!-- /og:default -->#s', '', $html);
+
 $name = trim($data['hero_title'] ?? '') ?: trim($data['event_name'] ?? '') ?: 'Asiste';
 $fecha = og_fecha($data['event_date'] ?? null);
 $fechaTxt = $fecha ? ucfirst($fecha) . ' · ' : '';
@@ -93,6 +97,16 @@ if ($logoCard || !empty($data['image'])) {
     '<meta property="og:image:width" content="1200" />',
     '<meta property="og:image:height" content="630" />',
     '<meta property="og:image:type" content="image/jpeg" />',
+    '<meta name="twitter:card" content="summary_large_image" />'
+  );
+} else {
+  // Sin foto: la tarjeta de Asiste, así el link nunca llega sin imagen.
+  array_push(
+    $meta,
+    '<meta property="og:image" content="' . $e($base . '/brand/og-asiste.png') . '" />',
+    '<meta property="og:image:width" content="1200" />',
+    '<meta property="og:image:height" content="630" />',
+    '<meta property="og:image:type" content="image/png" />',
     '<meta name="twitter:card" content="summary_large_image" />'
   );
 }

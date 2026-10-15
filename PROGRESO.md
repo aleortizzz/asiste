@@ -46,6 +46,14 @@ _Última actualización: 2026-10-15._
 ### Página de fotos para invitados (`/fotos/:eventId`, la del QR)
 Sin login. Toma el estilo de la invitación (plantilla, color, nombre) vía `info_fotos_evento` y permite subir (el navegador comprime cada foto antes), dar like y descargar.
 
+### Marca y logo (2026-10-15)
+- **Logo:** una lista de invitados con la insignia de confirmado ✓ adelante y «ASISTE» en Anton, en un solo violeta (#4E1F6E). **Slogan:** «Tu fiesta empieza con un sí.»
+- **En la app:** `src/components/BrandLogo.vue` (SVG con `currentColor`; el tamaño lo da la letra del contenedor). Está en el menú y el pie de la landing, el panel (`AdminNav`), el ingreso y registro (`AuthLayout`) y las páginas legales.
+- **En `public/`:** favicon (svg + png 32), `apple-touch-icon.png`, `site.webmanifest` con íconos 192/512/maskable, `brand/og-asiste.png` (vista previa de la home y de las invitaciones **sin foto**) y `brand/asiste-logo.png` (logo de los mails).
+- `index.html` trae la vista previa de la home entre `<!-- og:default -->`; `og.php` saca ese bloque cuando arma la de una invitación.
+- Todas las versiones (fondos, PNG, ícono de app) en `branding/logo/`. Se regeneran con `branding/generador/final_logo.py` (Python + fonttools). Brief, competencia y las 10 ideas descartadas: carpeta «Logo Asiste» en el Escritorio.
+- **Si cambia el dominio:** actualizar la URL absoluta de `og:image` en `index.html` y la del logo en `supabase/emails/*.html`.
+
 ## Deploy (automático)
 
 Cada `git push` a `main` dispara `.github/workflows/deploy.yml`: `npm ci` → `npm run build` → genera `dist/og-config.php` → sube `dist/` por FTPS con **lftp** (config conservadora: una conexión, PASV, reintentos; el FTP de Hostinger corta la conexión seguido).
