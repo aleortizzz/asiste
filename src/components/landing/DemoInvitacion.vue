@@ -6,7 +6,11 @@ import { ChevronDown } from '@lucide/vue'
 // Antonella, con su permiso) dentro de un celular. Es /demo/invitacion en un
 // <iframe> dibujado a ancho de teléfono y achicado para entrar en la pantalla,
 // así se ve igual que en un celular de verdad y se puede deslizar.
-const props = defineProps({ paused: Boolean }) // copia invisible para medir el alto: sin iframe
+const props = defineProps({
+  paused: Boolean, // copia invisible para medir el alto: sin iframe
+  template: { type: String, default: '' }, // otra plantilla (sección «Plantillas»)
+})
+const src = props.template ? `/demo/invitacion?plantilla=${props.template}` : '/demo/invitacion'
 
 // Pantalla del dibujo (px) y ancho real al que se dibuja la invitación.
 const SCREEN_W = 184
@@ -36,7 +40,7 @@ function onLoad(e) {
       <div class="relative overflow-hidden rounded-[2.1rem] bg-limestone" :style="{ width: `${SCREEN_W}px`, height: `${SCREEN_H}px` }">
         <iframe
           v-if="!props.paused"
-          src="/demo/invitacion"
+          :src="src"
           title="Invitación de ejemplo"
           allow="autoplay; encrypted-media"
           loading="lazy"

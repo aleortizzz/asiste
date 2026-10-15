@@ -24,11 +24,15 @@ import { isStaffUser } from '../lib/staff'
 
 const router = createRouter({
   history: createWebHistory(),
-  // Anclas de la landing (#planes, #conviene). Solo ahí: el link de recuperar
-  // contraseña también trae un hash (#access_token=…) que no es un elemento.
+  // Anclas de la landing (#planes, #conviene) y de las páginas legales
+  // (#arrepentimiento). Solo ahí: el link de recuperar contraseña también trae
+  // un hash (#access_token=…) que no es un elemento. En la landing, 88 px para
+  // que la barra fija no tape el título.
   scrollBehavior(to, from, saved) {
     if (saved) return saved
-    if (to.name === 'landing' && /^#[a-z-]+$/.test(to.hash)) return { el: to.hash, top: 16 }
+    if (['landing', 'terminos', 'privacidad'].includes(to.name) && /^#[a-z-]+$/.test(to.hash)) {
+      return { el: to.hash, top: to.name === 'landing' ? 88 : 16 }
+    }
     return { top: 0 }
   },
   routes: [
@@ -88,6 +92,9 @@ const router = createRouter({
     { path: '/juego/:eventId/ranking', name: 'trivia-proyector', component: TriviaProyector },
     // Página pública con los planes. Con sesión se saltea (ver beforeEach).
     { path: '/', name: 'landing', component: Landing },
+    // Páginas legales (las enlaza el pie de la landing). Con o sin sesión.
+    { path: '/terminos', name: 'terminos', component: () => import('../views/Legal.vue') },
+    { path: '/privacidad', name: 'privacidad', component: () => import('../views/Legal.vue') },
     // La invitación de ejemplo que la landing muestra dentro del celular.
     { path: '/demo/invitacion', name: 'invitacion-demo', component: () => import('../views/InvitacionDemo.vue') },
   ],

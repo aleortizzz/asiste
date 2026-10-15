@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   DoorOpen,
   Smartphone,
@@ -23,6 +23,16 @@ import {
 import { PLANS as BASE_PLANS, SALON_PRICES, formatPrice } from '../lib/plans'
 import { useAuth } from '../composables/useAuth'
 import DemoInvitacion from '../components/landing/DemoInvitacion.vue'
+import LandingHeader from '../components/landing/LandingHeader.vue'
+import SectionPasos from '../components/landing/SectionPasos.vue'
+import SectionMomentos from '../components/landing/SectionMomentos.vue'
+import SectionPlantillas from '../components/landing/SectionPlantillas.vue'
+import SectionEventos from '../components/landing/SectionEventos.vue'
+import SectionSalones from '../components/landing/SectionSalones.vue'
+import SectionCierre from '../components/landing/SectionCierre.vue'
+import LandingFooter from '../components/landing/LandingFooter.vue'
+import WhatsappFloat from '../components/landing/WhatsappFloat.vue'
+import { waLink } from '../lib/contact'
 import DemoRecepcion from '../components/landing/DemoRecepcion.vue'
 import DemoRespuestas from '../components/landing/DemoRespuestas.vue'
 import DemoMovimientos from '../components/landing/DemoMovimientos.vue'
@@ -79,6 +89,13 @@ onUnmounted(() => clearTimeout(timer))
 
 // --- Planes ------------------------------------------------------------------------------
 const audience = ref('fiesta') // 'fiesta' | 'salon'
+
+// «Ver precios para salones» (sección Salones): abre esa pestaña y baja a Planes.
+async function showSalonPrices() {
+  audience.value = 'salon'
+  await nextTick()
+  document.getElementById('planes')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 // Tres planes, pago único por evento (decidido el 2026-10-13).
 const rows = [
@@ -235,17 +252,9 @@ const verdict = computed(() => {
 </script>
 
 <template>
-  <div class="font-ui min-h-dvh bg-pumice text-obsidian">
+  <div id="inicio" class="font-ui min-h-dvh bg-pumice text-obsidian">
+    <LandingHeader />
     <div class="mx-auto max-w-6xl px-4">
-      <!-- Barra -->
-      <header class="flex items-center justify-between gap-4 py-5">
-        <span class="admin-display text-4xl">Asiste</span>
-        <nav class="flex items-center gap-2 sm:gap-3">
-          <router-link :to="{ name: 'admin-signup' }" class="hidden rounded-full px-3 py-2 font-bold sm:inline">Probar gratis</router-link>
-          <router-link :to="{ name: 'admin-login' }" class="rounded-full px-3 py-2 font-bold">Ingresar</router-link>
-          <a href="#planes" class="admin-btn-primary !px-4 !py-2 text-sm">Ver planes</a>
-        </nav>
-      </header>
 
       <!-- Portada -->
       <div class="grid items-center gap-10 pt-6 pb-16 lg:grid-cols-[1.05fr_0.95fr]">
@@ -302,8 +311,14 @@ const verdict = computed(() => {
         </div>
       </div>
 
+      <SectionPasos />
+      <SectionMomentos />
+      <SectionPlantillas />
+      <SectionEventos />
+      <SectionSalones @ver-precios="showSalonPrices" />
+
       <!-- Planes -->
-      <section id="planes" class="scroll-mt-4 space-y-6 py-12" aria-labelledby="h-planes">
+      <section id="planes" class="scroll-mt-24 space-y-6 py-12" aria-labelledby="h-planes">
         <div class="max-w-2xl">
           <h2 id="h-planes" class="admin-display text-5xl sm:text-6xl">Planes</h2>
           <p class="mt-3 text-lg text-obsidian/65">
@@ -469,7 +484,7 @@ const verdict = computed(() => {
       </section>
 
       <!-- ¿Cuál me conviene? -->
-      <section id="conviene" class="scroll-mt-4 space-y-6 py-12" aria-labelledby="h-conviene">
+      <section id="conviene" class="scroll-mt-24 space-y-6 py-12" aria-labelledby="h-conviene">
         <div class="max-w-2xl">
           <h2 id="h-conviene" class="admin-display text-5xl sm:text-6xl">¿Cuál me conviene?</h2>
           <p class="mt-3 text-lg text-obsidian/65">Dos preguntas y te decimos qué plan elegir.</p>
@@ -560,7 +575,7 @@ const verdict = computed(() => {
       </section>
 
       <!-- Preguntas -->
-      <section class="space-y-6 py-12" aria-labelledby="h-faq">
+      <section id="preguntas" class="scroll-mt-24 space-y-6 py-12" aria-labelledby="h-faq">
         <h2 id="h-faq" class="admin-display text-5xl sm:text-6xl">Preguntas</h2>
         <div class="space-y-2">
           <details v-for="q in [
@@ -577,13 +592,19 @@ const verdict = computed(() => {
             <p class="mt-2 max-w-3xl text-obsidian/65">{{ q.a }}</p>
           </details>
         </div>
+        <p class="text-obsidian/65">
+          ¿Te quedó otra duda?
+          <a :href="waLink('Hola! Tengo una duda sobre Asiste: ')" target="_blank" rel="noopener" class="font-bold text-accent hover:underline">
+            Escribinos por WhatsApp
+          </a>
+          y te respondemos.
+        </p>
       </section>
 
-      <footer class="flex flex-wrap items-center justify-between gap-3 py-10 text-sm text-obsidian/55">
-        <span>Asiste · TizDigital</span>
-        <span>Precios en pesos argentinos.</span>
-      </footer>
+      <SectionCierre />
+      <LandingFooter />
     </div>
+    <WhatsappFloat />
   </div>
 </template>
 

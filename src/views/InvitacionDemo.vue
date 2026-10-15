@@ -14,10 +14,15 @@ const submitting = ref(false)
 const submitted = ref(false)
 const songSubmitting = ref(false)
 
+// ?plantilla=craft: la misma invitación con otra plantilla (la sección
+// «Plantillas» de la landing muestra las cuatro).
+const PLANTILLAS = ['clasico', 'partiful', 'craft', 'ejecutiva']
+const plantilla = new URLSearchParams(window.location.search).get('plantilla')
+
 onMounted(async () => {
   const { data, error } = await supabase.rpc('invitacion_demo')
   if (error || !data) failed.value = true
-  else invite.value = data
+  else invite.value = PLANTILLAS.includes(plantilla) ? { ...data, template: plantilla } : data
 })
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
