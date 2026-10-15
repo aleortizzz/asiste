@@ -9,18 +9,18 @@ os.makedirs(OUT, exist_ok=True)
 
 # Imagen al compartir el link (1200 x 630): logo blanco con el slogan, centrado sobre violeta.
 W, H = 1200, 630
-s = 1.75
+s = 1.3 * CAP / 100          # el ícono mide lo mismo que las mayúsculas
 ih = 100 * s
-gap = 52
+gap = 36
 sl = 1.55
 block_w = ih + gap + WORD_W * 1.3
 x0 = (W - block_w) / 2
-top = (H - ih) / 2 - 20
+top = (H - ih) / 2 - 40
 body = f'<rect width="{W}" height="{H}" fill="{VIOLETA}"/>' + mark(BLANCO, x0, top, s, 'og')
 wx = x0 + ih + gap
-body += f'<path transform="translate({wx:.2f} {top + 20 + CAP * 1.3:.2f}) scale(1.3)" d="{WORD_D}" fill="{BLANCO}"/>'
+body += f'<path transform="translate({wx:.2f} {top + CAP * 1.3:.2f}) scale(1.3)" d="{WORD_D}" fill="{BLANCO}"/>'
 sw = SLOG_W * sl
-body += (f'<path transform="translate({(W - sw) / 2:.2f} {top + ih + 70:.2f}) scale({sl})" '
+body += (f'<path transform="translate({(W - sw) / 2:.2f} {top + ih + 84:.2f}) scale({sl})" '
          f'd="{SLOG_D}" fill="{BLANCO}" fill-opacity="0.85"/>')
 open(os.path.join(OUT, 'og-asiste.svg'), 'w', encoding='utf-8').write(svg(W, H, body))
 print('ok')

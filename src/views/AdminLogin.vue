@@ -5,6 +5,7 @@ import { MailCheck, ArrowLeft } from '@lucide/vue'
 import AuthLayout from '../components/AuthLayout.vue'
 import FormField from '../components/FormField.vue'
 import PasswordInput from '../components/PasswordInput.vue'
+import GoogleButton from '../components/GoogleButton.vue'
 import { useAuth } from '../composables/useAuth'
 import { useFormValidation, emailError } from '../composables/useFormValidation'
 import { authErrorMessage } from '../lib/authErrors'
@@ -90,6 +91,9 @@ function showLogin() {
 <template>
   <!-- Ingresar -->
   <AuthLayout v-if="mode === 'login'" title="Ingresar" subtitle="Entrá para armar tu invitación y ver quién confirma.">
+    <!-- El personal de recepción entra con usuario y contraseña, abajo -->
+    <GoogleButton :redirect-path="buyPlan ? router.resolve({ name: 'admin-plan', query: { plan: buyPlan, pagar: 1 } }).fullPath : '/admin'" />
+
     <form @submit.prevent="onSubmit" novalidate class="space-y-5">
       <FormField id="login-email" label="Mail o usuario" :error="loginForm.errorFor('email')" v-slot="{ a11y }">
         <input

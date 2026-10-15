@@ -5,6 +5,7 @@ import { MailCheck, Sparkles } from '@lucide/vue'
 import AuthLayout from '../components/AuthLayout.vue'
 import FormField from '../components/FormField.vue'
 import PasswordInput from '../components/PasswordInput.vue'
+import GoogleButton from '../components/GoogleButton.vue'
 import { supabase } from '../lib/supabase'
 import { authErrorMessage } from '../lib/authErrors'
 import { PLANS, rememberChosenPlan, formatPrice } from '../lib/plans'
@@ -12,6 +13,7 @@ import {
   useFormValidation,
   emailError,
   newPasswordError,
+  confirmPasswordError,
   MIN_PASSWORD,
 } from '../composables/useFormValidation'
 
@@ -26,6 +28,7 @@ rememberChosenPlan(plan.value)
 const payRoute = computed(() => ({ name: 'admin-plan', query: { plan: plan.value, pagar: 1 } }))
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('') // la misma contraseña otra vez, para no crear la cuenta con un error de tipeo
 const error = ref('') // errores del servidor (mail ya registrado, etc.)
 const loading = ref(false)
 const done = ref(false)
@@ -33,6 +36,7 @@ const done = ref(false)
 const form = useFormValidation({
   email: { id: 'signup-email', check: () => emailError(email.value) },
   password: { id: 'signup-password', check: () => newPasswordError(password.value) },
+  confirm: { id: 'signup-password-confirm', check: () => confirmPasswordError(password.value, confirmPassword.value) },
 })
 
 async function onSubmit() {
@@ -97,7 +101,10 @@ async function onSubmit() {
       </p>
     </div>
 
-    <form v-else @submit.prevent="onSubmit" novalidate class="space-y-5">
+    <!-- Con Google vuelve ya logueado: con plan, directo a pagarlo -->
+    <GoogleButton v-if="!done" :redirect-path="plan ? router.resolve(payRoute).fullPath : '/admin'" />
+
+    <form v-if="!done" @submit.prevent="onSubmit" novalidate class="space-y-5">
       <FormField id="signup-email" label="Mail" :error="form.errorFor('email')" v-slot="{ a11y }">
         <input
           v-bind="a11y"
@@ -121,6 +128,14 @@ async function onSubmit() {
         <PasswordInput v-bind="a11y" v-model="password" autocomplete="new-password" @blur="form.touch('password', password)" />
       </FormField>
 
+      <FormField id="signup-password-confirm" label="Repetí la contraseña" :error="form.errorFor('confirm')" v-slot="{ a11y }">
+        <PasswordInput
+          v-bind="a11y"
+          v-model="confirmPassword"
+          autocomplete="new-password"
+          @blur="form.touch('confirm', confirmPassword)"
+        />
+      </FormField>
 
       <p v-if="error" class="rounded-[1.25rem] bg-nogo/15 px-4 py-3 text-sm font-bold" role="alert">{{ error }}</p>
 

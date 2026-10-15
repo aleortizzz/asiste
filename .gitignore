@@ -33,3 +33,4 @@ set-secret.mjs
 # Bocetos descartados del logo (quedan solo en la compu)
 branding/exploracion/
 branding/opciones/
+__pycache__/

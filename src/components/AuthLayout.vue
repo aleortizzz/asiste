@@ -36,6 +36,7 @@ const fondoCel = azar(FONDOS_CEL)
 </script>
 
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import BrandLogo from './BrandLogo.vue'
 
 defineProps({
@@ -61,14 +62,23 @@ defineProps({
     <!-- Oscurecido para que se lean la marca y los links de abajo -->
     <div class="fixed inset-0 bg-linear-to-b from-obsidian/35 via-obsidian/40 to-obsidian/70 lg:bg-linear-to-r lg:from-obsidian/75 lg:via-obsidian/35 lg:to-obsidian/45"></div>
 
+    <!-- Volver a la landing: sutil, arriba a la izquierda, sobre la foto -->
+    <router-link
+      :to="{ name: 'landing' }"
+      class="absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-obsidian/35 px-3.5 py-2 text-sm font-bold text-chalk/85 backdrop-blur-sm transition-colors hover:bg-obsidian/55 hover:text-chalk sm:top-6 sm:left-6"
+    >
+      <ArrowLeft :size="15" /> Volver al inicio
+    </router-link>
+
+    <!-- Arriba deja lugar para «Volver al inicio» (en compu la marca va abajo y no se pisan) -->
     <div
-      class="relative mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-4 py-8 sm:py-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:px-12"
+      class="relative mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-4 pt-20 pb-8 sm:pt-24 sm:pb-12 lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:px-12 lg:py-12"
     >
       <!-- Marca -->
       <div class="text-center text-chalk lg:mb-4 lg:self-end lg:text-left">
         <BrandLogo class="text-6xl drop-shadow-sm lg:text-9xl" />
         <span class="mx-auto mt-2 block max-w-xs text-sm text-chalk/85 lg:mx-0 lg:mt-4 lg:max-w-sm lg:text-lg">
-          Invitaciones digitales con confirmación de asistencia, mesas y fotos de la fiesta.
+          Armá las mesas arrastrando, recibí a cada invitado en la puerta y juntá todas las fotos de la fiesta con un QR.
         </span>
       </div>
 

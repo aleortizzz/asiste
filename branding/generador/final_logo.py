@@ -32,18 +32,18 @@ def _ln(d, w):
     return f'<path d="{d}" fill="none" stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"/>'
 
 
-CARD = '<rect x="4" y="2" width="72" height="86" rx="12"/>'
-BADGE = '<circle cx="74" cy="72" r="26"/>'
-CUTS = (''.join(f'<circle cx="20" cy="{y}" r="5.5"/>' for y in (22, 41, 60))
-        + _ln('M33,22 H62', 6.5) + _ln('M33,41 H62', 6.5) + _ln('M33,60 H42', 6.5)
-        + '<circle cx="74" cy="72" r="32.5"/>')
-CHECK = _ln('M61.5,72 L70,80.5 L86.5,63.5', 9.5)
+CARD = '<rect x="0" y="0" width="76" height="90" rx="12"/>'
+BADGE = '<circle cx="78" cy="78" r="22"/>'
+CUTS = (''.join(f'<circle cx="16" cy="{y}" r="5"/>' for y in (20, 39, 58))
+        + _ln('M28,20 H60', 6) + _ln('M28,39 H60', 6) + _ln('M28,58 H44', 6)
+        + '<circle cx="78" cy="78" r="27.5"/>')
+CHECK = _ln('M67.5,78 L74.5,85 L88.5,71', 8.5)
 
 
 def mark(color, x, y, s, uid):
     return (f'<defs><mask id="{uid}" maskUnits="userSpaceOnUse" x="-10" y="-10" width="120" height="120">'
             f'<rect x="-10" y="-10" width="120" height="120" fill="#fff"/>'
-            f'<g fill="#000" stroke="#000">{CUTS}</g><circle cx="74" cy="72" r="26" fill="#fff"/>'
+            f'<g fill="#000" stroke="#000">{CUTS}</g><circle cx="78" cy="78" r="22" fill="#fff"/>'
             f'<g fill="#000" stroke="#000">{CHECK}</g></mask></defs>'
             f'<g transform="translate({x:.2f} {y:.2f}) scale({s:.4f})">'
             f'<g fill="{color}" mask="url(#{uid})">{CARD}{BADGE}</g></g>')
@@ -59,21 +59,21 @@ CAP = 100
 WORD_D, WORD_W = text_path(anton, 'ASISTE', CAP, 0.035)
 SLOG_CAP = 19
 SLOG_D, SLOG_W = text_path(dm, SLOGAN, SLOG_CAP)
-PAD, GAP = 30, 34
+PAD, GAP = 30, 28
 
 
 def horizontal(color, bg, uid, slogan=False):
     if slogan:
         block = CAP + 26 + SLOG_CAP + 6          # nombre + aire + slogan (con descendentes)
-        s = block / 100 * 1.04
+        s = CAP / 100                            # el ícono acompaña al nombre, no al bloque
     else:
         block = CAP
-        s = 1.2
+        s = CAP / 100
     ih = 100 * s
     h = max(ih, block) + 2 * PAD
     top_text = (h - block) / 2
     wx = PAD + ih + GAP
-    body = mark(color, PAD, (h - ih) / 2, s, uid)
+    body = mark(color, PAD, top_text, s, uid)
     body += f'<path transform="translate({wx:.2f} {top_text + CAP:.2f})" d="{WORD_D}" fill="{color}"/>'
     w = wx + WORD_W + PAD
     if slogan:
@@ -134,7 +134,7 @@ def main(out):
     files['asiste-app-icon.svg'] = app_icon(VIOLETA, BLANCO, 'app')
     files['asiste-app-icon-claro.svg'] = app_icon(HUESO, VIOLETA, 'appc')
     files['asiste-app-icon-cuadrado.svg'] = app_icon_full(VIOLETA, BLANCO, 'appq')
-    files['favicon.svg'] = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 0 100 100"><title>Asiste</title>'
+    files['favicon.svg'] = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>Asiste</title>'
                             f'{mark(VIOLETA, 0, 0, 1, "fav")}</svg>\n')
 
     for n, c in files.items():
