@@ -143,3 +143,106 @@
     }
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Landing (.landing en la raíz de Landing.vue y de las páginas legales)
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Aparición al scrollear (lib/reveal.js). */
+  .lr {
+    opacity: 0;
+    transform: translateY(28px);
+    filter: blur(6px);
+    transition:
+      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--d, 0ms);
+  }
+  .lr[data-reveal='left'] {
+    transform: translateX(-40px);
+  }
+  .lr[data-reveal='right'] {
+    transform: translateX(40px);
+  }
+  .lr[data-reveal='scale'] {
+    transform: scale(0.94);
+  }
+  .lr.lr-in {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lr,
+    .lr[data-reveal] {
+      transform: none;
+      filter: none;
+      transition: opacity 0.4s ease;
+    }
+  }
+
+  /* Tarjetas que se levantan al pasar el mouse (solo con mouse de verdad). */
+  .lift {
+    transition:
+      transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @media (hover: hover) {
+    .lift:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 22px 44px -22px rgb(78 31 110 / 0.45);
+    }
+    .landing .admin-btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px -12px rgb(78 31 110 / 0.7);
+    }
+    .landing .admin-btn-primary {
+      transition:
+        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.25s ease,
+        opacity 150ms ease;
+    }
+  }
+
+  /* Panel «de noche»: el violeta con brillos del cierre, reusable. */
+  .night {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--color-accent);
+    color: var(--color-chalk);
+  }
+  .night::before,
+  .night::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: 999px;
+    filter: blur(70px);
+    pointer-events: none;
+  }
+  .night::before {
+    width: 26rem;
+    height: 26rem;
+    top: -9rem;
+    left: -8rem;
+    background: rgb(82 74 233 / 0.55);
+  }
+  .night::after {
+    width: 22rem;
+    height: 22rem;
+    right: -6rem;
+    bottom: -10rem;
+    background: rgb(245 242 142 / 0.28);
+  }
+
+  .landing ::selection {
+    background: var(--color-sulfur);
+    color: var(--color-obsidian);
+  }
+  .landing :focus-visible {
+    outline: 2.5px solid var(--color-plasma);
+    outline-offset: 3px;
+  }
+}

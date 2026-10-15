@@ -17,18 +17,30 @@ const BENEFITS = [
 
 <template>
   <section id="salones" class="scroll-mt-24 py-14" aria-labelledby="h-salones">
-    <div class="rounded-[2.5rem] bg-obsidian p-6 text-chalk sm:p-10">
-      <p class="text-sm font-bold tracking-wide text-sulfur uppercase">Para salones</p>
-      <h2 id="h-salones" class="admin-display mt-2 max-w-3xl text-5xl text-balance sm:text-6xl">
+    <div class="relative isolate overflow-hidden rounded-[2.5rem] bg-obsidian p-6 text-chalk sm:p-10 lg:p-14">
+      <!-- El salón armado, fundido hacia la izquierda detrás del texto -->
+      <img
+        src="/fondos/pc-1.jpg"
+        alt=""
+        loading="lazy"
+        class="absolute inset-y-0 right-0 -z-10 h-full w-full object-cover opacity-45 [mask-image:linear-gradient(to_left,black_15%,transparent_85%)] lg:w-3/4"
+      />
+      <h2 v-reveal id="h-salones" class="admin-display max-w-3xl text-5xl text-balance sm:text-6xl">
         ¿Tenés un salón? Sumá Asiste a cada fiesta
       </h2>
-      <p class="mt-3 max-w-2xl text-lg text-chalk/65">
+      <p v-reveal data-delay="80" class="mt-3 max-w-2xl text-lg text-chalk/70">
         Todo lo del Premium en cada evento, con tu marca y usuarios para tu personal. Desde
         {{ formatPrice(SALON_PRICES.fiesta) }} por fiesta, o fiestas ilimitadas con el abono mensual, sin permanencia.
       </p>
 
       <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <li v-for="b in BENEFITS" :key="b.title" class="rounded-[1.75rem] bg-chalk/[0.06] p-5 ring-1 ring-chalk/10">
+        <li
+          v-for="(b, i) in BENEFITS"
+          :key="b.title"
+          v-reveal
+          :data-delay="i * 90"
+          class="lift rounded-[1.75rem] bg-obsidian/55 p-5 ring-1 ring-chalk/10 backdrop-blur-md"
+        >
           <span class="grid h-10 w-10 place-items-center rounded-full bg-chalk/10 text-sulfur">
             <component :is="b.icon" :size="18" />
           </span>
@@ -45,7 +57,7 @@ const BENEFITS = [
           :href="waLink('Hola! Tengo un salón y quiero saber más sobre Asiste.')"
           target="_blank"
           rel="noopener"
-          class="admin-btn-secondary !border-chalk"
+          class="admin-btn-secondary !border-chalk hover:!bg-chalk/10"
         >
           <MessageCircle :size="17" /> Hablemos por WhatsApp
         </a>

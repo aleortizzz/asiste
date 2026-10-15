@@ -43,11 +43,10 @@ const active = ref(TEMPLATES[0].id)
 
 <template>
   <section id="plantillas" class="scroll-mt-24 py-14" aria-labelledby="h-plantillas">
-    <div class="grid items-center gap-10 rounded-[2.5rem] bg-limestone p-6 sm:p-10 lg:grid-cols-[1.1fr_0.9fr]">
-      <div>
-        <p class="text-sm font-bold tracking-wide text-accent uppercase">Plantillas</p>
-        <h2 id="h-plantillas" class="admin-display mt-2 text-5xl text-balance sm:text-6xl">Una invitación con tu estilo</h2>
-        <p class="mt-3 text-lg text-obsidian/65">
+    <div class="night grid items-center gap-10 rounded-[2.5rem] p-6 sm:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:p-14">
+      <div v-reveal>
+        <h2 id="h-plantillas" class="admin-display text-5xl text-balance sm:text-6xl">Una invitación con tu estilo</h2>
+        <p class="mt-3 text-lg text-chalk/75">
           Cuatro diseños para elegir. Tocá cada uno y mirá cómo queda la misma invitación.
         </p>
 
@@ -61,7 +60,7 @@ const active = ref(TEMPLATES[0].id)
             aria-controls="plantilla-panel"
             @click="active = t.id"
             class="rounded-full px-4 py-2 text-sm font-bold transition-colors"
-            :class="active === t.id ? 'bg-obsidian text-chalk' : 'bg-chalk hover:bg-pumice'"
+            :class="active === t.id ? 'bg-sulfur text-obsidian' : 'bg-chalk/10 text-chalk hover:bg-chalk/20'"
           >
             {{ t.label }}
           </button>
@@ -77,19 +76,23 @@ const active = ref(TEMPLATES[0].id)
             :aria-hidden="active !== t.id"
           >
             <p class="text-xl font-bold">{{ t.title }}</p>
-            <p class="mt-1 text-obsidian/65">{{ t.text }}</p>
+            <p class="mt-1 text-chalk/70">{{ t.text }}</p>
           </div>
         </div>
 
         <ul class="mt-6 grid gap-2 sm:grid-cols-2">
           <li v-for="c in COMMON" :key="c" class="flex gap-2 text-[0.95rem]">
-            <Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ c }}
+            <Check :size="17" class="mt-0.5 shrink-0 text-sulfur" />{{ c }}
           </li>
         </ul>
       </div>
 
       <!-- :key recarga el iframe con la plantilla elegida -->
-      <DemoInvitacion :key="active" :template="active" />
+      <div v-reveal="'scale'" class="relative">
+        <!-- Halo detrás del celular -->
+        <span class="absolute inset-x-[15%] top-[10%] bottom-[10%] rounded-full bg-plasma/50 blur-3xl" aria-hidden="true"></span>
+        <DemoInvitacion :key="active" :template="active" auto-open big class="relative" />
+      </div>
     </div>
   </section>
 </template>

@@ -23,6 +23,7 @@ const PHASES = [
   {
     id: 'antes',
     label: 'Antes',
+    photo: { src: '/landing/mesa.jpg', alt: 'Una mesa de fiesta armada', pos: '50% 60%' },
     title: 'Invitás y organizás',
     items: [
       { icon: Mail, title: 'Invitación digital', text: 'Con sobre animado, música, fotos, mapa, cuenta regresiva y datos para regalos.' },
@@ -36,6 +37,7 @@ const PHASES = [
   {
     id: 'noche',
     label: 'La noche',
+    photo: { src: '/fondos/pc-5.jpg', alt: 'La pista de baile en plena fiesta', pos: '50% 60%' },
     title: 'La fiesta, en vivo',
     items: [
       { icon: DoorOpen, title: 'Recepción en la puerta', text: 'Tu personal busca a cada invitado, ve su mesa y marca que llegó. Vos lo seguís desde el celular.', feature: 'recepcion' },
@@ -47,6 +49,7 @@ const PHASES = [
   {
     id: 'despues',
     label: 'Después',
+    photo: { src: '/landing/brindis.jpg', alt: 'Invitados brindando', pos: '50% 50%' },
     title: 'Te queda todo',
     items: [
       { icon: Download, title: 'Las fotos de todos', text: 'Descargás el álbum completo de una vez, sin pedírselas a nadie.', feature: 'fotos' },
@@ -61,11 +64,10 @@ const tag = (feature) => (feature ? `Desde ${planFor(feature)}` : 'En todos los 
 
 <template>
   <section id="funciones" class="scroll-mt-24 py-14" aria-labelledby="h-momentos">
-    <p class="text-sm font-bold tracking-wide text-accent uppercase">Funciones</p>
-    <h2 id="h-momentos" class="admin-display mt-2 max-w-3xl text-5xl text-balance sm:text-6xl">
+    <h2 v-reveal id="h-momentos" class="admin-display max-w-3xl text-5xl text-balance sm:text-6xl">
       Antes, durante y después de la fiesta
     </h2>
-    <p class="mt-3 max-w-2xl text-lg text-obsidian/65">
+    <p v-reveal data-delay="80" class="mt-3 max-w-2xl text-lg text-obsidian/65">
       Asiste no termina cuando mandás la invitación: te acompaña hasta la última foto.
     </p>
 
@@ -73,9 +75,26 @@ const tag = (feature) => (feature ? `Desde ${planFor(feature)}` : 'En todos los 
       <article
         v-for="(phase, i) in PHASES"
         :key="phase.id"
-        class="flex flex-col rounded-[2rem] p-6"
-        :class="phase.id === 'noche' ? 'bg-obsidian text-chalk' : 'bg-limestone'"
+        v-reveal
+        :data-delay="i * 120"
+        class="lift flex flex-col overflow-hidden rounded-[2rem]"
+        :class="phase.id === 'noche' ? 'night lg:-my-4' : 'bg-limestone'"
       >
+        <div class="photo-wrap relative h-44 overflow-hidden">
+          <img
+            :src="phase.photo.src"
+            :alt="phase.photo.alt"
+            loading="lazy"
+            class="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            :style="{ objectPosition: phase.photo.pos }"
+          />
+          <span
+            class="absolute inset-0"
+            :class="phase.id === 'noche' ? 'bg-linear-to-t from-accent via-accent/30 to-transparent' : 'bg-linear-to-t from-limestone via-limestone/10 to-transparent'"
+            aria-hidden="true"
+          ></span>
+        </div>
+        <div class="flex flex-1 flex-col p-6 pt-1">
         <div class="flex items-baseline justify-between gap-3">
           <p class="admin-display text-4xl">{{ phase.label }}</p>
           <span class="text-sm font-bold" :class="phase.id === 'noche' ? 'text-chalk/50' : 'text-obsidian/40'">
@@ -105,7 +124,16 @@ const tag = (feature) => (feature ? `Desde ${planFor(feature)}` : 'En todos los 
             </div>
           </li>
         </ul>
+        </div>
       </article>
     </div>
   </section>
 </template>
+
+<style scoped>
+@media (hover: hover) {
+  article:hover .photo-wrap img {
+    transform: scale(1.06);
+  }
+}
+</style>

@@ -127,7 +127,7 @@ const doc = computed(() => DOCS[route.name] ?? DOCS.terminos)
 </script>
 
 <template>
-  <div class="font-ui min-h-dvh bg-pumice text-obsidian">
+  <div class="landing font-ui min-h-dvh bg-pumice text-obsidian">
     <div class="mx-auto max-w-6xl px-4">
       <header class="flex h-16 items-center justify-between sm:h-[4.5rem]">
         <router-link :to="{ name: 'landing' }" class="admin-display text-4xl">Asiste</router-link>
