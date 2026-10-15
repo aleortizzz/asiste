@@ -1,8 +1,13 @@
+import { reactive } from 'vue'
+import { supabase } from './supabase'
+
 // Planes (decididos el 2026-10-13; ver PROGRESO.md y la landing). Lo mismo
 // está en la base, en plan_incluye() (migrations/20261013_planes.sql): la
 // base es la que manda, esto es para mostrar u ocultar cosas en pantalla.
 // `includes`: lo que se muestra en la landing y en «Tu plan».
-export const PLANS = {
+// `price`: el de la tabla precios_planes (se edita en Superadmin); estos son
+// los de arranque hasta que llega la respuesta de loadPlanPrices().
+export const PLANS = reactive({
   gratis: { label: 'Prueba gratis', price: null, includes: [] },
   invitacion: {
     label: 'Invitación',
@@ -19,8 +24,30 @@ export const PLANS = {
     price: 120000,
     includes: ['Todo lo del Plus', 'Canciones para el DJ y álbum de fotos', 'Trivia en vivo el día de la fiesta', 'Recepción en la puerta con tu personal', 'Cargamos los invitados y armamos la invitación', 'Soporte prioritario'],
   },
-}
+})
 export const PLAN_IDS = Object.keys(PLANS)
+
+// Salones (por ahora solo se muestran en la landing, no se cobran por MP).
+export const SALON_PRICES = reactive({ fiesta: 70000, abono: 250000 })
+
+// Lee los precios de la base. Una vez por carga de la app (main.js); si
+// falla, quedan los de arranque. `force` vuelve a leer (después de editarlos).
+let loaded = null
+export function loadPlanPrices(force = false) {
+  if (!loaded || force) {
+    loaded = supabase
+      .from('precios_planes')
+      .select('plan, precio')
+      .then(({ data }) => {
+        for (const { plan, precio } of data ?? []) {
+          if (PLANS[plan]) PLANS[plan].price = precio
+          else if (plan === 'salon_fiesta') SALON_PRICES.fiesta = precio
+          else if (plan === 'salon_abono') SALON_PRICES.abono = precio
+        }
+      })
+  }
+  return loaded
+}
 
 // El gratis es «el full» con límites: tiene todo lo del premium.
 const FEATURES = {

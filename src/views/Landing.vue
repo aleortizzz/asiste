@@ -20,7 +20,7 @@ import {
   ArrowLeft,
   RotateCcw,
 } from '@lucide/vue'
-import { PLANS as BASE_PLANS } from '../lib/plans'
+import { PLANS as BASE_PLANS, SALON_PRICES, formatPrice } from '../lib/plans'
 import { useAuth } from '../composables/useAuth'
 import DemoInvitacion from '../components/landing/DemoInvitacion.vue'
 import DemoRecepcion from '../components/landing/DemoRecepcion.vue'
@@ -115,17 +115,23 @@ const buyLink = (plan) =>
 const PLANS = {
   invitacion: {
     name: 'Invitación',
-    price: '$35.000',
+    get price() {
+      return formatPrice(BASE_PLANS.invitacion.price)
+    },
     includes: BASE_PLANS.invitacion.includes,
   },
   plus: {
     name: 'Plus',
-    price: '$70.000',
+    get price() {
+      return formatPrice(BASE_PLANS.plus.price)
+    },
     includes: BASE_PLANS.plus.includes,
   },
   premium: {
     name: 'Premium',
-    price: '$120.000',
+    get price() {
+      return formatPrice(BASE_PLANS.premium.price)
+    },
     includes: BASE_PLANS.premium.includes,
   },
 }
@@ -207,20 +213,24 @@ const recommendation = computed(() => {
 })
 
 // --- Calculadora para salones ------------------------------------------------------------
-const PER_PARTY = 70000
-const SUBSCRIPTION = 250000
+// Precios de precios_planes (Superadmin). computed: si cambian, la cuenta se rehace.
+const PER_PARTY = computed(() => SALON_PRICES.fiesta)
+const SUBSCRIPTION = computed(() => SALON_PRICES.abono)
+// Desde cuántas fiestas por mes conviene el abono.
+const subscriptionFrom = computed(() => Math.ceil(SUBSCRIPTION.value / PER_PARTY.value))
 const parties = ref(6)
-const resale = ref(120000)
+const resale = ref(BASE_PLANS.premium.price)
 const money = (n) => `$${Math.round(n).toLocaleString('es-AR')}`
 
-const byParty = computed(() => parties.value * PER_PARTY)
-const best = computed(() => Math.min(byParty.value, SUBSCRIPTION))
+const byParty = computed(() => parties.value * PER_PARTY.value)
+const best = computed(() => Math.min(byParty.value, SUBSCRIPTION.value))
 const left = computed(() => parties.value * resale.value - best.value)
 const verdict = computed(() => {
   const s = parties.value === 1 ? 'fiesta' : 'fiestas'
-  if (SUBSCRIPTION < byParty.value) return `Con ${parties.value} ${s}, el abono te ahorra ${money(byParty.value - SUBSCRIPTION)} por mes.`
-  if (SUBSCRIPTION === byParty.value) return `Con ${parties.value} ${s}, da lo mismo.`
-  return `Con ${parties.value} ${s}, te conviene pagar por fiesta: ${money(byParty.value)} contra ${money(SUBSCRIPTION)} del abono.`
+  const sub = SUBSCRIPTION.value
+  if (sub < byParty.value) return `Con ${parties.value} ${s}, el abono te ahorra ${money(byParty.value - sub)} por mes.`
+  if (sub === byParty.value) return `Con ${parties.value} ${s}, da lo mismo.`
+  return `Con ${parties.value} ${s}, te conviene pagar por fiesta: ${money(byParty.value)} contra ${money(sub)} del abono.`
 })
 </script>
 
@@ -323,7 +333,7 @@ const verdict = computed(() => {
             <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Invitación</h3>
               <p class="min-h-12 text-obsidian/60">Para mandar una invitación linda.</p>
-              <p class="admin-display text-5xl">$35.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
+              <p class="admin-display text-5xl">{{ formatPrice(BASE_PLANS.invitacion.price) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.invitacion.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
@@ -333,7 +343,7 @@ const verdict = computed(() => {
               <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">El más elegido</span>
               <h3 class="text-lg font-bold">Plus</h3>
               <p class="min-h-12 text-obsidian/60">Para saber quién viene y organizar la fiesta.</p>
-              <p class="admin-display text-5xl">$70.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
+              <p class="admin-display text-5xl">{{ formatPrice(BASE_PLANS.plus.price) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />Todo lo de Invitación</li>
                 <li v-for="i in PLANS.plus.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
@@ -343,7 +353,7 @@ const verdict = computed(() => {
             <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Premium</h3>
               <p class="min-h-12 text-obsidian/60">Para que la fiesta también se viva con Asiste.</p>
-              <p class="admin-display text-5xl">$120.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
+              <p class="admin-display text-5xl">{{ formatPrice(BASE_PLANS.premium.price) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.premium.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
@@ -379,9 +389,9 @@ const verdict = computed(() => {
               <tfoot>
                 <tr class="font-bold tabular-nums">
                   <td class="p-3 pl-4">Precio por evento</td>
-                  <td class="p-3 text-center">$35.000</td>
-                  <td class="bg-accent-soft p-3 text-center">$70.000</td>
-                  <td class="p-3 text-center">$120.000</td>
+                  <td class="p-3 text-center">{{ formatPrice(BASE_PLANS.invitacion.price) }}</td>
+                  <td class="bg-accent-soft p-3 text-center">{{ formatPrice(BASE_PLANS.plus.price) }}</td>
+                  <td class="p-3 text-center">{{ formatPrice(BASE_PLANS.premium.price) }}</td>
                 </tr>
               </tfoot>
             </table>
@@ -394,7 +404,7 @@ const verdict = computed(() => {
             <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Por fiesta</h3>
               <p class="min-h-12 text-obsidian/60">Pagás solo las fiestas que usás.</p>
-              <p class="admin-display text-5xl">$70.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por fiesta</span></p>
+              <p class="admin-display text-5xl">{{ formatPrice(SALON_PRICES.fiesta) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por fiesta</span></p>
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in ['Todo lo del Premium en cada fiesta', 'Tu logo en cada invitación', 'Usuarios para tu personal de recepción', 'La primera fiesta, gratis']" :key="i" class="flex gap-2">
                   <Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}
@@ -403,10 +413,10 @@ const verdict = computed(() => {
               <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary w-full">Quiero probarlo</router-link>
             </article>
             <article class="relative flex flex-col gap-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
-              <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">Desde 4 fiestas por mes</span>
+              <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">Desde {{ subscriptionFrom }} fiestas por mes</span>
               <h3 class="text-lg font-bold">Abono</h3>
               <p class="min-h-12 text-obsidian/60">Para salones con movimiento todos los fines de semana.</p>
-              <p class="admin-display text-5xl">$250.000 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por mes</span></p>
+              <p class="admin-display text-5xl">{{ formatPrice(SALON_PRICES.abono) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por mes</span></p>
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li
                   v-for="i in ['Fiestas ilimitadas', 'Sin permanencia: mes a mes', 'En un mes flojo, volvés a pagar por fiesta', 'Lo que pagaste por fiesta el último mes se descuenta del primer abono']"
