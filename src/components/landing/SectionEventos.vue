@@ -25,8 +25,8 @@ const EVENTS = [
   {
     icon: Briefcase,
     title: 'Eventos de empresa',
-    text: 'Plantilla Ejecutiva con tu logo, programa, acreditación con empresa y cargo, y versión en inglés.',
-    tags: ['Bilingüe', 'Acreditación', 'Programa'],
+    text: 'Plantilla Ejecutiva con tu logo, programa, acreditación con empresa y cargo, los logos de tus sponsors y versión en inglés.',
+    tags: ['Bilingüe', 'Acreditación', 'Programa', 'Sponsors'],
   },
   {
     icon: Baby,

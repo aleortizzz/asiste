@@ -28,7 +28,7 @@ const TEMPLATES = [
     id: 'ejecutiva',
     label: 'Ejecutiva',
     title: 'Para eventos de empresa',
-    text: 'Tarjeta sobria con tu logo, programa del evento, acceso y estacionamiento, y versión en inglés.',
+    text: 'Tarjeta sobria con tu logo, programa del evento, acceso y estacionamiento, los logos de tus sponsors y versión en inglés.',
   },
 ]
 const COMMON = [
