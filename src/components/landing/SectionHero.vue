@@ -10,7 +10,7 @@ import { Check, DoorOpen, Images, Trophy, Music2 } from '@lucide/vue'
 const EVENTS = [
   { icon: Check, tone: 'bg-go text-obsidian', title: 'Familia Romero confirmó', sub: '4 van · recién' },
   { icon: DoorOpen, tone: 'bg-sulfur text-obsidian', title: 'Llegó Martina Gómez', sub: 'Mesa 3' },
-  { icon: Images, tone: 'bg-accent text-chalk', title: 'Nueva foto en el álbum', sub: 'Desde la mesa 7' },
+  { icon: Images, tone: 'bg-plasma text-chalk', title: 'Nueva foto en el álbum', sub: 'Desde la mesa 7' },
   { icon: Music2, tone: 'bg-chalk text-accent', title: 'Pidieron una canción', sub: 'Para el DJ' },
   { icon: Trophy, tone: 'bg-sulfur text-obsidian', title: 'Lucía ganó la trivia', sub: '28 de 30 correctas' },
 ]

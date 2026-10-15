@@ -90,7 +90,7 @@ const active = ref(TEMPLATES[0].id)
       <!-- :key recarga el iframe con la plantilla elegida -->
       <div v-reveal="'scale'" class="relative">
         <!-- Halo detrás del celular -->
-        <span class="absolute inset-x-[15%] top-[10%] bottom-[10%] rounded-full bg-accent-light/60 blur-3xl" aria-hidden="true"></span>
+        <span class="absolute inset-x-[15%] top-[10%] bottom-[10%] rounded-full bg-plasma/50 blur-3xl" aria-hidden="true"></span>
         <DemoInvitacion :key="active" :template="active" auto-open big class="relative" />
       </div>
     </div>

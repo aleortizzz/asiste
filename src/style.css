@@ -209,27 +209,42 @@
     }
   }
 
-  /* Panel «de noche»: un solo violeta, de un poco más claro arriba a la
-     izquierda a más oscuro abajo a la derecha, con una luz muy suave. Sobrio:
-     nada de manchas de otros colores. */
+  /* Panel «de noche»: el violeta con dos brillos (azul arriba a la
+     izquierda, amarillo abajo a la derecha), como el cierre. Los brillos se
+     miden con el ancho del panel (no con un tamaño fijo): en los paneles
+     anchos se ven grandes y en las tarjetas finas (La noche, el Plus) quedan
+     como una luz chica en las esquinas en vez de una mancha que lo tapa todo. */
   .night {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    background:
-      radial-gradient(120% 80% at 0% 0%, rgb(106 58 138 / 0.55), transparent 60%),
-      linear-gradient(155deg, var(--color-accent) 0%, var(--color-accent) 45%, var(--color-accent-deep) 100%);
+    background: linear-gradient(155deg, var(--color-accent) 0%, var(--color-accent) 55%, var(--color-accent-deep) 100%);
     color: var(--color-chalk);
   }
-  /* Un filo de luz arriba, como el borde de una tarjeta impresa. */
-  .night::before {
+  .night::before,
+  .night::after {
     content: '';
     position: absolute;
-    inset: 0;
     z-index: -1;
-    border-radius: inherit;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+    aspect-ratio: 1;
+    border-radius: 999px;
     pointer-events: none;
+  }
+  .night::before {
+    width: clamp(9rem, 55%, 28rem);
+    top: 0;
+    left: 0;
+    translate: -40% -40%;
+    background: rgb(82 74 233 / 0.55);
+    filter: blur(clamp(40px, 6vw, 80px));
+  }
+  .night::after {
+    width: clamp(8rem, 45%, 24rem);
+    right: 0;
+    bottom: 0;
+    translate: 35% 45%;
+    background: rgb(245 242 142 / 0.26);
+    filter: blur(clamp(40px, 6vw, 80px));
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -242,7 +257,7 @@
     color: var(--color-obsidian);
   }
   .landing :focus-visible {
-    outline: 2.5px solid var(--color-accent-light);
+    outline: 2.5px solid var(--color-plasma);
     outline-offset: 3px;
   }
 }
