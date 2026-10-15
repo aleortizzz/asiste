@@ -77,6 +77,8 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     { path: '/admin/juego', name: 'admin-juego', component: AdminJuego, meta: { requiresAuth: true } },
+    // Planes y pago con Mercado Pago (también es la vuelta de MP: ?pago=…).
+    { path: '/admin/plan', name: 'admin-plan', component: () => import('../views/AdminPlan.vue'), meta: { requiresAuth: true } },
     { path: '/admin/recepcion', name: 'admin-recepcion', component: AdminRecepcion, meta: { requiresAuth: true } },
     // Pantalla del personal del salón. Sin :eventId elige entre sus eventos.
     { path: '/recepcion/:eventId?', name: 'recepcion', component: Recepcion, meta: { requiresAuth: true, staff: true } },

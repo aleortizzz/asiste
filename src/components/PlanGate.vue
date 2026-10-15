@@ -68,10 +68,13 @@ const price = computed(() =>
           </span>
         </span>
       </p>
-      <span class="flex items-center gap-1.5 rounded-full bg-chalk px-3 py-1.5 text-xs font-bold shadow-md ring-1 ring-obsidian/5">
+      <router-link
+        :to="{ name: 'admin-plan', query: { plan } }"
+        class="flex items-center gap-1.5 rounded-full bg-chalk px-3 py-1.5 text-xs font-bold shadow-md ring-1 ring-obsidian/5 hover:ring-accent"
+      >
         <Sparkles :size="13" class="text-accent" />
         Con {{ PLANS[plan]?.label }} · {{ price }}
-      </span>
+      </router-link>
       <router-link
         :to="{ name: 'landing', query: { planes: 1 }, hash: '#planes' }"
         target="_blank"
@@ -98,13 +101,16 @@ const price = computed(() =>
           <strong class="text-obsidian">{{ price }}</strong>.
         </p>
         <p v-if="isUpgrade" class="mt-1 text-xs text-obsidian/50">Pagás solo la diferencia con tu plan.</p>
+        <router-link :to="{ name: 'admin-plan', query: { plan } }" class="admin-btn-primary mt-4 w-full">
+          Pasarme a {{ PLANS[plan]?.label }}
+        </router-link>
         <router-link
           :to="{ name: 'landing', query: { planes: 1 }, hash: '#planes' }"
           target="_blank"
-          class="admin-btn-primary mt-4 w-full"
+          class="mt-3 inline-flex items-center gap-1 text-sm font-bold text-accent hover:underline"
         >
           Enterate de todo lo que incluye
-          <ArrowUpRight :size="16" />
+          <ArrowUpRight :size="14" />
         </router-link>
       </div>
     </div>

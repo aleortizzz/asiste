@@ -14,6 +14,7 @@ import {
   Music2,
   Trophy,
   DoorOpen,
+  Gem,
   Menu,
   X,
 } from '@lucide/vue'
@@ -98,6 +99,13 @@ const items = [
     icon: Trophy,
     to: { name: 'admin-juego' },
     match: ['admin-juego'],
+  },
+  {
+    label: 'Tu plan',
+    hint: 'Qué incluye y cómo pasarte',
+    icon: Gem,
+    to: { name: 'admin-plan' },
+    match: ['admin-plan'],
   },
   {
     label: 'Superadmin',

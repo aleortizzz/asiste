@@ -20,6 +20,8 @@ import {
   ArrowLeft,
   RotateCcw,
 } from '@lucide/vue'
+import { PLANS as BASE_PLANS } from '../lib/plans'
+import { useAuth } from '../composables/useAuth'
 import DemoInvitacion from '../components/landing/DemoInvitacion.vue'
 import DemoRecepcion from '../components/landing/DemoRecepcion.vue'
 import DemoRespuestas from '../components/landing/DemoRespuestas.vue'
@@ -102,22 +104,29 @@ const rows = [
   { label: 'Cargamos los invitados y armamos la invitación por vos', i: false, p: false, x: true },
 ]
 
+// Botones de compra: sin sesión, a registrarse (el plan elegido queda
+// guardado y «Tu plan» lo muestra primero); con sesión (vino desde el panel
+// con ?planes), directo a pagarlo.
+const { user } = useAuth()
+const buyLink = (plan) =>
+  user.value ? { name: 'admin-plan', query: { plan } } : { name: 'admin-signup', query: { plan } }
+
 // --- ¿Cuál me conviene? (de a una pregunta) ------------------------------------------------
 const PLANS = {
   invitacion: {
     name: 'Invitación',
     price: '$35.000',
-    includes: ['Invitación completa con música, fotos, mapa y regalos', 'Un solo link para todos', 'Confirmaciones por WhatsApp', 'Soporte por WhatsApp'],
+    includes: BASE_PLANS.invitacion.includes,
   },
   plus: {
     name: 'Plus',
     price: '$70.000',
-    includes: ['Un link por familia y panel de confirmaciones', 'Mesas y lista de la entrada', 'Reunión de 1 hora para armar todo juntos', 'Soporte por WhatsApp'],
+    includes: BASE_PLANS.plus.includes,
   },
   premium: {
     name: 'Premium',
     price: '$120.000',
-    includes: ['Todo lo del Plus', 'Canciones para el DJ y álbum de fotos', 'Trivia en vivo el día de la fiesta', 'Recepción en la puerta con tu personal', 'Cargamos los invitados y armamos la invitación', 'Soporte prioritario'],
+    includes: BASE_PLANS.premium.includes,
   },
 }
 
@@ -318,7 +327,7 @@ const verdict = computed(() => {
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.invitacion.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary w-full">Elegir Invitación</router-link>
+              <router-link :to="buyLink('invitacion')" class="admin-btn-secondary w-full">Elegir Invitación</router-link>
             </article>
             <article class="relative flex flex-col gap-4 rounded-[2rem] bg-chalk p-6 ring-[2.5px] ring-accent">
               <span class="absolute -top-3 left-6 rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">El más elegido</span>
@@ -329,7 +338,7 @@ const verdict = computed(() => {
                 <li class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />Todo lo de Invitación</li>
                 <li v-for="i in PLANS.plus.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="{ name: 'admin-signup' }" class="admin-btn-primary w-full">Elegir Plus</router-link>
+              <router-link :to="buyLink('plus')" class="admin-btn-primary w-full">Elegir Plus</router-link>
             </article>
             <article class="flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Premium</h3>
@@ -338,7 +347,7 @@ const verdict = computed(() => {
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.premium.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
-              <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary w-full">Elegir Premium</router-link>
+              <router-link :to="buyLink('premium')" class="admin-btn-secondary w-full">Elegir Premium</router-link>
             </article>
           </div>
 

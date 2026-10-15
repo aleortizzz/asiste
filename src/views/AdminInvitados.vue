@@ -661,6 +661,7 @@ async function saveAdding(group, row) {
                 : 'Para mandarla a todos tus invitados, elegí un plan: se levantan los límites y los mismos links siguen andando.'
             }}
           </p>
+          <router-link :to="{ name: 'admin-plan' }" class="admin-btn-primary mt-3 !py-2 text-sm">Elegir un plan</router-link>
         </section>
 
         <!-- ============ AGREGAR ============ -->

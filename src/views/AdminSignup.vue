@@ -1,12 +1,13 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { MailCheck } from '@lucide/vue'
 import AuthLayout from '../components/AuthLayout.vue'
 import FormField from '../components/FormField.vue'
 import PasswordInput from '../components/PasswordInput.vue'
 import { supabase } from '../lib/supabase'
 import { authErrorMessage } from '../lib/authErrors'
+import { rememberChosenPlan } from '../lib/plans'
 import {
   useFormValidation,
   emailError,
@@ -16,6 +17,8 @@ import {
 } from '../composables/useFormValidation'
 
 const router = useRouter()
+// Viene de «Elegir Plus» en la landing: se guarda para mostrarlo en «Tu plan».
+rememberChosenPlan(useRoute().query.plan)
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
