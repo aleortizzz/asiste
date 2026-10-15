@@ -103,7 +103,7 @@ if ($logoCard || !empty($data['image'])) {
   // Sin foto: la tarjeta de Asiste, así el link nunca llega sin imagen.
   array_push(
     $meta,
-    '<meta property="og:image" content="' . $e($base . '/brand/og-asiste.png') . '" />',
+    '<meta property="og:image" content="' . $e($base . '/brand/og-asiste.png?v=2') . '" />',
     '<meta property="og:image:width" content="1200" />',
     '<meta property="og:image:height" content="630" />',
     '<meta property="og:image:type" content="image/png" />',
