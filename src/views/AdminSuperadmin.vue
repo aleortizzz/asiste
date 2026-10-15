@@ -434,7 +434,7 @@ async function confirmDelete() {
                   type="number"
                   inputmode="numeric"
                   min="1"
-                  step="1000"
+                  step="1"
                   class="admin-input !py-2 !pl-8 text-right tabular-nums"
                   :class="priceDraft[r.id] !== currentPrice(r.id) ? '!border-accent' : ''"
                 />
