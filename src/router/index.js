@@ -99,6 +99,8 @@ const router = createRouter({
     // Página pública con los planes. Con sesión se saltea (ver beforeEach).
     { path: '/', name: 'landing', component: Landing },
     // Páginas legales (las enlaza el pie de la landing). Con o sin sesión.
+    // Prueba de colores, sin enlazar (ver lib/paleta.js).
+    { path: '/colores', name: 'colores', component: () => import('../views/Colores.vue') },
     { path: '/terminos', name: 'terminos', component: () => import('../views/Legal.vue') },
     { path: '/privacidad', name: 'privacidad', component: () => import('../views/Legal.vue') },
     // La invitación de ejemplo que la landing muestra dentro del celular.

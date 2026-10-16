@@ -248,7 +248,7 @@
     right: 0;
     bottom: 0;
     translate: 35% 45%;
-    background: rgb(245 242 142 / 0.26);
+    background: color-mix(in srgb, var(--color-sulfur) 26%, transparent);
     filter: blur(clamp(40px, 6vw, 80px));
   }
 
