@@ -109,7 +109,23 @@ function dismissReturn() {
   router.replace({ name: 'admin-plan' })
 }
 
+// Despierta la función de cobro al entrar: la primera llamada a una función
+// dormida es la más lenta. OPTIONS responde al toque sin crear nada.
+// Si vuelve de Mercado Pago con «atrás», el navegador restaura la página como
+// estaba (con el pago «en curso»): se libera para que el botón vuelva a andar.
+const resetPaying = (e) => {
+  if (e.persisted) paying.value = null
+}
+onMounted(() => {
+  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crear-pago`, { method: 'OPTIONS' }).catch(() => {})
+  window.addEventListener('pageshow', resetPaying)
+})
+onUnmounted(() => window.removeEventListener('pageshow', resetPaying))
+
 async function pay(plan) {
+  // El botón no cambia mientras se arma el link de MP (1-2 s): solo se ignoran
+  // los clics repetidos, para no crear dos pagos.
+  if (paying.value) return
   error.value = ''
   paying.value = plan
   const { data, error: err } = await supabase.functions.invoke('crear-pago', { body: { plan } })
@@ -266,13 +282,11 @@ const formatDate = (iso) =>
             <button
               type="button"
               @click="pay(p)"
-              :disabled="!!paying"
-              :class="p === highlighted ? 'admin-btn-primary' : 'admin-btn-secondary'"
+              :class="[p === highlighted ? 'admin-btn-primary' : 'admin-btn-secondary', { 'cursor-progress': paying }]"
               class="w-full"
             >
-              <LoaderCircle v-if="paying === p" :size="17" class="animate-spin" />
-              <Sparkles v-else :size="17" />
-              {{ paying === p ? 'Abriendo Mercado Pago…' : `Pagar ${PLANS[p].label}` }}
+              <Sparkles :size="17" />
+              Pagar {{ PLANS[p].label }}
             </button>
           </article>
         </div>
