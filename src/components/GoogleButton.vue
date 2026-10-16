@@ -2,25 +2,107 @@
 // «Continuar con Google»: sirve igual para ingresar y para crear la cuenta
 // (si el mail no tiene cuenta, Supabase la crea sola).
 //
-// Lleva a Google y Google devuelve a `redirectTo` ya logueado: supabase-js lee
-// la sesión de la URL al cargar la app (ver useAuth.js). Para que funcione:
-//   - Supabase → Authentication → Sign In / Providers → Google: activado, con
-//     el Client ID y el Client Secret de Google Cloud.
-//   - Supabase → Authentication → URL Configuration → Redirect URLs: el sitio
-//     con /** al final (si no, Google vuelve a la home en vez de al panel).
-import { ref } from 'vue'
+// Dos caminos:
+//  1. Con VITE_GOOGLE_CLIENT_ID (el normal): el botón oficial de Google
+//     («Sign in with Google»). Google abre su ventanita desde asiste.tizdigital.com
+//     y muestra «Asiste» y este dominio. Nos da un token y se lo pasamos a
+//     Supabase (signInWithIdToken). Sin pasar por xxxx.supabase.co, que en la
+//     pantalla de Google daba desconfianza.
+//  2. Sin esa variable (respaldo): signInWithOAuth, que va a Google pasando por
+//     Supabase. Funciona, pero Google muestra «yxcw….supabase.co».
+//
+// Configuración:
+//   - Google Cloud → Clientes → «Asiste web»: el sitio en «Orígenes de JavaScript autorizados».
+//   - Supabase → Authentication → Sign In / Providers → Google: el mismo Client ID.
+//   - VITE_GOOGLE_CLIENT_ID en .env y en los secrets de GitHub (deploy.yml).
+//   - Para el camino 2: Supabase → URL Configuration → Redirect URLs con el sitio y /**.
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { authErrorMessage } from '../lib/authErrors'
 
 const props = defineProps({
-  // A dónde vuelve después de Google (ruta del sitio, ej. '/admin').
+  // A dónde va después de entrar (ruta del sitio, ej. '/admin').
   redirectPath: { type: String, default: '/admin' },
 })
 
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const router = useRouter()
 const loading = ref(false)
 const error = ref('')
+const googleSlot = ref(null) // acá dibuja Google su botón
+const official = ref(false) // true cuando el botón oficial ya está dibujado
 
-async function onClick() {
+// --- Camino 1: botón oficial ---------------------------------------------------------
+let gisPromise
+function loadGis() {
+  gisPromise ??= new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) return resolve()
+    const s = document.createElement('script')
+    s.src = 'https://accounts.google.com/gsi/client'
+    s.async = true
+    s.onload = resolve
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+  return gisPromise
+}
+
+// El nonce viaja hasheado a Google y en crudo a Supabase, que compara los dos:
+// así nadie puede reusar un token robado.
+async function makeNonce() {
+  const raw = crypto.randomUUID()
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hashed = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  return { raw, hashed }
+}
+
+async function onCredential(response, rawNonce) {
+  error.value = ''
+  loading.value = true
+  const { error: err } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: response.credential,
+    nonce: rawNonce,
+  })
+  loading.value = false
+  if (err) {
+    error.value = authErrorMessage(err, 'No se pudo entrar con Google. Probá de nuevo en un rato.')
+    return
+  }
+  router.push(props.redirectPath)
+}
+
+onMounted(async () => {
+  if (!CLIENT_ID) return
+  try {
+    await loadGis()
+    const { raw, hashed } = await makeNonce()
+    window.google.accounts.id.initialize({
+      client_id: CLIENT_ID,
+      nonce: hashed,
+      callback: (r) => onCredential(r, raw),
+      ux_mode: 'popup',
+      use_fedcm_for_button: true,
+    })
+    window.google.accounts.id.renderButton(googleSlot.value, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      shape: 'pill',
+      text: 'continue_with',
+      logo_alignment: 'center',
+      locale: 'es-419',
+      width: Math.min(400, googleSlot.value.clientWidth || 320),
+    })
+    official.value = true
+  } catch {
+    // Si no carga el script de Google (bloqueador, sin red), queda el botón de respaldo.
+  }
+})
+
+// --- Camino 2: respaldo por Supabase ------------------------------------------------
+async function onFallbackClick() {
   error.value = ''
   loading.value = true
   const { error: err } = await supabase.auth.signInWithOAuth({
@@ -37,10 +119,14 @@ async function onClick() {
 
 <template>
   <div>
+    <!-- Botón oficial de Google (lo dibuja Google adentro de este div) -->
+    <div v-show="official" ref="googleSlot" class="flex min-h-[44px] w-full justify-center" :class="{ 'opacity-60': loading }"></div>
+
     <button
+      v-if="!official"
       type="button"
       :disabled="loading"
-      @click="onClick"
+      @click="onFallbackClick"
       class="flex w-full items-center justify-center gap-3 rounded-full border border-obsidian/15 bg-white px-5 py-3.5 font-bold text-obsidian transition-colors hover:bg-chalk disabled:opacity-60"
     >
       <!-- La «G» de Google va con sus colores: lo piden sus normas de marca -->
@@ -52,6 +138,7 @@ async function onClick() {
       </svg>
       {{ loading ? 'Abriendo Google…' : 'Continuar con Google' }}
     </button>
+    <p v-if="loading && official" class="mt-2 text-center text-sm text-obsidian/55">Entrando…</p>
     <p v-if="error" class="mt-3 rounded-[1.25rem] bg-nogo/15 px-4 py-3 text-sm font-bold" role="alert">{{ error }}</p>
 
     <!-- Separador con el formulario de mail -->

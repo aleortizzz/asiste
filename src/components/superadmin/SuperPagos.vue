@@ -6,10 +6,14 @@ import { supabase } from '../../lib/supabase'
 import { PLANS, formatPrice } from '../../lib/plans'
 
 // Superadmin › Pagos: todos los pagos de Mercado Pago (la policy de `pagos`
-// deja leer todo al superadmin). El cliente y el evento salen de la lista de
-// eventos (useSuperadmin). Un pago 'pendiente' viejo casi siempre es alguien
-// que abrió MP y no pagó.
-const { rows } = useSuperadmin()
+// deja leer todo al superadmin). El mail sale del evento o, si pagó antes de
+// armar la invitación (pago sin evento), de las cuentas sin evento (useSuperadmin).
+//
+// «Incompleto» no es un estado de la base: es un 'pendiente' SIN número de MP,
+// o sea alguien que abrió Mercado Pago y no pagó (MP nunca avisa nada de esos).
+// «Pendiente» queda para pagos que existen en MP y esperan acreditarse
+// (efectivo, transferencia o en revisión).
+const { rows, pendingAccounts } = useSuperadmin()
 const error = ref('')
 const pagos = ref([])
 const pagosLoading = ref(true)
@@ -17,22 +21,26 @@ const pagosFilter = ref('todos')
 const PAGO_ESTADOS = {
   aprobado: { label: 'Aprobado', cls: 'bg-go/20' },
   pendiente: { label: 'Pendiente', cls: 'bg-sulfur' },
+  incompleto: { label: 'Incompleto', cls: 'bg-pumice text-obsidian/60' },
   rechazado: { label: 'Rechazado', cls: 'bg-nogo/15' },
-  cancelado: { label: 'Cancelado', cls: 'bg-pumice' },
+  cancelado: { label: 'Cancelado', cls: 'bg-pumice text-obsidian/60' },
   devuelto: { label: 'Devuelto', cls: 'bg-nogo/15' },
 }
 const PAGO_FILTERS = [
   { id: 'todos', label: 'Todos' },
   { id: 'aprobado', label: 'Aprobados' },
   { id: 'pendiente', label: 'Pendientes' },
+  { id: 'incompleto', label: 'Incompletos' },
   { id: 'otros', label: 'Rechazados y otros' },
 ]
+const estadoDe = (p) => (p.estado === 'pendiente' && !p.mp_payment_id ? 'incompleto' : p.estado)
+const grupoDe = (p) => (['aprobado', 'pendiente', 'incompleto'].includes(estadoDe(p)) ? estadoDe(p) : 'otros')
 
 async function fetchPagos() {
   pagosLoading.value = true
   const { data, error: err } = await supabase
     .from('pagos')
-    .select('id, event_id, plan_anterior, plan, monto, estado, mp_status, mp_payment_id, creado_en, aprobado_en')
+    .select('id, event_id, user_id, plan, monto, estado, mp_payment_id, creado_en, aprobado_en')
     .order('creado_en', { ascending: false })
     .limit(200)
   if (err) error.value = `No se pudieron leer los pagos: ${err.message}`
@@ -42,20 +50,17 @@ async function fetchPagos() {
 onMounted(fetchPagos)
 
 const eventById = computed(() => new Map(rows.value.map((r) => [r.event_id, r])))
-const pagosCount = computed(() => ({
-  todos: pagos.value.length,
-  aprobado: pagos.value.filter((p) => p.estado === 'aprobado').length,
-  pendiente: pagos.value.filter((p) => p.estado === 'pendiente').length,
-  otros: pagos.value.filter((p) => !['aprobado', 'pendiente'].includes(p.estado)).length,
-}))
+const accountById = computed(() => new Map(pendingAccounts.value.map((a) => [a.user_id, a])))
+const mailDe = (p) => eventById.value.get(p.event_id)?.owner_email ?? accountById.value.get(p.user_id)?.email ?? 'Cuenta eliminada'
+const pagosCount = computed(() => {
+  const c = { todos: pagos.value.length, aprobado: 0, pendiente: 0, incompleto: 0, otros: 0 }
+  for (const p of pagos.value) c[grupoDe(p)]++
+  return c
+})
+// «Rechazados y otros» solo aparece si hay alguno.
+const filtrosVisibles = computed(() => PAGO_FILTERS.filter((f) => f.id !== 'otros' || pagosCount.value.otros))
 const pagosFiltered = computed(() =>
-  pagos.value.filter((p) =>
-    pagosFilter.value === 'todos'
-      ? true
-      : pagosFilter.value === 'otros'
-        ? !['aprobado', 'pendiente'].includes(p.estado)
-        : p.estado === pagosFilter.value,
-  ),
+  pagos.value.filter((p) => pagosFilter.value === 'todos' || grupoDe(p) === pagosFilter.value),
 )
 const cobrado = computed(() => pagos.value.filter((p) => p.estado === 'aprobado').reduce((t, p) => t + p.monto, 0))
 const cobradoMes = computed(() => {
@@ -101,7 +106,7 @@ const pagoDate = (iso) =>
 
     <div class="mt-4 flex flex-wrap gap-2">
       <button
-        v-for="f in PAGO_FILTERS"
+        v-for="f in filtrosVisibles"
         :key="f.id"
         type="button"
         @click="pagosFilter = f.id"
@@ -123,28 +128,23 @@ const pagoDate = (iso) =>
         class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 rounded-[1.5rem] bg-limestone px-5 py-4"
       >
         <div class="min-w-0">
-          <p class="truncate font-bold">{{ eventById.get(p.event_id)?.owner_email ?? 'Evento borrado' }}</p>
-          <p class="truncate text-sm text-obsidian/60">
-            {{ eventById.get(p.event_id)?.event_name ?? '—' }} ·
-            {{ PLANS[p.plan_anterior]?.label ?? p.plan_anterior }} → <strong class="text-obsidian">{{ PLANS[p.plan]?.label }}</strong>
-          </p>
-          <p class="mt-1 text-xs text-obsidian/50">
-            {{ pagoDate(p.creado_en) }}
-            <template v-if="p.aprobado_en"> · aprobado {{ pagoDate(p.aprobado_en) }}</template>
-            <template v-if="p.mp_payment_id"> · MP <span class="select-all">{{ p.mp_payment_id }}</span></template>
-            <template v-if="p.mp_status && p.mp_status !== 'approved'"> ({{ p.mp_status }})</template>
+          <p class="truncate font-bold">{{ mailDe(p) }}</p>
+          <p class="text-sm text-obsidian/60">
+            Plan {{ PLANS[p.plan]?.label ?? p.plan }} · {{ pagoDate(p.creado_en) }}
+            <template v-if="p.mp_payment_id"> · <span class="select-all" title="Número de pago en Mercado Pago">MP {{ p.mp_payment_id }}</span></template>
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-2">
           <span class="font-bold tabular-nums">{{ formatPrice(p.monto) }}</span>
-          <span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="PAGO_ESTADOS[p.estado]?.cls">
-            {{ PAGO_ESTADOS[p.estado]?.label ?? p.estado }}
+          <span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="PAGO_ESTADOS[estadoDe(p)]?.cls">
+            {{ PAGO_ESTADOS[estadoDe(p)]?.label ?? p.estado }}
           </span>
         </div>
       </li>
     </ul>
     <p class="mt-3 text-xs text-obsidian/45">
-      «Pendiente» sin número de MP: abrió Mercado Pago y no pagó. Con número: pago en efectivo o en revisión.
+      <strong>Pendiente:</strong> el pago está en Mercado Pago y espera acreditarse (efectivo, transferencia o en revisión).
+      <strong>Incompleto:</strong> abrió Mercado Pago y no terminó de pagar; no hay plata en juego.
     </p>
   </div>
 </template>
