@@ -12,7 +12,7 @@
         </p>
         <div class="mt-8 flex flex-wrap justify-center gap-3">
           <a href="#planes" class="admin-btn-primary !bg-chalk !text-obsidian">Ver planes</a>
-          <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary !border-chalk">Probar gratis</router-link>
+          <router-link :to="{ name: 'crear' }" class="admin-btn-secondary !border-chalk hover:!bg-chalk/10">Creá tu invitación gratis</router-link>
         </div>
       </div>
     </div>

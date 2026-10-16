@@ -70,11 +70,11 @@ onUnmounted(() => {
         </p>
         <div class="mt-8 flex flex-wrap gap-3">
           <a href="#planes" class="admin-btn-primary !bg-sulfur !text-obsidian">Ver planes</a>
-          <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary !border-chalk hover:!bg-chalk/10">
-            Probar gratis
+          <router-link :to="{ name: 'crear' }" class="admin-btn-secondary !border-chalk hover:!bg-chalk/10">
+            Creá tu invitación gratis
           </router-link>
         </div>
-        <p class="mt-4 text-sm text-chalk/60">Pago único por evento. Sin app: todo desde el celular.</p>
+        <p class="mt-4 text-sm text-chalk/60">Probala sin crear cuenta. Pago único por evento.</p>
       </div>
 
       <!-- Collage: tres fotos y los avisos en vivo encima -->

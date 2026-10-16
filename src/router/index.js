@@ -21,6 +21,7 @@ import PublicInvite from '../views/PublicInvite.vue'
 import Landing from '../views/Landing.vue'
 import { useAuth } from '../composables/useAuth'
 import { isStaffUser } from '../lib/staff'
+import { hasDraft, migrateDraft } from '../lib/draft'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -43,6 +44,10 @@ const router = createRouter({
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboard, meta: { requiresAuth: true } },
     { path: '/admin/actividad', name: 'admin-actividad', component: AdminActividad, meta: { requiresAuth: true } },
     { path: '/admin/salon', name: 'admin-salon', component: AdminSalon, meta: { requiresAuth: true } },
+    // El mismo editor sin cuenta: se guarda en el navegador (lib/draft.js) y
+    // pasa a la base al crear la cuenta. Con sesión se va al editor de verdad.
+    { path: '/crear', name: 'crear', component: AdminSalon, meta: { draft: true } },
+    { path: '/crear/vista', name: 'crear-vista', component: PreviewInvite },
     {
       path: '/admin/salon/preview',
       name: 'admin-salon-preview',
@@ -118,6 +123,19 @@ router.beforeEach(async (to) => {
   const { user, isSuperadmin, ready } = useAuth()
   await ready
   const isLoggedIn = !!user.value
+
+  // Ya tiene sesión: /crear es el editor de su cuenta.
+  if (to.name === 'crear' && isLoggedIn) return { name: 'admin-salon' }
+  // Armó una invitación sin cuenta en este navegador y ya entró: se pasa a
+  // su cuenta antes de mostrar el panel (si ya tenía una, no se pisa).
+  if (isLoggedIn && to.meta.requiresAuth && !isStaffUser(user.value) && hasDraft()) {
+    const moved = await migrateDraft(user.value)
+    if (moved) {
+      const { useEvent } = await import('../composables/useEvent')
+      useEvent().event.value = null // que el panel lea el evento recién creado
+      if (to.name === 'admin-dashboard') return { name: 'admin-salon' }
+    }
+  }
 
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { name: 'admin-login' }

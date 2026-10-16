@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { Cake, Heart, Briefcase, ChevronLeft, ChevronRight, Eye, X, Check, Plus, ArrowDownUp, Clock } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
+import DraftBar from '../components/DraftBar.vue'
 import EnvelopeCover from '../components/EnvelopeCover.vue'
 import ColorPicker from '../components/ColorPicker.vue'
 import SectionSwitch from '../components/SectionSwitch.vue'
@@ -16,8 +17,14 @@ import { hasFeature, planFor } from '../lib/plans'
 import { normalizeWhatsapp } from '../lib/whatsapp'
 import { supabase } from '../lib/supabase'
 
-const { event, loadEvent, saveEvent } = useEvent()
+const { event, loadEvent, saveEvent, setDraftMode } = useEvent()
 const { uploadFile, removeFile, savePhotoColumns } = useEventPhotos()
+
+// /crear: el mismo editor sin cuenta. Todo se guarda en el navegador (fotos
+// incluidas) y pasa a la base al crear la cuenta (lib/draft.js). Se guarda
+// solo mientras se escribe; en vez del menú del panel va DraftBar.
+const isDraft = !!useRoute().meta.draft
+setDraftMode(isDraft)
 
 // El editor va por pasos, en el orden en que se arma una invitación. Todos
 // comparten un solo formulario y un solo «Guardar» — los pasos solo ordenan
@@ -744,6 +751,20 @@ onMounted(async () => {
   await markSaved()
 })
 
+// Borrador: se guarda solo (en el navegador) un momento después de cada cambio.
+let autosaveTimer = null
+if (isDraft) {
+  watch(
+    () => snapshot(),
+    () => {
+      clearTimeout(autosaveTimer)
+      autosaveTimer = setTimeout(() => {
+        if (isDirty.value && !saving.value) onSubmit()
+      }, 700)
+    },
+  )
+}
+
 // Postgres no acepta '' para columnas date/time — hay que mandar null
 // cuando el campo quedó vacío.
 const emptyAsNull = (value) => (value === '' ? null : value)
@@ -840,7 +861,7 @@ async function onSubmit() {
 // El iframe carga /admin/salon/preview y recibe el borrador por postMessage
 // (y sessionStorage como respaldo / carga inicial).
 const STORAGE_KEY = 'invite-preview-draft'
-const previewUrl = '/admin/salon/preview'
+const previewUrl = isDraft ? '/crear/vista' : '/admin/salon/preview'
 const frameDesktop = ref(null)
 const frameMobile = ref(null)
 const showMobilePreview = ref(false)
@@ -929,6 +950,8 @@ onMounted(() => {
   nextTick(centerActiveStep)
 })
 onUnmounted(() => {
+  if (isDraft) setDraftMode(false)
+  clearTimeout(autosaveTimer)
   window.removeEventListener('message', onFrameMessage)
   window.removeEventListener('resize', updateScale)
   window.removeEventListener('beforeunload', onBeforeUnload)
@@ -938,8 +961,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="admin-page">
-    <AdminNav />
+  <div class="admin-page" :class="{ 'is-draft': isDraft }">
+    <DraftBar v-if="isDraft" />
+    <AdminNav v-else />
     <div class="mx-auto flex max-w-[1200px] justify-center gap-10 px-4 pt-4 pb-32 lg:px-8 lg:pt-8 xl:gap-14">
       <!-- ================= EDITOR ================= -->
       <div class="w-full min-w-0 max-w-2xl">
@@ -952,12 +976,13 @@ onUnmounted(() => {
         <!-- Barra de guardado: siempre a mano mientras se edita. -->
         <div
           ref="saveBar"
-          :class="
+          :class="[
             saveBarStuck
               ? 'bg-chalk shadow-[0_14px_36px_-12px_rgba(7,6,7,0.35)] ring-1 ring-obsidian/10'
-              : 'bg-limestone'
-          "
-          class="sticky top-[calc(4.5rem+var(--banner-h,0px))] z-30 mt-6 flex items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 transition-[background-color,box-shadow] duration-200 lg:top-[calc(1rem+var(--banner-h,0px))]"
+              : 'bg-limestone',
+            isDraft ? 'lg:top-[4.5rem]' : 'lg:top-[calc(1rem+var(--banner-h,0px))]',
+          ]"
+          class="sticky top-[calc(4.5rem+var(--banner-h,0px))] z-30 mt-6 flex items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 transition-[background-color,box-shadow] duration-200"
         >
           <p class="flex min-w-0 items-center gap-2 text-sm">
             <span
@@ -968,6 +993,7 @@ onUnmounted(() => {
               <template v-if="saving">Guardando…</template>
               <template v-else-if="saveError">{{ saveError }}</template>
               <template v-else-if="isDirty">Tenés cambios sin guardar</template>
+              <template v-else-if="isDraft">Se guarda solo en este navegador</template>
               <template v-else-if="event">Todo guardado</template>
               <template v-else>Todavía no guardaste tu invitación</template>
             </span>

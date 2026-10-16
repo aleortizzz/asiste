@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { MailCheck, Sparkles } from '@lucide/vue'
+import { MailCheck, Sparkles, PenSquare } from '@lucide/vue'
 import AuthLayout from '../components/AuthLayout.vue'
 import FormField from '../components/FormField.vue'
 import PasswordInput from '../components/PasswordInput.vue'
@@ -9,6 +9,7 @@ import GoogleButton from '../components/GoogleButton.vue'
 import { supabase } from '../lib/supabase'
 import { authErrorMessage } from '../lib/authErrors'
 import { PLANS, rememberChosenPlan, formatPrice } from '../lib/plans'
+import { hasDraft } from '../lib/draft'
 import {
   useFormValidation,
   emailError,
@@ -26,6 +27,9 @@ const plan = computed(() => (PLANS[route.query.plan]?.price ? route.query.plan :
 rememberChosenPlan(plan.value)
 // «Tu plan» con pagar=1 abre Mercado Pago sola.
 const payRoute = computed(() => ({ name: 'admin-plan', query: { plan: plan.value, pagar: 1 } }))
+// Armó una invitación sin cuenta (/crear): al entrar se pasa a la cuenta
+// (lo hace el router, ver lib/draft.js). Acá solo se avisa.
+const withDraft = hasDraft()
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('') // la misma contraseña otra vez, para no crear la cuenta con un error de tipeo
@@ -89,6 +93,17 @@ async function onSubmit() {
       </router-link>
     </div>
 
+    <!-- La invitación que armó sin cuenta -->
+    <div v-if="withDraft && !done" class="mb-5 flex items-center gap-3 rounded-[1.5rem] bg-chalk p-4">
+      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
+        <PenSquare :size="18" />
+      </span>
+      <p class="text-sm">
+        <strong>Tu invitación queda guardada.</strong>
+        <span class="text-obsidian/60"> Al crear la cuenta la pasamos a tu panel, con fotos y todo.</span>
+      </p>
+    </div>
+
     <div v-if="done" class="flex items-start gap-4 rounded-[1.5rem] bg-chalk p-5">
       <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-go/25">
         <MailCheck :size="20" />
@@ -96,6 +111,7 @@ async function onSubmit() {
       <p class="text-sm leading-relaxed">
         Te mandamos un mail a <strong>{{ email.trim() }}</strong> para confirmar tu cuenta.
         <template v-if="plan">Tocá el link del mail y pasás directo a pagar el plan {{ PLANS[plan].label }}.</template>
+        <template v-else-if="withDraft">Abrí el link del mail <strong>en este mismo navegador</strong> y tu invitación queda guardada en tu cuenta.</template>
         <template v-else>Tocá el link del mail y ya entrás a armar tu invitación.</template>
         Si no lo ves, fijate en spam.
       </p>

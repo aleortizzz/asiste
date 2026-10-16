@@ -46,7 +46,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
       <div class="flex items-center gap-1 sm:gap-2">
         <router-link :to="{ name: 'admin-login' }" class="rounded-full px-3 py-2 font-bold">Ingresar</router-link>
-        <a href="#planes" class="admin-btn-primary hidden !px-4 !py-2 text-sm sm:inline-flex">Ver planes</a>
+        <router-link :to="{ name: 'crear' }" class="admin-btn-primary hidden !px-4 !py-2 text-sm sm:inline-flex">Creá tu invitación</router-link>
         <button
           type="button"
           @click="open = !open"
@@ -70,8 +70,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
           </li>
         </ul>
         <div class="mx-auto mt-3 grid max-w-6xl gap-2 sm:grid-cols-2">
-          <a href="#planes" @click="open = false" class="admin-btn-primary">Ver planes</a>
-          <router-link :to="{ name: 'admin-signup' }" class="admin-btn-secondary">Probar gratis</router-link>
+          <router-link :to="{ name: 'crear' }" class="admin-btn-primary">Creá tu invitación</router-link>
+          <a href="#planes" @click="open = false" class="admin-btn-secondary">Ver planes</a>
         </div>
       </nav>
     </Transition>

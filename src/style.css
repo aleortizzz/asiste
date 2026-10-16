@@ -60,6 +60,11 @@
       padding-left: 16.5rem;
     }
   }
+  /* Editor sin cuenta (/crear): sin menú lateral, con la barra de DraftBar arriba. */
+  .admin-page.is-draft {
+    padding-top: 4rem;
+    padding-left: 0;
+  }
 
   /* Titulares grandes del admin. */
   .admin-display {

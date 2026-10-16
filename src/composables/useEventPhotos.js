@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useEvent } from './useEvent'
+import { saveDraftPhoto, removeDraftPhoto, saveDraftFields } from '../lib/draft'
 
 const BUCKET = 'event-photos'
 export const PHOTO_SLOTS = ['banner', 'retrato', 'detalle', 'momentos', 'galeria']
@@ -9,7 +11,12 @@ export const MAX_GALERIA = 8
 // Sube un archivo al bucket y devuelve { url, path }. `ownerId` es el dueño
 // del evento (no siempre quien está logueado: un superadmin ayudando a un
 // cliente sube a la carpeta DE ESE CLIENTE, no a la propia).
+// En modo borrador (/crear, sin cuenta) las fotos quedan en el navegador
+// (lib/draft.js) y suben recién al crear la cuenta.
+const inDraft = () => useEvent().draftMode.value
+
 async function uploadFile(slot, file, ownerId) {
+  if (inDraft()) return saveDraftPhoto(file)
   const { user } = useAuth()
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `${ownerId || user.value.id}/${slot}/${crypto.randomUUID()}.${ext}`
@@ -25,11 +32,17 @@ async function uploadFile(slot, file, ownerId) {
 
 async function removeFile(path) {
   if (!path) return
+  if (inDraft()) return removeDraftPhoto(path)
   await supabase.storage.from(BUCKET).remove([path])
 }
 
 // Persiste solo las columnas de fotos del evento (update parcial).
 async function savePhotoColumns(eventId, cols) {
+  if (inDraft()) {
+    saveDraftFields(cols)
+    useEvent().event.value = { ...useEvent().event.value, ...cols }
+    return
+  }
   const { error } = await supabase.from('events').update(cols).eq('id', eventId)
   if (error) throw error
 }

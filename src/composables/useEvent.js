@@ -1,11 +1,21 @@
 import { ref, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { loadDraftEvent, saveDraftFields } from '../lib/draft'
 
 // Mismo patrón singleton que useAuth: el evento "actual" del admin,
 // compartido entre Salón / Mesas / Invitados sin tener que recargarlo cada vez.
 const event = ref(null)
 const loading = ref(false)
+
+// Modo borrador (/crear, sin cuenta): el editor lee y guarda en el navegador
+// en vez de la base (ver lib/draft.js). Lo prende y apaga AdminSalon.
+const draftMode = ref(false)
+function setDraftMode(on) {
+  if (draftMode.value === on) return
+  draftMode.value = on
+  event.value = null
+}
 
 // --- Modo superadmin: "estoy viendo el evento de otro cliente" -----------
 // Se guarda en sessionStorage para que sobreviva a una recarga de página,
@@ -48,6 +58,11 @@ watch(
 
 async function loadEvent() {
   loading.value = true
+  if (draftMode.value) {
+    event.value = await loadDraftEvent()
+    loading.value = false
+    return
+  }
   const { user, isSuperadmin } = useAuth()
   // «Viendo a otro cliente» es solo del superadmin: cualquier otra cuenta lo descarta.
   if (viewing.value && !isSuperadmin.value) setViewingEvent(null)
@@ -61,6 +76,11 @@ async function loadEvent() {
 }
 
 async function saveEvent(fields) {
+  if (draftMode.value) {
+    saveDraftFields(fields)
+    event.value = { ...event.value, ...fields }
+    return
+  }
   const { user } = useAuth()
   if (event.value) {
     const { data, error } = await supabase
@@ -86,5 +106,5 @@ async function saveEvent(fields) {
 }
 
 export function useEvent() {
-  return { event, loading, loadEvent, saveEvent, viewing, setViewingEvent }
+  return { event, loading, loadEvent, saveEvent, viewing, setViewingEvent, draftMode, setDraftMode }
 }

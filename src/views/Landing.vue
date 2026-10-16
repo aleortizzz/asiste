@@ -13,7 +13,7 @@ import {
   ArrowLeft,
   RotateCcw,
 } from '@lucide/vue'
-import { PLANS as BASE_PLANS, SALON_PRICES, formatPrice } from '../lib/plans'
+import { PLANS as BASE_PLANS, SALON_PRICES, FREE_LIMITS, formatPrice } from '../lib/plans'
 import { useAuth } from '../composables/useAuth'
 import LandingHeader from '../components/landing/LandingHeader.vue'
 import SectionHero from '../components/landing/SectionHero.vue'
@@ -237,11 +237,6 @@ const verdict = computed(() => {
             Elegí tu plan y pagalo de una: armás la invitación cuando quieras y ya nace con todo. Un solo pago por evento, sin
             abonos ni costo por invitado.
           </p>
-          <p class="mt-2 text-obsidian/55">
-            ¿Querés verla antes de pagar?
-            <router-link :to="{ name: 'admin-signup' }" class="font-bold text-accent hover:underline">Probala gratis</router-link>
-            con hasta 5 familias.
-          </p>
         </div>
 
         <div v-reveal class="inline-flex gap-1 rounded-full bg-limestone p-1" role="tablist" aria-label="Tipo de cliente">
@@ -261,6 +256,32 @@ const verdict = computed(() => {
 
         <!-- Particulares -->
         <div v-if="audience === 'fiesta'" class="space-y-6">
+          <!-- Prueba gratis: aparte de los planes pagos, para que no compita con ellos -->
+          <div
+            v-reveal
+            class="lift grid gap-5 rounded-[2rem] border-[1.5px] border-dashed border-accent/35 bg-chalk p-6 sm:p-7 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-8"
+          >
+            <div>
+              <span class="rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide uppercase">Prueba gratis</span>
+              <p class="admin-display mt-3 text-5xl">$0 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">sin tarjeta</span></p>
+            </div>
+            <div>
+              <p class="text-lg font-bold">Armala completa y mirala como la van a ver tus invitados.</p>
+              <p class="mt-1 text-obsidian/65">
+                Con todas las funciones, para que pruebes todo antes de pagar. Para mandarla a todos, elegís un plan: se levantan
+                los límites y no perdés nada de lo que armaste.
+              </p>
+              <ul class="mt-3 flex flex-wrap gap-1.5 text-xs font-bold text-obsidian/65">
+                <li class="rounded-full bg-limestone px-2.5 py-1">Hasta {{ FREE_LIMITS.invitations }} invitaciones</li>
+                <li class="rounded-full bg-limestone px-2.5 py-1">Cartel «Invitación de prueba»</li>
+                <li class="rounded-full bg-limestone px-2.5 py-1">
+                  El link se cierra a las {{ FREE_LIMITS.views }} visitas o {{ FREE_LIMITS.hours }} h
+                </li>
+              </ul>
+            </div>
+            <router-link :to="{ name: 'crear' }" class="admin-btn-secondary w-full lg:w-auto">Creá tu invitación gratis</router-link>
+          </div>
+
           <div class="grid gap-4 pt-3 md:grid-cols-3">
             <article v-reveal class="lift flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
               <h3 class="text-lg font-bold">Invitación</h3>
@@ -521,7 +542,7 @@ const verdict = computed(() => {
           <details v-for="q in [
             { q: '¿Es un pago por mes?', a: 'No. Para tu fiesta pagás una sola vez por evento. El abono mensual es solo para salones.' },
             { q: '¿Tengo que armar la invitación antes de pagar?', a: 'No. Elegís el plan, creás tu cuenta y pagás con Mercado Pago en el momento. Después armás la invitación cuando quieras, y ya nace con todo lo del plan.' },
-            { q: '¿Puedo probarlo gratis?', a: 'Sí. Armás tu invitación completa sin pagar y la probás con hasta 5 familias. Mientras es de prueba lleva un cartel que lo indica, y el link se cierra a las 15 visitas o a las 24 horas de que la abre la primera persona. Cuando elegís un plan se levantan los límites y el mismo link sigue andando, sin perder nada de lo que armaste.' },
+            { q: '¿Puedo probarlo gratis?', a: 'Sí, y sin crear cuenta: tocás «Creá tu invitación» y la armás completa, con tus fotos; se guarda en tu navegador. Si te gusta, creás la cuenta y pasa a tu panel con todo. Ahí la probás con hasta 5 familias. Mientras es de prueba lleva un cartel que lo indica, y el link se cierra a las 15 visitas o a las 24 horas de que la abre la primera persona. Cuando elegís un plan se levantan los límites y el mismo link sigue andando, sin perder nada de lo que armaste.' },
             { q: '¿Qué es la reunión del Plus?', a: 'Una videollamada de una hora con nosotros para armar la invitación y la lista de invitados juntos, y sacarte todas las dudas.' },
             { q: '¿Cómo funciona la trivia?', a: 'Es para jugar en vivo el día de la fiesta. Vos armás las preguntas antes; en la fiesta la abrís, los invitados juegan desde su celular escaneando el QR de la mesa, el ranking se ve en la pantalla del salón y al cerrarla se festeja al ganador.' },
             { q: '¿Mis invitados tienen que bajarse una app?', a: 'No. Abren el link desde WhatsApp y confirman desde el navegador del celular.' },
