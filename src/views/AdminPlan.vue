@@ -6,7 +6,8 @@ import AdminNav from '../components/AdminNav.vue'
 import { useEvent } from '../composables/useEvent'
 import { useAuth } from '../composables/useAuth'
 import { supabase } from '../lib/supabase'
-import { PLANS, upgradePrice, formatPrice, chosenPlan, forgetChosenPlan } from '../lib/plans'
+import { PLANS, upgradePrice, priceBefore, discountPercent, promoBadge, formatPrice, chosenPlan, forgetChosenPlan } from '../lib/plans'
+import PromoBadge from '../components/PromoBadge.vue'
 
 // «Tu plan»: el plan actual, los planes a los que se puede pasar (pagando
 // la diferencia) y la vuelta desde Mercado Pago (?pago=aprobado|pendiente|rechazado&id=…).
@@ -262,15 +263,25 @@ const formatDate = (iso) =>
             >
               El que elegiste
             </span>
+            <PromoBadge v-if="!isUpgrade && promoBadge(p)" :text="promoBadge(p)" />
             <h2 class="text-lg font-bold">{{ PLANS[p].label }}</h2>
             <div>
-              <p class="admin-display text-5xl">{{ formatPrice(upgradePrice(currentPlan, p)) }}</p>
+              <p class="admin-display text-5xl">
+                {{ formatPrice(upgradePrice(currentPlan, p)) }}<abbr title="Pesos argentinos" class="ml-1 font-ui text-sm font-bold tracking-normal text-obsidian/55 no-underline">ARS</abbr>
+              </p>
               <p class="mt-1 text-sm text-obsidian/55">
                 <template v-if="isUpgrade">
                   Pagás solo la diferencia
                   <span class="line-through">{{ formatPrice(PLANS[p].price) }}</span>
                 </template>
-                <template v-else>Pago único por evento</template>
+                <template v-else>
+                  <template v-if="priceBefore(p)">
+                    <span class="line-through">{{ formatPrice(priceBefore(p)) }}</span>
+                    <span class="ml-1 rounded-full bg-sulfur px-2 py-0.5 text-xs font-bold text-obsidian">−{{ discountPercent(p) }}%</span>
+                    ·
+                  </template>
+                  Pago único por evento
+                </template>
               </p>
             </div>
             <ul class="flex-1 space-y-2 text-[0.95rem]">

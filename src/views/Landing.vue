@@ -13,7 +13,9 @@ import {
   ArrowLeft,
   RotateCcw,
 } from '@lucide/vue'
-import { PLANS as BASE_PLANS, SALON_PRICES, FREE_LIMITS, formatPrice } from '../lib/plans'
+import { PLANS as BASE_PLANS, SALON_PRICES, FREE_LIMITS, priceBefore, promoBadge, formatPrice } from '../lib/plans'
+import PlanPrice from '../components/PlanPrice.vue'
+import PromoBadge from '../components/PromoBadge.vue'
 import { useAuth } from '../composables/useAuth'
 import LandingHeader from '../components/landing/LandingHeader.vue'
 import SectionHero from '../components/landing/SectionHero.vue'
@@ -293,30 +295,33 @@ const verdict = computed(() => {
           </div>
 
           <div class="grid gap-4 pt-3 md:grid-cols-3">
-            <article v-reveal class="lift flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
-              <h3 class="text-lg font-bold">Invitación</h3>
-              <p class="min-h-12 text-obsidian/60">Para mandar una invitación linda.</p>
-              <p class="admin-display text-5xl">{{ formatPrice(BASE_PLANS.invitacion.price) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
+            <article v-reveal class="lift relative flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
+              <PromoBadge v-if="promoBadge('invitacion')" :text="promoBadge('invitacion')" />
+              <h3 class="text-lg font-bold" :class="{ 'pr-24': promoBadge('invitacion') }">Invitación</h3>
+              <p class="min-h-12 text-obsidian/60" :class="{ 'pr-24': promoBadge('invitacion') }">Para mandar una invitación linda.</p>
+              <PlanPrice id="invitacion" unit="por evento" />
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.invitacion.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
               <router-link :to="buyLink('invitacion')" class="admin-btn-secondary w-full">Comprar Invitación</router-link>
             </article>
-            <article v-reveal data-delay="100" class="lift night flex flex-col gap-4 rounded-[2rem] p-6 md:-my-3 md:py-9">
+            <article v-reveal data-delay="100" class="lift relative night flex flex-col gap-4 rounded-[2rem] p-6 md:-my-3 md:py-9">
+              <PromoBadge v-if="promoBadge('plus')" :text="promoBadge('plus')" />
               <span class="self-start rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide text-obsidian uppercase">El más elegido</span>
-              <h3 class="text-lg font-bold">Plus</h3>
-              <p class="min-h-12 text-chalk/70">Para saber quién viene y organizar la fiesta.</p>
-              <p class="admin-display text-5xl">{{ formatPrice(BASE_PLANS.plus.price) }} <span class="font-ui text-sm tracking-normal text-chalk/60 normal-case">por evento</span></p>
+              <h3 class="text-lg font-bold" :class="{ 'pr-24': promoBadge('plus') }">Plus</h3>
+              <p class="min-h-12 text-chalk/70" :class="{ 'pr-24': promoBadge('plus') }">Para saber quién viene y organizar la fiesta.</p>
+              <PlanPrice id="plus" unit="por evento" dark />
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-sulfur" />Todo lo de Invitación</li>
                 <li v-for="i in PLANS.plus.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-sulfur" />{{ i }}</li>
               </ul>
               <router-link :to="buyLink('plus')" class="admin-btn-primary w-full !bg-sulfur !text-obsidian">Comprar Plus</router-link>
             </article>
-            <article v-reveal data-delay="200" class="lift flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
-              <h3 class="text-lg font-bold">Premium</h3>
-              <p class="min-h-12 text-obsidian/60">Para que la fiesta también se viva con Asiste.</p>
-              <p class="admin-display text-5xl">{{ formatPrice(BASE_PLANS.premium.price) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por evento</span></p>
+            <article v-reveal data-delay="200" class="lift relative flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
+              <PromoBadge v-if="promoBadge('premium')" :text="promoBadge('premium')" />
+              <h3 class="text-lg font-bold" :class="{ 'pr-24': promoBadge('premium') }">Premium</h3>
+              <p class="min-h-12 text-obsidian/60" :class="{ 'pr-24': promoBadge('premium') }">Para que la fiesta también se viva con Asiste.</p>
+              <PlanPrice id="premium" unit="por evento" />
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in PLANS.premium.includes" :key="i" class="flex gap-2"><Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}</li>
               </ul>
@@ -366,10 +371,19 @@ const verdict = computed(() => {
               </tbody>
               <tfoot>
                 <tr class="font-bold tabular-nums">
-                  <td class="p-3 pl-4">Precio por evento</td>
-                  <td class="p-3 text-center">{{ formatPrice(BASE_PLANS.invitacion.price) }}</td>
-                  <td class="bg-accent-soft p-3 text-center">{{ formatPrice(BASE_PLANS.plus.price) }}</td>
-                  <td class="p-3 text-center">{{ formatPrice(BASE_PLANS.premium.price) }}</td>
+                  <td class="p-3 pl-4">Precio por evento (ARS)</td>
+                  <td class="p-3 text-center">
+                    <s v-if="priceBefore('invitacion')" class="block text-xs text-obsidian/40">{{ formatPrice(priceBefore('invitacion')) }}</s>
+                    {{ formatPrice(BASE_PLANS.invitacion.price) }}
+                  </td>
+                  <td class="bg-accent-soft p-3 text-center">
+                    <s v-if="priceBefore('plus')" class="block text-xs text-obsidian/40">{{ formatPrice(priceBefore('plus')) }}</s>
+                    {{ formatPrice(BASE_PLANS.plus.price) }}
+                  </td>
+                  <td class="p-3 text-center">
+                    <s v-if="priceBefore('premium')" class="block text-xs text-obsidian/40">{{ formatPrice(priceBefore('premium')) }}</s>
+                    {{ formatPrice(BASE_PLANS.premium.price) }}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -381,10 +395,11 @@ const verdict = computed(() => {
         <!-- Salones -->
         <div v-else class="space-y-6">
           <div class="grid gap-4 pt-3 md:grid-cols-2">
-            <article class="lift flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
-              <h3 class="text-lg font-bold">Por fiesta</h3>
-              <p class="min-h-12 text-obsidian/60">Pagás solo las fiestas que usás.</p>
-              <p class="admin-display text-5xl">{{ formatPrice(SALON_PRICES.fiesta) }} <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">por fiesta</span></p>
+            <article class="lift relative flex flex-col gap-4 rounded-[2rem] bg-limestone p-6">
+              <PromoBadge v-if="promoBadge('salon_fiesta')" :text="promoBadge('salon_fiesta')" />
+              <h3 class="text-lg font-bold" :class="{ 'pr-24': promoBadge('salon_fiesta') }">Por fiesta</h3>
+              <p class="min-h-12 text-obsidian/60" :class="{ 'pr-24': promoBadge('salon_fiesta') }">Pagás solo las fiestas que usás.</p>
+              <PlanPrice id="salon_fiesta" unit="por fiesta" />
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li v-for="i in ['Todo lo del Premium en cada fiesta', 'Tu logo en cada invitación', 'Usuarios para tu personal de recepción', 'La primera fiesta, gratis']" :key="i" class="flex gap-2">
                   <Check :size="17" class="mt-0.5 shrink-0 text-go" />{{ i }}
@@ -392,11 +407,12 @@ const verdict = computed(() => {
               </ul>
               <a :href="waLink('Hola! Tengo un salón y quiero probar Asiste en una fiesta.')" target="_blank" rel="noopener" class="admin-btn-secondary w-full">Quiero probarlo</a>
             </article>
-            <article class="lift night flex flex-col gap-4 rounded-[2rem] p-6">
+            <article class="lift relative night flex flex-col gap-4 rounded-[2rem] p-6">
+              <PromoBadge v-if="promoBadge('salon_abono')" :text="promoBadge('salon_abono')" />
               <span class="self-start rounded-full bg-sulfur px-2.5 py-1 text-xs font-bold tracking-wide text-obsidian uppercase">Desde {{ subscriptionFrom }} fiestas por mes</span>
-              <h3 class="text-lg font-bold">Abono</h3>
-              <p class="min-h-12 text-chalk/70">Para salones con movimiento todos los fines de semana.</p>
-              <p class="admin-display text-5xl">{{ formatPrice(SALON_PRICES.abono) }} <span class="font-ui text-sm tracking-normal text-chalk/60 normal-case">por mes</span></p>
+              <h3 class="text-lg font-bold" :class="{ 'pr-24': promoBadge('salon_abono') }">Abono</h3>
+              <p class="min-h-12 text-chalk/70" :class="{ 'pr-24': promoBadge('salon_abono') }">Para salones con movimiento todos los fines de semana.</p>
+              <PlanPrice id="salon_abono" unit="por mes" dark />
               <ul class="flex-1 space-y-2 text-[0.95rem]">
                 <li
                   v-for="i in ['Fiestas ilimitadas', 'Sin permanencia: mes a mes', 'En un mes flojo, volvés a pagar por fiesta', 'Lo que pagaste por fiesta el último mes se descuenta del primer abono']"
@@ -491,7 +507,7 @@ const verdict = computed(() => {
               <p class="text-sm font-bold text-chalk/60">Te conviene</p>
               <p class="admin-display text-6xl text-sulfur">{{ recommendation.name }}</p>
               <p class="admin-display text-3xl">
-                {{ recommendation.price }} <span class="font-ui text-sm tracking-normal text-chalk/60 normal-case">por evento</span>
+                {{ recommendation.price }}<span class="ml-1 font-ui text-sm tracking-normal text-chalk/60 normal-case"><abbr title="Pesos argentinos" class="font-bold no-underline">ARS</abbr> por evento</span>
               </p>
               <p class="text-chalk/75">{{ recommendation.why }}</p>
             </div>

@@ -30,22 +30,46 @@ export const PLAN_IDS = Object.keys(PLANS)
 // Salones (por ahora solo se muestran en la landing, no se cobran por MP).
 export const SALON_PRICES = reactive({ fiesta: 70000, abono: 250000 })
 
+// Promo: precio «de antes» tachado por plan (ids de precios_planes, también
+// salon_fiesta y salon_abono) y el texto del cartel arriba de los precios.
+// Solo se muestran: se cobra siempre `price`.
+export const PRICE_PROMO = reactive({ cartel: '', before: {} })
+// El precio actual por id de precios_planes.
+export const priceOf = (id) =>
+  id === 'salon_fiesta' ? SALON_PRICES.fiesta : id === 'salon_abono' ? SALON_PRICES.abono : PLANS[id]?.price
+export const priceBefore = (id) => {
+  const before = PRICE_PROMO.before[id]
+  return before && before > priceOf(id) ? before : null
+}
+// El texto de la cucarda para la tarjeta de un plan: si hay planes con
+// descuento, solo en esos; si no hay ninguno, en todos. '' = sin cucarda.
+export const promoBadge = (id) => {
+  if (!PRICE_PROMO.cartel) return ''
+  const anyDiscount = ['invitacion', 'plus', 'premium', 'salon_fiesta', 'salon_abono'].some(priceBefore)
+  return !anyDiscount || priceBefore(id) ? PRICE_PROMO.cartel : ''
+}
+export const discountPercent = (id) => (priceBefore(id) ? Math.round((1 - priceOf(id) / priceBefore(id)) * 100) : null)
+
 // Lee los precios de la base. Una vez por carga de la app (main.js); si
 // falla, quedan los de arranque. `force` vuelve a leer (después de editarlos).
 let loaded = null
-export function loadPlanPrices(force = false) {
-  if (!loaded || force) {
-    loaded = supabase
-      .from('precios_planes')
-      .select('plan, precio')
-      .then(({ data }) => {
-        for (const { plan, precio } of data ?? []) {
-          if (PLANS[plan]) PLANS[plan].price = precio
-          else if (plan === 'salon_fiesta') SALON_PRICES.fiesta = precio
-          else if (plan === 'salon_abono') SALON_PRICES.abono = precio
-        }
-      })
+async function readPrices() {
+  let { data, error } = await supabase.from('precios_planes').select('plan, precio, precio_antes')
+  // Sin la migración de la promo todavía: solo los precios.
+  if (error) ({ data } = await supabase.from('precios_planes').select('plan, precio'))
+  for (const { plan, precio, precio_antes } of data ?? []) {
+    if (PLANS[plan]) PLANS[plan].price = precio
+    else if (plan === 'salon_fiesta') SALON_PRICES.fiesta = precio
+    else if (plan === 'salon_abono') SALON_PRICES.abono = precio
+    PRICE_PROMO.before[plan] = precio_antes ?? null
   }
+}
+async function readCartel() {
+  const { data } = await supabase.from('precios_cartel').select('texto').maybeSingle()
+  PRICE_PROMO.cartel = data?.texto?.trim() ?? ''
+}
+export function loadPlanPrices(force = false) {
+  if (!loaded || force) loaded = Promise.all([readPrices(), readCartel()])
   return loaded
 }
 

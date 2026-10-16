@@ -8,7 +8,7 @@ import PasswordInput from '../components/PasswordInput.vue'
 import GoogleButton from '../components/GoogleButton.vue'
 import { supabase } from '../lib/supabase'
 import { authErrorMessage } from '../lib/authErrors'
-import { PLANS, rememberChosenPlan, formatPrice } from '../lib/plans'
+import { PLANS, rememberChosenPlan, priceBefore, formatPrice } from '../lib/plans'
 import { hasDraft } from '../lib/draft'
 import {
   useFormValidation,
@@ -85,7 +85,11 @@ async function onSubmit() {
         <Sparkles :size="18" />
       </span>
       <div class="min-w-0 flex-1">
-        <p class="font-bold">Plan {{ PLANS[plan].label }} · {{ formatPrice(PLANS[plan].price) }}</p>
+        <p class="font-bold">
+          Plan {{ PLANS[plan].label }} ·
+          <s v-if="priceBefore(plan)" class="font-normal text-obsidian/45">{{ formatPrice(priceBefore(plan)) }}</s>
+          {{ formatPrice(PLANS[plan].price) }}
+        </p>
         <p class="text-xs text-obsidian/55">Pago único por evento, con Mercado Pago</p>
       </div>
       <router-link :to="{ name: 'landing', hash: '#planes' }" class="shrink-0 text-xs font-bold text-accent hover:underline">
