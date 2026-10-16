@@ -973,6 +973,22 @@ onUnmounted(() => {
           escribís.
         </p>
 
+        <!-- Sin cuenta: invitar a probar el resto del panel -->
+        <router-link
+          v-if="isDraft"
+          :to="{ name: 'admin-signup', query: { desde: 'crear' } }"
+          class="group mt-5 flex items-center gap-4 rounded-[1.5rem] bg-accent-soft p-4 transition-colors hover:bg-accent/15"
+        >
+          <span class="min-w-0 flex-1">
+            <span class="block font-bold text-accent">Probá el Premium completo, gratis</span>
+            <span class="block text-sm text-obsidian/65">
+              Creá tu cuenta y recorré todo el panel: invitados, mesas, recepción en la puerta, trivia y fotos. Esta
+              invitación se guarda en tu cuenta.
+            </span>
+          </span>
+          <span class="admin-btn-primary shrink-0 !px-4 !py-2 text-sm">Crear cuenta</span>
+        </router-link>
+
         <!-- Barra de guardado: siempre a mano mientras se edita. -->
         <div
           ref="saveBar"

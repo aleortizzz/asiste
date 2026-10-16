@@ -74,7 +74,7 @@ onUnmounted(() => {
             Creá tu invitación gratis
           </router-link>
         </div>
-        <p class="mt-4 text-sm text-chalk/60">Probala sin crear cuenta. Pago único por evento.</p>
+        <p class="mt-4 text-sm text-chalk/60">Probá el Premium completo, gratis y sin tarjeta.</p>
       </div>
 
       <!-- Collage: tres fotos y los avisos en vivo encima -->

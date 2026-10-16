@@ -36,10 +36,11 @@ import { waLink } from '../lib/contact'
 const audience = ref('fiesta') // 'fiesta' | 'salon'
 // Prueba gratis: lo que SÍ trae (los límites van aparte, en letra chica).
 const FREE_PERKS = [
-  'Todas las funciones',
-  'Sin tarjeta ni cuenta',
-  `Mandásela a ${FREE_LIMITS.invitations} familias`,
-  'Al pagar, sigue el mismo link',
+  'Mesas y lista de la entrada',
+  'Recepción en la puerta',
+  'Trivia en vivo',
+  'Álbum de fotos y canciones',
+  'Sin tarjeta',
 ]
 // La tabla comparativa arranca plegada: las tarjetas ya cuentan lo principal.
 const showTable = ref(false)
@@ -273,10 +274,10 @@ const verdict = computed(() => {
               <p class="admin-display mt-3 text-5xl">$0 <span class="font-ui text-sm tracking-normal text-obsidian/55 normal-case">sin tarjeta</span></p>
             </div>
             <div>
-              <p class="text-lg font-bold">Armala completa y mirala como la van a ver tus invitados.</p>
+              <p class="text-xl font-bold">Probá el Premium completo, gratis.</p>
               <p class="mt-1 text-obsidian/65">
-                Con todas las funciones, para que pruebes todo antes de pagar. Para mandarla a todos, elegís un plan: se levantan
-                los límites y no perdés nada de lo que armaste.
+                Armá tu invitación y recorré todo el panel para ver si vale la pena. Cuando elegís un plan se levantan los
+                límites y no perdés nada de lo que armaste.
               </p>
               <ul class="mt-3 flex flex-wrap gap-1.5 text-xs font-bold">
                 <li v-for="t in FREE_PERKS" :key="t" class="flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-accent">
@@ -284,8 +285,8 @@ const verdict = computed(() => {
                 </li>
               </ul>
               <p class="mt-2.5 text-xs text-obsidian/50">
-                Mientras es de prueba lleva un cartel que lo indica y el link se cierra a las {{ FREE_LIMITS.views }} visitas
-                o {{ FREE_LIMITS.hours }} h.
+                Mientras es de prueba: hasta {{ FREE_LIMITS.invitations }} familias, un cartel que lo indica y el link se cierra a
+                las {{ FREE_LIMITS.views }} visitas o {{ FREE_LIMITS.hours }} h.
               </p>
             </div>
             <router-link :to="{ name: 'crear' }" class="admin-btn-secondary w-full lg:w-auto">Creá tu invitación gratis</router-link>
@@ -551,7 +552,7 @@ const verdict = computed(() => {
           <details v-for="q in [
             { q: '¿Es un pago por mes?', a: 'No. Para tu fiesta pagás una sola vez por evento. El abono mensual es solo para salones.' },
             { q: '¿Tengo que armar la invitación antes de pagar?', a: 'No. Elegís el plan, creás tu cuenta y pagás con Mercado Pago en el momento. Después armás la invitación cuando quieras, y ya nace con todo lo del plan.' },
-            { q: '¿Puedo probarlo gratis?', a: 'Sí, y sin crear cuenta: tocás «Creá tu invitación» y la armás completa, con tus fotos; se guarda en tu navegador. Si te gusta, creás la cuenta y pasa a tu panel con todo. Ahí la probás con hasta 5 familias. Mientras es de prueba lleva un cartel que lo indica, y el link se cierra a las 15 visitas o a las 24 horas de que la abre la primera persona. Cuando elegís un plan se levantan los límites y el mismo link sigue andando, sin perder nada de lo que armaste.' },
+            { q: '¿Puedo probarlo gratis?', a: 'Sí: probás el Premium completo, gratis. Tocás «Creá tu invitación» y la armás sin crear cuenta, con tus fotos; se guarda en tu navegador. Si te gusta, creás la cuenta y pasa a tu panel con todo, donde probás mesas, recepción, trivia y fotos con hasta 5 familias. Mientras es de prueba lleva un cartel que lo indica, y el link se cierra a las 15 visitas o a las 24 horas de que la abre la primera persona. Cuando elegís un plan se levantan los límites y el mismo link sigue andando, sin perder nada de lo que armaste.' },
             { q: '¿Qué es la reunión del Plus?', a: 'Una videollamada de una hora con nosotros para armar la invitación y la lista de invitados juntos, y sacarte todas las dudas.' },
             { q: '¿Cómo funciona la trivia?', a: 'Es para jugar en vivo el día de la fiesta. Vos armás las preguntas antes; en la fiesta la abrís, los invitados juegan desde su celular escaneando el QR de la mesa, el ranking se ve en la pantalla del salón y al cerrarla se festeja al ganador.' },
             { q: '¿Mis invitados tienen que bajarse una app?', a: 'No. Abren el link desde WhatsApp y confirman desde el navegador del celular.' },

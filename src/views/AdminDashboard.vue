@@ -10,6 +10,7 @@ import { hasFeature, planFor, PLANS } from '../lib/plans'
 import { useAuth } from '../composables/useAuth'
 import PlanGate from '../components/PlanGate.vue'
 import InvitacionLinkCard from '../components/InvitacionLinkCard.vue'
+import PremiumTrialCard from '../components/PremiumTrialCard.vue'
 
 const { event, loadEvent } = useEvent()
 const { w } = useWording()
@@ -399,6 +400,9 @@ async function copyLink(group) {
       </div>
 
       <template v-else>
+        <!-- ============ PRUEBA GRATIS: el Premium completo ============ -->
+        <PremiumTrialCard v-if="event.plan === 'gratis'" />
+
         <!-- ============ FECHA LÍMITE ============ -->
         <div
           v-if="deadline"
