@@ -4,6 +4,8 @@ import { Plus, X, Pencil, Trash2, Search, Armchair, Check, EyeOff } from '@lucid
 import AdminNav from '../components/AdminNav.vue'
 import PlanGate from '../components/PlanGate.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
+import MesaPlano from '../components/MesaPlano.vue'
+import { familyColorMap } from '../lib/familyColors'
 import { useEvent } from '../composables/useEvent'
 import { useWording } from '../composables/useWording'
 import { supabase } from '../lib/supabase'
@@ -15,6 +17,10 @@ import { confirmDialog } from '../composables/useConfirm'
 // Para sentar gente: se tocan personas (de «Sin mesa» o de otra mesa) para
 // seleccionarlas, y después «Sentar acá» en la mesa elegida. Funciona igual
 // en celular y en desktop, sin arrastrar.
+//
+// Dos vistas de las mesas, con la misma lógica: el plano (por defecto, mesas
+// redondas con una silla por lugar, MesaPlano.vue) y «Ver por nombre» (la
+// lista de nombres de siempre). La elección se recuerda en este navegador.
 const { event, loadEvent } = useEvent()
 const { w } = useWording()
 const tables = ref([])
@@ -26,6 +32,23 @@ const reserved = ref({})
 const loading = ref(true)
 const error = ref('')
 const savingKey = ref(null)
+
+// --- Vista: plano o por nombre -------------------------------------------------
+const VIEW_KEY = 'asiste:mesas-por-nombre'
+const byName = ref(false)
+try {
+  byName.value = localStorage.getItem(VIEW_KEY) === '1'
+} catch {
+  // sin acceso al almacenamiento (modo privado): queda el plano
+}
+function toggleByName() {
+  byName.value = !byName.value
+  try {
+    localStorage.setItem(VIEW_KEY, byName.value ? '1' : '0')
+  } catch {
+    // no pasa nada si no se puede recordar
+  }
+}
 
 onMounted(async () => {
   if (!event.value) await loadEvent()
@@ -72,6 +95,9 @@ const guestsByTable = computed(() => {
   }
   return map
 })
+
+// Un color por familia para el plano (las familias ya vienen ordenadas por nombre)
+const familyColors = computed(() => familyColorMap(guests.value))
 
 const seatedAt = (table) => guestsByTable.value[table.id] ?? []
 const reservedAt = (table) => reserved.value[table.id] ?? 0
@@ -121,6 +147,11 @@ function toggleFamily(family) {
 
 const familySelected = (family) => family.guests.every((g) => selected.value.has(g.id))
 const clearSelection = () => (selected.value = new Set())
+
+// Para la barra de abajo: en el plano solo se ven iniciales, así que si hay
+// una sola persona elegida se muestra su nombre.
+const selectedGuests = computed(() => guests.value.filter((g) => selected.value.has(g.id)))
+const selectedSeated = computed(() => selectedGuests.value.filter((g) => g.table_id))
 
 // Cuántos de los seleccionados ocuparían un lugar nuevo en esta mesa
 // (los que ya están sentados ahí no suman).
@@ -203,6 +234,8 @@ function dragIncoming(table) {
   return guests.value.filter((g) => ids.has(g.id) && g.table_id !== table.id).length
 }
 const dragFits = (table) => dragIncoming(table) <= freeSeats(table)
+// La mesa que está bajo el cursor (para el aviso de arriba)
+const dragTable = computed(() => tables.value.find((t) => t.id === dragOver.value) ?? null)
 
 function onTableDragOver(e, table) {
   if (!dragIds.value.length || dragIncoming(table) === 0) return
@@ -470,7 +503,38 @@ async function removeTable(table) {
               Todavía no hay mesas. Tocá «Agregar mesas» para crear las del salón.
             </div>
 
-            <div v-else class="grid gap-3 sm:grid-cols-2">
+            <!-- Fila fija arriba de las mesas: el aviso de soltar (a la izquierda)
+                 y el interruptor (a la derecha). Antes el aviso iba dentro de la
+                 tarjeta y la empujaba hacia abajo justo al soltar. -->
+            <div v-if="tables.length" class="mb-3 flex min-h-8 items-center justify-between gap-3">
+              <p
+                v-if="dragTable"
+                class="truncate rounded-full px-3 py-1 text-sm font-bold"
+                :class="dragFits(dragTable) ? 'bg-accent text-chalk' : 'bg-nogo text-chalk'"
+              >
+                <template v-if="dragFits(dragTable)">
+                  Soltá para sentar {{ dragIncoming(dragTable) === 1 ? '1 persona' : `${dragIncoming(dragTable)} personas` }} en {{ dragTable.name }}
+                </template>
+                <template v-else>
+                  No entran en {{ dragTable.name }}: {{ freeSeats(dragTable) <= 0 ? 'está llena' : `quedan ${freeSeats(dragTable)}` }}
+                </template>
+              </p>
+              <span v-else></span>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="byName"
+                @click="toggleByName"
+                class="flex shrink-0 items-center gap-2 rounded-full py-1 pr-1 pl-3 text-sm font-bold text-obsidian/60 transition-colors hover:text-obsidian"
+              >
+                Ver por nombre
+                <span :class="byName ? 'bg-accent' : 'bg-obsidian/20'" class="relative h-5 w-9 shrink-0 rounded-full transition-colors">
+                  <span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-chalk transition-transform" :class="byName ? 'translate-x-4' : ''"></span>
+                </span>
+              </button>
+            </div>
+
+            <div v-if="tables.length" class="grid gap-3 sm:grid-cols-2" :class="{ 'xl:grid-cols-3': !byName }">
               <section
                 v-for="table in tables"
                 :key="table.id"
@@ -486,10 +550,6 @@ async function removeTable(table) {
                     : { 'ring-2 ring-accent': selected.size && canSeatAt(table) }
                 "
               >
-                <p v-if="dragOver === table.id" class="mb-3 rounded-full px-3 py-1 text-center text-sm font-bold" :class="dragFits(table) ? 'bg-accent text-chalk' : 'bg-nogo text-chalk'">
-                  <template v-if="dragFits(table)">Soltá para sentar {{ dragIncoming(table) === 1 ? '1 persona' : `${dragIncoming(table)} personas` }}</template>
-                  <template v-else>No entran: {{ freeSeats(table) <= 0 ? 'está llena' : `quedan ${freeSeats(table)}` }}</template>
-                </p>
                 <!-- Edición -->
                 <form v-if="editingId === table.id && editForm" @submit.prevent="saveEdit(table)" class="space-y-3">
                   <div class="grid grid-cols-[1fr_6rem] gap-2">
@@ -512,7 +572,8 @@ async function removeTable(table) {
                 <!-- Encabezado -->
                 <div v-else class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <h3 class="truncate text-lg font-bold">{{ table.name }}</h3>
+                    <!-- En el plano el nombre ya está en el centro de la mesa -->
+                    <h3 class="truncate text-lg font-bold" :class="{ 'sr-only': !byName }">{{ table.name }}</h3>
                     <p class="text-xs font-bold text-obsidian/45">
                       {{ occupied(table) }} / {{ table.capacity }}
                       <template v-if="freeSeats(table) <= 0"> · llena</template>
@@ -534,6 +595,22 @@ async function removeTable(table) {
                   </div>
                 </div>
 
+                <!-- Plano: la mesa redonda con sus sillas -->
+                <MesaPlano
+                  v-if="!byName"
+                  class="mt-2"
+                  :table="table"
+                  :seated="seatedAt(table)"
+                  :reserved="reservedAt(table)"
+                  :selected="selected"
+                  :drag-ids="dragIds"
+                  :family-colors="familyColors"
+                  @toggle="toggleGuest"
+                  @dragstart="dragGuest"
+                  @dragend="onDragEnd"
+                />
+
+                <template v-else>
                 <div class="mt-3 h-2 overflow-hidden rounded-full bg-chalk">
                   <div
                     class="h-full rounded-full bg-accent transition-[width]"
@@ -578,6 +655,7 @@ async function removeTable(table) {
                   </li>
                 </ul>
                 <p v-else class="mt-4 text-sm text-obsidian/45">Mesa vacía.</p>
+                </template>
 
                 <!-- Sentar a los seleccionados -->
                 <div v-if="selected.size" class="mt-auto pt-4">
@@ -607,10 +685,22 @@ async function removeTable(table) {
       class="font-ui fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 lg:left-[16.5rem]"
     >
       <div class="flex items-center gap-3 rounded-full bg-obsidian py-2 pr-2 pl-5 text-sm text-chalk shadow-lg">
-        <span>
-          <strong>{{ selected.size }}</strong> {{ selected.size === 1 ? 'seleccionado' : 'seleccionados' }} · elegí una mesa
+        <span class="min-w-0 truncate">
+          <template v-if="selectedGuests.length === 1"><strong>{{ selectedGuests[0].full_name }}</strong></template>
+          <template v-else><strong>{{ selected.size }}</strong> seleccionados</template>
+          · elegí una mesa
         </span>
-        <button type="button" @click="clearSelection" class="rounded-full bg-chalk/15 px-3 py-1.5 font-bold hover:bg-chalk/25">
+        <!-- En el plano no hay ✕ en cada persona: se levanta desde acá -->
+        <button
+          v-if="selectedSeated.length"
+          type="button"
+          @click="unseatGuests(selectedSeated.map((g) => g.id))"
+          :disabled="savingKey === 'unseat'"
+          class="shrink-0 rounded-full bg-chalk/15 px-3 py-1.5 font-bold whitespace-nowrap hover:bg-chalk/25"
+        >
+          Sacar de la mesa
+        </button>
+        <button type="button" @click="clearSelection" class="shrink-0 rounded-full bg-chalk/15 px-3 py-1.5 font-bold hover:bg-chalk/25">
           Cancelar
         </button>
       </div>
