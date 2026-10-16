@@ -52,6 +52,8 @@ Sin login. Toma el estilo de la invitación (plantilla, color, nombre) vía `inf
 - **En `public/`:** favicon (svg + png 32), `apple-touch-icon.png`, `site.webmanifest` con íconos 192/512/maskable, `brand/og-asiste.png` (vista previa de la home y de las invitaciones **sin foto**) y `brand/asiste-logo.png` (logo de los mails).
 - `index.html` trae la vista previa de la home entre `<!-- og:default -->`; `og.php` saca ese bloque cuando arma la de una invitación.
 - Todas las versiones (fondos, PNG, ícono de app) en `branding/logo/`. Se regeneran con `branding/generador/final_logo.py` (Python + fonttools). Brief, competencia y las 10 ideas descartadas: carpeta «Logo Asiste» en el Escritorio.
+- **Si cambia un ícono o imagen del logo:** regenerar con `bash branding/generador/exportar.sh` y **subir el `?v=N`** en `index.html`, `site.webmanifest`, `og.php` y los mails. Cloudflare guarda esos archivos 7 días por su nombre: sin la versión nueva sigue mostrando los viejos (pasó con el favicon el 2026-10-15).
+- **Ingreso con Google** (`GoogleButton.vue`, en Ingresar y Registrarse): proveedor Google activado en Supabase con un cliente OAuth del proyecto «Asiste» de Google Cloud (el mismo de la clave de YouTube). Redirect URLs en Supabase: `https://asiste.tizdigital.com/**` y `http://localhost:5173/**`.
 - **Si cambia el dominio:** actualizar la URL absoluta de `og:image` en `index.html` y la del logo en `supabase/emails/*.html`.
 
 ## Deploy (automático)

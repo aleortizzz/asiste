@@ -833,7 +833,8 @@ async function saveAdding(group, row) {
                   </template>
                 </p>
               </div>
-              <div class="flex shrink-0 items-center gap-1.5">
+              <!-- Sin shrink-0: en celular chico (y con el ojo de superadmin) bajan de línea en vez de salirse -->
+              <div class="flex max-w-full flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   @click="copyLink(group)"

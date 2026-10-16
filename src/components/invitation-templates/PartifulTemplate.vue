@@ -454,7 +454,7 @@ const {
           <p class="mt-4 text-center text-sm text-[#666666]">Invitaciones para:</p>
           <ul class="mt-4 space-y-2">
             <li v-for="guest in namedGuests" :key="guest.id" class="flex items-center justify-between gap-2 rounded-lg bg-black/5 px-3 py-2">
-              <span>{{ guest.full_name }}</span>
+              <span class="min-w-0 break-words">{{ guest.full_name }}</span>
               <div class="flex shrink-0 gap-2">
                 <button
                   type="button"

@@ -233,7 +233,7 @@ async function confirmDelete() {
         class="rounded-[1.75rem] bg-limestone p-5 sm:p-6"
       >
         <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
-          <div class="min-w-0">
+          <div class="min-w-0 max-w-full">
             <h2 class="flex min-w-0 flex-wrap items-center gap-2 text-lg font-bold">
               <span class="truncate">{{ row.event_name }}</span>
               <span v-if="isMine(row)" class="shrink-0 rounded-full bg-chalk px-2.5 py-0.5 text-xs">Tu cuenta</span>
@@ -249,10 +249,11 @@ async function confirmDelete() {
             </p>
           </div>
 
-          <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <!-- En celular las acciones van en su propia fila, a todo el ancho (con shrink-0 se salían de la tarjeta) -->
+          <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
             <!-- Plan -->
             <div
-              class="flex rounded-full bg-pumice/70 p-0.5 text-sm font-bold"
+              class="flex w-full rounded-full bg-pumice/70 p-0.5 text-sm font-bold sm:w-auto"
               :class="{ 'opacity-50': savingId === row.event_id }"
               role="group"
               :aria-label="`Plan de ${row.event_name}`"
@@ -271,13 +272,13 @@ async function confirmDelete() {
                       : 'bg-accent text-chalk'
                     : 'text-obsidian/55 hover:text-obsidian'
                 "
-                class="rounded-full px-3 py-1.5 transition-colors"
+                class="flex-1 rounded-full px-3 py-1.5 transition-colors sm:flex-none"
               >
                 {{ p === 'gratis' ? 'Gratis' : PLANS[p].label }}
               </button>
             </div>
 
-            <button type="button" @click="entrar(row)" class="admin-btn-primary !px-5 !py-2.5 text-sm">
+            <button type="button" @click="entrar(row)" class="admin-btn-primary flex-1 !px-5 !py-2.5 text-sm sm:flex-none">
               Entrar
               <ArrowRight :size="16" />
             </button>
@@ -286,7 +287,7 @@ async function confirmDelete() {
               @click="askDelete(row)"
               :aria-label="`Eliminar ${row.event_name}`"
               title="Eliminar evento"
-              class="grid h-10 w-10 place-items-center rounded-full text-obsidian/45 transition-colors hover:bg-nogo/15 hover:text-nogo"
+              class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-obsidian/45 transition-colors hover:bg-nogo/15 hover:text-nogo"
             >
               <Trash2 :size="17" />
             </button>

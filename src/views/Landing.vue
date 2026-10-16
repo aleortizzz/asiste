@@ -215,7 +215,9 @@ const verdict = computed(() => {
 </script>
 
 <template>
-  <div id="inicio" class="landing font-ui min-h-dvh bg-pumice text-obsidian">
+  <div id="inicio" class="landing font-ui min-h-dvh overflow-x-clip bg-pumice text-obsidian">
+    <!-- overflow-x-clip: las animaciones que entran de costado (v-reveal left/right) arrancan
+         40 px afuera y en celular ensanchaban la página. clip (no hidden) para no romper el menú sticky. -->
     <LandingHeader />
     <div class="mx-auto max-w-6xl px-4">
 

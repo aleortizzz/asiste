@@ -743,7 +743,7 @@ const galeria = computed(() => (shows('galeria') ? slotUrls('galeria') : []))
           <ul class="mt-6 divide-y border-y text-left">
             <li v-for="guest in namedGuests" :key="guest.id" class="py-3">
               <div class="flex items-center justify-between gap-3">
-                <span class="ej-ink min-w-0">{{ guest.full_name }}</span>
+                <span class="ej-ink min-w-0 break-words">{{ guest.full_name }}</span>
                 <span class="flex shrink-0 gap-1.5">
                   <button type="button" translate="no" class="ej-toggle" :class="{ 'ej-toggle-on': guest.attending }" @click="guest.attending = true">
                     {{ L.attending }}

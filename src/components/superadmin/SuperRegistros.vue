@@ -30,7 +30,7 @@ const registeredOn = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: '
           <p class="text-xs text-obsidian/55">Se registró el {{ registeredOn(a.created_at) }}</p>
         </div>
         <span
-          class="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold"
+          class="max-w-full rounded-full px-2.5 py-1 text-xs font-bold"
           :class="a.email_confirmado ? 'bg-chalk' : 'bg-sulfur'"
         >
           {{ a.email_confirmado ? 'Confirmó el mail, no armó la invitación' : 'Falta que confirme el mail' }}

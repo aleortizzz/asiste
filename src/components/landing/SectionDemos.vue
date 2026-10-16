@@ -68,7 +68,7 @@ onUnmounted(() => {
 
 <template>
   <section ref="root" id="probalo" class="scroll-mt-24 py-16" aria-labelledby="h-demos">
-    <div class="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
       <div v-reveal class="lg:sticky lg:top-28">
         <h2 id="h-demos" class="admin-display text-5xl text-balance sm:text-6xl">Tocalo vos</h2>
         <p class="mt-3 max-w-md text-lg text-obsidian/65">
@@ -115,13 +115,13 @@ onUnmounted(() => {
       >
         <div id="feat-panel" role="tabpanel" :aria-labelledby="`feat-tab-${features[active].id}`" class="relative rounded-[2.25rem] bg-limestone p-4 shadow-[0_30px_70px_-40px_rgb(78_31_110/0.55)] ring-1 ring-obsidian/5 sm:p-6">
           <!-- Todas apiladas en la misma celda: las invisibles le dan el alto de la más grande -->
-          <div class="grid" @pointerdown="stopAutoplay" @keydown="stopAutoplay">
+          <div class="grid grid-cols-1" @pointerdown="stopAutoplay" @keydown="stopAutoplay">
             <div v-for="f in features" :key="`medida-${f.id}`" class="invisible col-start-1 row-start-1" aria-hidden="true" inert>
               <component :is="f.demo" paused />
             </div>
             <component :is="features[active].demo" :key="features[active].id" class="feat-in col-start-1 row-start-1 self-start" />
           </div>
-          <div class="mt-4 grid border-t-[1.5px] border-dotted border-obsidian/20 pt-4 text-obsidian/70">
+          <div class="mt-4 grid grid-cols-1 border-t-[1.5px] border-dotted border-obsidian/20 pt-4 text-obsidian/70">
             <p v-for="f in features" :key="`texto-${f.id}`" class="invisible col-start-1 row-start-1 pr-24" aria-hidden="true">{{ f.caption }}</p>
             <p class="col-start-1 row-start-1 flex items-start gap-2">
               <span class="min-w-0 flex-1">{{ features[active].caption }}</span>

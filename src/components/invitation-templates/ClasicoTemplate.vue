@@ -692,7 +692,7 @@ const {
               :key="guest.id"
               class="pc-border flex items-center justify-between gap-2 rounded-xl border bg-black/5 px-3 py-2"
             >
-              <span class="text-stone-800">{{ guest.full_name }}</span>
+              <span class="min-w-0 break-words text-stone-800">{{ guest.full_name }}</span>
               <div class="flex shrink-0 gap-2">
                 <button
                   type="button"
