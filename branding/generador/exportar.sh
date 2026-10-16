@@ -35,11 +35,23 @@ done
 for s in 1024 512 192 180; do render "$L/asiste-app-icon.svg" "$L/png/app-icon-$s.png" $s $s 1; done
 render "$L/asiste-app-icon-claro.svg" "$L/png/app-icon-claro-1024.png" 1024 1024 1
 for s in 1024 512 192 180; do render "$L/asiste-app-icon-cuadrado.svg" "$L/png/app-icon-cuadrado-$s.png" $s $s 0; done
-for s in 16 32 48; do render "$L/favicon.svg" "$L/png/favicon-$s.png" $s $s 1; done
+# Edge no saca capturas tan chicas: se renderiza grande y se achica con Pillow
+# (pip install pillow). De paso arma el .ico con 16, 32 y 48.
+render "$L/favicon.svg" "$L/png/favicon-512.png" 512 512 1
+python - "$L/png" <<'PY'
+import sys
+from PIL import Image
+d = sys.argv[1]
+big = Image.open(f'{d}/favicon-512.png').convert('RGBA')
+for s in (16, 32, 48):
+    big.resize((s, s), Image.LANCZOS).save(f'{d}/favicon-{s}.png')
+big.save(f'{d}/favicon.ico', sizes=[(16, 16), (32, 32), (48, 48)])
+PY
 
 # Lo que usa la web
 cp "$L/favicon.svg" "$P/favicon.svg"
 cp "$L/png/favicon-32.png" "$P/favicon-32.png"
+cp "$L/png/favicon.ico" "$P/favicon.ico"
 cp "$L/png/app-icon-cuadrado-180.png" "$P/apple-touch-icon.png"   # iPhone redondea solo
 cp "$L/png/app-icon-192.png" "$P/icon-192.png"
 cp "$L/png/app-icon-512.png" "$P/icon-512.png"

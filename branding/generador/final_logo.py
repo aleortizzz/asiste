@@ -116,6 +116,14 @@ def app_icon_full(tile, fg, uid, size=1024):
     return svg(size, size, f'<rect width="{size}" height="{size}" fill="{tile}"/>' + mark(fg, off, off, s, uid))
 
 
+def favicon(tile, fg):
+    """Solo la insignia ✓ del isotipo, ocupando todo el cuadro: a 16 px la lista
+    entera se volvía una mancha."""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>Asiste</title>'
+            f'<circle cx="50" cy="50" r="49" fill="{fg}"/>'
+            f'<g stroke="{tile}">{_ln("M25,51.5 L42.5,69 L76.5,32.5", 17.5)}</g></svg>\n')
+
+
 def main(out):
     os.makedirs(out, exist_ok=True)
     VERSIONES = {
@@ -134,8 +142,7 @@ def main(out):
     files['asiste-app-icon.svg'] = app_icon(VIOLETA, BLANCO, 'app')
     files['asiste-app-icon-claro.svg'] = app_icon(HUESO, VIOLETA, 'appc')
     files['asiste-app-icon-cuadrado.svg'] = app_icon_full(VIOLETA, BLANCO, 'appq')
-    files['favicon.svg'] = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>Asiste</title>'
-                            f'{mark(VIOLETA, 0, 0, 1, "fav")}</svg>\n')
+    files['favicon.svg'] = favicon(VIOLETA, BLANCO)
 
     for n, c in files.items():
         open(os.path.join(out, n), 'w', encoding='utf-8').write(c)
