@@ -34,10 +34,10 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:h-[4.5rem]">
       <a href="#inicio" class="text-4xl text-accent" @click="open = false"><BrandLogo /></a>
 
-      <nav aria-label="Secciones" class="hidden lg:block">
+      <nav aria-label="Secciones" class="hidden xl:block">
         <ul class="flex items-center gap-1">
           <li v-for="l in LINKS" :key="l.href">
-            <a :href="l.href" class="rounded-full px-3 py-2 text-[0.95rem] font-bold text-obsidian/70 transition-colors hover:bg-limestone hover:text-obsidian">
+            <a :href="l.href" class="rounded-full px-2.5 py-2 text-[0.95rem] font-bold whitespace-nowrap text-obsidian/70 transition-colors hover:bg-limestone hover:text-obsidian">
               {{ l.label }}
             </a>
           </li>
@@ -45,15 +45,20 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
       </nav>
 
       <div class="flex items-center gap-1 sm:gap-2">
-        <router-link :to="{ name: 'admin-login' }" class="rounded-full px-3 py-2 font-bold">Ingresar</router-link>
-        <router-link :to="{ name: 'crear' }" class="admin-btn-primary hidden !px-4 !py-2 text-sm sm:inline-flex">Creá tu invitación</router-link>
+        <router-link :to="{ name: 'admin-login' }" class="hidden rounded-full px-3 py-2 font-bold whitespace-nowrap sm:block">Ingresar</router-link>
+        <!-- Las dos acciones que importan: comprar y probar. En celular entra una sola. -->
+        <a href="#planes" class="admin-btn-secondary hidden !px-4 !py-[0.45rem] text-sm whitespace-nowrap md:inline-flex">Ver planes</a>
+        <router-link :to="{ name: 'crear' }" class="admin-btn-primary !px-4 !py-2 text-sm whitespace-nowrap">
+          <span class="sm:hidden">Probala gratis</span>
+          <span class="hidden sm:inline">Creá tu invitación gratis</span>
+        </router-link>
         <button
           type="button"
           @click="open = !open"
           :aria-expanded="open"
           aria-controls="landing-menu"
           aria-label="Menú"
-          class="grid h-11 w-11 place-items-center rounded-full bg-limestone lg:hidden"
+          class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-limestone xl:hidden"
         >
           <X v-if="open" :size="20" />
           <Menu v-else :size="20" />
@@ -63,15 +68,16 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
     <!-- Menú en celular -->
     <Transition name="menu">
-      <nav v-if="open" id="landing-menu" aria-label="Secciones" class="border-t border-obsidian/5 px-4 pb-5 lg:hidden">
+      <nav v-if="open" id="landing-menu" aria-label="Secciones" class="border-t border-obsidian/5 px-4 pb-5 xl:hidden">
         <ul class="mx-auto max-w-6xl divide-y divide-obsidian/5">
           <li v-for="l in LINKS" :key="l.href">
             <a :href="l.href" @click="open = false" class="block py-3.5 text-lg font-bold">{{ l.label }}</a>
           </li>
         </ul>
         <div class="mx-auto mt-3 grid max-w-6xl gap-2 sm:grid-cols-2">
-          <router-link :to="{ name: 'crear' }" class="admin-btn-primary">Creá tu invitación</router-link>
+          <router-link :to="{ name: 'crear' }" class="admin-btn-primary">Creá tu invitación gratis</router-link>
           <a href="#planes" @click="open = false" class="admin-btn-secondary">Ver planes</a>
+          <router-link :to="{ name: 'admin-login' }" class="py-2 text-center font-bold sm:hidden">Ingresar a mi cuenta</router-link>
         </div>
       </nav>
     </Transition>

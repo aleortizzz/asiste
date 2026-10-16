@@ -34,6 +34,13 @@ import { waLink } from '../lib/contact'
 
 // --- Planes ------------------------------------------------------------------------------
 const audience = ref('fiesta') // 'fiesta' | 'salon'
+// Prueba gratis: lo que SÍ trae (los límites van aparte, en letra chica).
+const FREE_PERKS = [
+  'Todas las funciones',
+  'Sin tarjeta ni cuenta',
+  `Mandásela a ${FREE_LIMITS.invitations} familias`,
+  'Al pagar, sigue el mismo link',
+]
 // La tabla comparativa arranca plegada: las tarjetas ya cuentan lo principal.
 const showTable = ref(false)
 
@@ -271,13 +278,15 @@ const verdict = computed(() => {
                 Con todas las funciones, para que pruebes todo antes de pagar. Para mandarla a todos, elegís un plan: se levantan
                 los límites y no perdés nada de lo que armaste.
               </p>
-              <ul class="mt-3 flex flex-wrap gap-1.5 text-xs font-bold text-obsidian/65">
-                <li class="rounded-full bg-limestone px-2.5 py-1">Hasta {{ FREE_LIMITS.invitations }} invitaciones</li>
-                <li class="rounded-full bg-limestone px-2.5 py-1">Cartel «Invitación de prueba»</li>
-                <li class="rounded-full bg-limestone px-2.5 py-1">
-                  El link se cierra a las {{ FREE_LIMITS.views }} visitas o {{ FREE_LIMITS.hours }} h
+              <ul class="mt-3 flex flex-wrap gap-1.5 text-xs font-bold">
+                <li v-for="t in FREE_PERKS" :key="t" class="flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-accent">
+                  <Check :size="13" /> {{ t }}
                 </li>
               </ul>
+              <p class="mt-2.5 text-xs text-obsidian/50">
+                Mientras es de prueba lleva un cartel que lo indica y el link se cierra a las {{ FREE_LIMITS.views }} visitas
+                o {{ FREE_LIMITS.hours }} h.
+              </p>
             </div>
             <router-link :to="{ name: 'crear' }" class="admin-btn-secondary w-full lg:w-auto">Creá tu invitación gratis</router-link>
           </div>
