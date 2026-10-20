@@ -41,6 +41,7 @@ _Última actualización: 2026-10-15._
   - Galería: recientes / más votadas, se actualiza sola cada 30 s, visor a pantalla completa, selección múltiple para descargar o borrar, «Descargar todas» en .zip. Tope de 500 fotos por evento.
 - **Canciones**: pedidos de los invitados (plan Plus), del más reciente al más viejo, con buscador y miniatura de YouTube. «Lista para el DJ»: copiar (para WhatsApp), PDF o Excel.
 - **Superadmin** («Clientes»): todos los eventos con filtro por plan, cuánto falta para cada uno, selector Básico | Plus y «Entrar» al panel de un cliente (cartel amarillo arriba).
+- **Aviso push de registros** (2026-10-20, solo superadmin): botón «Activar notificaciones» arriba en Superadmin (`SuperPushButton.vue`), por dispositivo. Trigger en `auth.users` → pg_net → Edge Function `aviso-registro` (web-push con VAPID) → `push_subscriptions` (FK a `superadmins`: una cuenta común no puede suscribirse). Sin las cuentas de recepción, una vez por cuenta (`avisos_registro`). `public/sw.js` solo maneja push (sin caché). Pasos de instalación en `supabase/functions/README.md`.
 - Ingresar / Registro público (`/admin/registro`) / recuperar y nueva contraseña: foto de fiesta a pantalla completa al azar (`public/fondos/`: `pc-N` horizontales para compu, `cel-N` verticales para celular; lista en `AuthLayout.vue`). Validación propia por campo (`useFormValidation.js` + `FormField.vue`) y errores de Supabase traducidos (`lib/authErrors.js`).
 
 ### Página de fotos para invitados (`/fotos/:eventId`, la del QR)

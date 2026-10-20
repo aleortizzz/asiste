@@ -7,6 +7,7 @@ import SuperClientes from '../components/superadmin/SuperClientes.vue'
 import SuperRegistros from '../components/superadmin/SuperRegistros.vue'
 import SuperPagos from '../components/superadmin/SuperPagos.vue'
 import SuperPrecios from '../components/superadmin/SuperPrecios.vue'
+import SuperPushButton from '../components/superadmin/SuperPushButton.vue'
 import { useSuperadmin } from '../composables/useSuperadmin'
 
 // Superadmin, en pestañas. La pestaña va en la URL (?seccion=pagos): sobrevive
@@ -62,9 +63,12 @@ onUnmounted(() => window.removeEventListener('resize', updateFades))
   <div class="admin-page">
     <AdminNav />
     <div class="mx-auto max-w-3xl px-4 pt-4 pb-16 lg:px-8 lg:pt-8">
-      <p class="inline-flex items-center gap-1.5 rounded-full bg-obsidian px-3 py-1 text-xs font-bold text-chalk">
-        <ShieldCheck :size="13" /> Superadmin
-      </p>
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <p class="inline-flex items-center gap-1.5 rounded-full bg-obsidian px-3 py-1 text-xs font-bold text-chalk">
+          <ShieldCheck :size="13" /> Superadmin
+        </p>
+        <SuperPushButton />
+      </div>
       <h1 class="admin-display mt-3 text-5xl sm:text-6xl">{{ current.label }}</h1>
 
       <!-- Pestañas: la pastilla queda quieta y en celular se deslizan las pestañas adentro.

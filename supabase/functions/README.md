@@ -1,9 +1,10 @@
-# Edge Functions (Mercado Pago)
+# Edge Functions
 
 | Función | La llama | Verify JWT |
 |---|---|---|
 | `crear-pago` | El panel («Tu plan»), con la sesión del organizador | **Sí** |
 | `mp-webhook` | Mercado Pago, cuando un pago cambia | **No** (MP no tiene sesión) |
+| `aviso-registro` | La base (trigger en `auth.users`), al crearse una cuenta | **No** (la llama la base) |
 
 La lógica de los pagos está en la base: `migrations/20261015_pagos.sql` (correrla antes).
 
@@ -21,12 +22,26 @@ La lógica de los pagos está en la base: `migrations/20261015_pagos.sql` (corre
 
 Los cambios a una función se suben repitiendo el paso 2 (editar y *Deploy*).
 
+## Aviso de registros (`aviso-registro`)
+
+Notificación push al superadmin cada vez que alguien se registra. Orden:
+
+1. Desplegar la función (como arriba) y apagarle **Enforce JWT verification**.
+2. **Secrets**: `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (el par se genera una vez con
+   `npx web-push generate-vapid-keys`; si se cambia, hay que volver a activar los avisos en cada dispositivo).
+   Opcional: `VAPID_SUBJECT` (`mailto:...`).
+3. Correr `migrations/20261020_aviso_registros.sql`.
+4. La pública también va en el front: `VITE_VAPID_PUBLIC_KEY` en `.env` y en los Secrets de GitHub.
+5. En Superadmin → **Activar notificaciones** (arriba), en cada dispositivo donde los quieras.
+   En iPhone, solo con Asiste instalada (Compartir → Agregar a inicio) y abierta desde el ícono.
+
 ## Con la CLI (alternativa)
 
 ```sh
 npx supabase login
 npx supabase functions deploy crear-pago --project-ref <ref>
 npx supabase functions deploy mp-webhook --project-ref <ref> --no-verify-jwt
+npx supabase functions deploy aviso-registro --project-ref <ref> --no-verify-jwt
 npx supabase secrets set MP_ACCESS_TOKEN=... --project-ref <ref>
 ```
 
