@@ -26,7 +26,7 @@ onMounted(async () => {
 async function fetchSongs() {
   const { data, error: err } = await supabase
     .from('song_requests')
-    .select('id, song_title, artist, youtube_video_id, requested_by, created_at')
+    .select('id, song_title, artist, youtube_video_id, requested_by, created_at, invitation_groups(family_name)')
     .eq('event_id', event.value.id)
     .order('created_at', { ascending: false })
   if (err) error.value = `No se pudieron cargar las canciones: ${err.message}`
@@ -36,6 +36,15 @@ async function fetchSongs() {
 const isPlus = computed(() => hasFeature(event.value?.plan, 'canciones'))
 
 const norm = (s) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+// Quién la pidió + de qué invitación vino: «Juan Pérez (Familia Ortiz Justo)». La
+// familia sale sola del link (group_id); si se borró la invitación, solo el nombre.
+const familyOf = (s) => s.invitation_groups?.family_name?.trim() ?? ''
+function pedidoPor(s) {
+  const name = s.requested_by.trim()
+  const family = familyOf(s)
+  return family && norm(family) !== norm(name) ? `${name} (${family})` : name
+}
+
 const people = computed(() => new Set(songs.value.map((s) => norm(s.requested_by))).size)
 
 // --- Búsqueda ---------------------------------------------------------------------
@@ -43,7 +52,7 @@ const search = ref('')
 const visibleSongs = computed(() => {
   const q = norm(search.value)
   return songs.value.filter(
-    (s) => !q || norm(s.song_title).includes(q) || norm(s.artist).includes(q) || norm(s.requested_by).includes(q),
+    (s) => !q || norm(s.song_title).includes(q) || norm(s.artist).includes(q) || norm(s.requested_by).includes(q) || norm(familyOf(s)).includes(q),
   )
 })
 
@@ -93,7 +102,7 @@ const copyList = () =>
   run('copy', async () => {
     const lines = songs.value.map((s, i) => {
       const link = s.youtube_video_id ? `\n   ${shortUrl(s)}` : ''
-      return `${i + 1}. ${s.song_title}${s.artist ? ` — ${s.artist}` : ''} (pidió ${s.requested_by.trim()})${link}`
+      return `${i + 1}. ${s.song_title}${s.artist ? ` — ${s.artist}` : ''} (pidió ${pedidoPor(s)})${link}`
     })
     await navigator.clipboard.writeText(`Canciones pedidas · ${eventTitle()}\n\n${lines.join('\n')}`)
     copied.value = true
@@ -121,7 +130,7 @@ const exportPdf = () =>
       startY: 33,
       margin: { left: margin, right: margin, bottom: 18 },
       head: [['#', 'Canción', 'Artista', 'Pidió', 'YouTube']],
-      body: songs.value.map((s, i) => [i + 1, s.song_title, s.artist ?? '', s.requested_by, shortUrl(s)]),
+      body: songs.value.map((s, i) => [i + 1, s.song_title, s.artist ?? '', pedidoPor(s), shortUrl(s)]),
       styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 2.4, textColor: 20, lineColor: 220, lineWidth: 0.1, overflow: 'linebreak' },
       headStyles: { fillColor: [78, 31, 110], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [247, 246, 242] },
@@ -154,13 +163,13 @@ const exportXlsx = () =>
       ...songs.value.map((s) => [
         { value: s.song_title },
         { value: s.artist ?? '' },
-        { value: s.requested_by },
+        { value: pedidoPor(s) },
         { value: formatDateTime(s.created_at) },
         { value: shortUrl(s) },
       ]),
     ]
     await writeExcelFile(sheetData, {
-      columns: [{ width: 36 }, { width: 26 }, { width: 24 }, { width: 18 }, { width: 32 }],
+      columns: [{ width: 36 }, { width: 26 }, { width: 36 }, { width: 18 }, { width: 32 }],
       stickyRowsCount: 1,
     }).toFile(`${baseFileName()}.xlsx`)
   })
@@ -171,7 +180,7 @@ const deletingId = ref(null)
 async function removeSong(song) {
   const ok = await confirmDialog({
     title: '¿Eliminar este pedido?',
-    message: `«${song.song_title}», pedida por ${song.requested_by}, deja de aparecer en la lista. No se puede deshacer.`,
+    message: `«${song.song_title}», pedida por ${pedidoPor(song)}, deja de aparecer en la lista. No se puede deshacer.`,
     confirmText: 'Eliminar',
     tone: 'danger',
   })
@@ -305,7 +314,7 @@ async function removeSong(song) {
               <div class="min-w-0 flex-1">
                 <p class="truncate font-bold">{{ s.song_title }}</p>
                 <p class="truncate text-sm text-obsidian/55">
-                  <template v-if="s.artist">{{ s.artist }} · </template>Pedida por {{ s.requested_by }}
+                  <template v-if="s.artist">{{ s.artist }} · </template>Pedida por {{ pedidoPor(s) }}
                 </p>
                 <p class="text-xs text-obsidian/40" :title="formatDateTime(s.created_at)">{{ timeAgo(s.created_at) }}</p>
               </div>
