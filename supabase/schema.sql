@@ -3256,6 +3256,10 @@ create table if not exists public.avisos_registro (
 );
 alter table public.avisos_registro enable row level security;
 
+-- La Edge Function usa service_role: se saltea RLS pero necesita el GRANT igual.
+grant select, insert on public.avisos_registro to service_role;
+grant select, delete on public.push_subscriptions to service_role;
+
 -- 3) Trigger: cuenta nueva → Edge Function.
 -- Las cuentas de recepción (las crea el organizador, no son clientes) no avisan.
 -- Si la llamada falla, el registro sigue igual: nunca se corta un alta por un aviso.
@@ -3290,3 +3294,33 @@ drop trigger if exists avisar_registro on auth.users;
 create trigger avisar_registro
   after insert on auth.users
   for each row execute function public.avisar_registro();
+
+-- ============================================================
+-- Superadmin: eliminar cuentas sin evento (migrations/20261020_eliminar_cuenta.sql)
+-- ============================================================
+
+create or replace function public.eliminar_cuenta_superadmin(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not soy_superadmin() then
+    raise exception 'No autorizado';
+  end if;
+  if exists (select 1 from superadmins where user_id = p_user_id) then
+    raise exception 'No se puede eliminar una cuenta de superadmin.';
+  end if;
+  if exists (select 1 from events where owner_user_id = p_user_id) then
+    raise exception 'Esa cuenta tiene un evento: eliminalo antes desde Clientes.';
+  end if;
+
+  delete from auth.users
+  where id = p_user_id
+    and email not like '%@recepcion.tizdigital.com';
+end;
+$$;
+
+revoke execute on function public.eliminar_cuenta_superadmin(uuid) from public, anon;
+grant execute on function public.eliminar_cuenta_superadmin(uuid) to authenticated;

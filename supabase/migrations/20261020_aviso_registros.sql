@@ -46,6 +46,10 @@ create table if not exists public.avisos_registro (
 );
 alter table public.avisos_registro enable row level security;
 
+-- La Edge Function usa service_role: se saltea RLS pero necesita el GRANT igual.
+grant select, insert on public.avisos_registro to service_role;
+grant select, delete on public.push_subscriptions to service_role;
+
 -- 3) Trigger: cuenta nueva → Edge Function.
 -- Las cuentas de recepción (las crea el organizador, no son clientes) no avisan.
 -- Si la llamada falla, el registro sigue igual: nunca se corta un alta por un aviso.

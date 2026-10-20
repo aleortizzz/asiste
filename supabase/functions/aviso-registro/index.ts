@@ -34,7 +34,11 @@ Deno.serve(async (req) => {
 
   // Una sola vez por cuenta: si ya estaba anotada, el insert choca (23505).
   const { error: dupErr } = await admin.from('avisos_registro').insert({ user_id: userId })
-  if (dupErr) return ok(dupErr.code === '23505' ? 'ya avisado' : 'error al anotar')
+  if (dupErr?.code === '23505') return ok('ya avisado')
+  if (dupErr) {
+    console.error('avisos_registro', dupErr)
+    return ok('error al anotar')
+  }
 
   const { data: subs, error: subsErr } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth')
   if (subsErr) {

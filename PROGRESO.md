@@ -87,7 +87,7 @@ Probado contra producción como visitante sin cuenta: ninguna tabla se puede lee
 Regla: todo lo que se paga o es privado se controla en la base, y cada cambio se prueba como `authenticated` / `anon` (no como superusuario).
 
 ### Aprendizajes que conviene no olvidar
-- **GRANT**: las tablas creadas por SQL no les dan permisos a `authenticated`. Sin `grant select/insert/update/delete ... to authenticated` da "permission denied" aunque las policies de RLS estén bien.
+- **GRANT**: las tablas creadas por SQL no les dan permisos a `authenticated`. Sin `grant select/insert/update/delete ... to authenticated` da "permission denied" aunque las policies de RLS estén bien. Lo mismo con `service_role` (Edge Functions): se saltea RLS pero necesita su `grant` (pasó con el aviso de registros, 2026-10-20).
 - **Funciones `language sql`**: nombrar las tablas con schema (`public.events`). Postgres valida el cuerpo al crearlas y en el SQL Editor da «relation does not exist» aunque la función tenga `set search_path = public`.
 - **Cambiar parámetros de una RPC** crea una sobrecarga nueva: hay que hacer `drop function` de la firma vieja antes de recrearla.
 - Lo público va siempre por RPC `security definer` que devuelve solo lo necesario, nunca con policies abiertas sobre las tablas.
