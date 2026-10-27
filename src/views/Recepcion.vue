@@ -299,7 +299,11 @@ async function onLogout() {
               >
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-lg font-bold">{{ g.full_name }}</p>
-                  <p v-if="g.arrived_at" class="text-xs text-obsidian/55">Llegó {{ timeOf(g.arrived_at) }}</p>
+                  <p v-if="g.arrived_at || g.is_minor" class="text-xs text-obsidian/55">
+                    <template v-if="g.is_minor"><strong class="text-accent">Menor de {{ event?.minor_age ?? 3 }}</strong></template>
+                    <template v-if="g.is_minor && g.arrived_at"> · </template>
+                    <template v-if="g.arrived_at">Llegó {{ timeOf(g.arrived_at) }}</template>
+                  </p>
                 </div>
                 <span
                   class="shrink-0 rounded-full px-3 py-1.5 text-sm font-bold"

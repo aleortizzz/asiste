@@ -35,6 +35,7 @@ async function fetchRows() {
     email: (g.email || '').trim(),
     phone: (g.phone || '').trim(),
     dietary: (g.dietary || '').trim(),
+    minor: g.is_minor ? `Menor de ${minorAge()}` : '',
   }))
   // Por mesa: agrupados por mesa («Mesa 2» antes que «Mesa 10») y los sin
   // mesa al final. Por nombre: alfabético, que es como se busca en la puerta.
@@ -64,8 +65,12 @@ function eventDateLabel() {
   return new Date(y, m - 1, d).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-// Datos extra que dejaron al confirmar: solo las columnas que alguien completó.
+const minorAge = () => event.value.minor_age ?? 3
+
+// Datos extra que dejaron al confirmar (y la marca de menor que pone el
+// organizador): solo las columnas que alguien completó.
 const EXTRA_COLUMNS = [
+  { key: 'minor', label: 'Menor', pdf: true, width: 14 },
   { key: 'company', label: 'Empresa', pdf: true, width: 24 },
   { key: 'job_title', label: 'Cargo', pdf: true, width: 22 },
   { key: 'email', label: 'Mail', pdf: false, width: 30 },
@@ -126,8 +131,10 @@ const exportPdf = () =>
     doc.setFontSize(10)
     doc.setTextColor(110)
     const date = eventDateLabel()
+    const minors = rows.filter((r) => r.minor).length
     doc.text(
-      `${date ? `${date} · ` : ''}Lista para la entrada · ${rows.length} ${rows.length === 1 ? 'invitado confirmado' : 'invitados confirmados'}`,
+      `${date ? `${date} · ` : ''}Lista para la entrada · ${rows.length} ${rows.length === 1 ? 'invitado confirmado' : 'invitados confirmados'}` +
+        (minors ? ` (${minors} ${minors === 1 ? 'menor' : 'menores'} de ${minorAge()})` : ''),
       margin,
       27,
     )
@@ -181,8 +188,8 @@ const exportPdf = () =>
       class="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-[1.5rem] bg-chalk p-3 shadow-xl ring-1 ring-obsidian/5"
     >
       <p class="px-2 pt-1 text-xs text-obsidian/55">
-        Quienes confirmaron que asisten, con su mesa y un casillero para marcar la llegada. Si dejaron datos al confirmar, van
-        también (empresa y cargo en el PDF; todo en el Excel).
+        Quienes confirmaron que asisten, con su mesa y un casillero para marcar la llegada. Los menores que marcaste van
+        señalados. Si dejaron datos al confirmar, van también (empresa y cargo en el PDF; todo en el Excel).
       </p>
 
       <div class="mt-3 flex items-center justify-between gap-2 px-2">

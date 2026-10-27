@@ -89,7 +89,7 @@ async function fetchGroups() {
   // "huecos" con allowed_guests para que los totales por invitado cierren.
   const { data, error } = await supabase
     .from('invitation_groups')
-    .select('id, family_name, slug, status, allowed_guests, guests(rsvp_status, table_id), invitation_views(count)')
+    .select('id, family_name, slug, status, allowed_guests, guests(rsvp_status, table_id, is_minor), invitation_views(count)')
     .eq('event_id', event.value.id)
   if (!error) groups.value = data
 }
@@ -263,6 +263,11 @@ const totalGuests = computed(() => groups.value.reduce((sum, g) => sum + g.allow
 
 const confirmedGuests = computed(() =>
   groups.value.reduce((sum, g) => sum + g.guests.filter((x) => x.rsvp_status === 'attending').length, 0),
+)
+
+// Menores marcados en Invitados (ej. el salón no cobra a los menores de 3).
+const confirmedMinors = computed(() =>
+  groups.value.reduce((sum, g) => sum + g.guests.filter((x) => x.rsvp_status === 'attending' && x.is_minor).length, 0),
 )
 
 const declinedGuests = computed(() =>
@@ -490,6 +495,11 @@ async function copyLink(group) {
               <p class="mt-2 text-chalk/70">
                 de {{ totalGuests }} invitados
                 <template v-if="totalGuests > 0"> · {{ confirmedPct }}%</template>
+              </p>
+              <p v-if="confirmedMinors > 0" class="mt-1 text-chalk/70">
+                <strong class="text-chalk">{{ confirmedMinors }} {{ confirmedMinors === 1 ? 'menor' : 'menores' }}</strong> de
+                {{ event.minor_age ?? 3 }} {{ (event.minor_age ?? 3) === 1 ? 'año' : 'años' }} ·
+                {{ confirmedGuests - confirmedMinors }} sin contarlos
               </p>
             </div>
 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { nanoid } from 'nanoid'
-import { Search, UserPlus, X, Link2, Check, Pencil, Trash2, Plus, EyeOff, Eye } from '@lucide/vue'
+import { Search, UserPlus, X, Link2, Check, Pencil, Trash2, Plus, EyeOff, Eye, Baby } from '@lucide/vue'
 import AdminNav from '../components/AdminNav.vue'
 import ExportEntryList from '../components/ExportEntryList.vue'
 import { useEvent } from '../composables/useEvent'
@@ -106,7 +106,14 @@ function rowsFor(group) {
   if (group.guests.length > 0) {
     const guests = [...group.guests].sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
     for (const guest of guests) {
-      rows.push({ key: guest.id, id: guest.id, name: guest.full_name, status: guest.rsvp_status, info: guestInfo(guest) })
+      rows.push({
+        key: guest.id,
+        id: guest.id,
+        name: guest.full_name,
+        status: guest.rsvp_status,
+        info: guestInfo(guest),
+        minor: !!guest.is_minor,
+      })
     }
     const unclaimed = group.allowed_guests - group.guests.length
     if (unclaimed > 0) rows.push({ key: `${group.id}-rest`, id: null, name: null, status: 'not_attending', count: unclaimed })
@@ -498,6 +505,31 @@ async function saveNames(group, familyName) {
   }
 }
 
+// --- Menores -------------------------------------------------------------------
+// Para salones que cobran por cubierto pero no cuentan a los más chicos: se
+// marca persona por persona y el Inicio y la lista de la entrada los separan.
+// La edad es solo la etiqueta («menor de 3»), una por evento.
+const minorAge = computed(() => event.value?.minor_age ?? 3)
+const confirmedMinors = computed(() =>
+  groups.value.reduce((sum, g) => sum + g.guests.filter((x) => x.rsvp_status === 'attending' && x.is_minor).length, 0),
+)
+
+async function toggleMinor(row) {
+  error.value = ''
+  savingKey.value = `minor-${row.key}`
+  const { error: err } = await supabase.from('guests').update({ is_minor: !row.minor }).eq('id', row.id)
+  if (err) error.value = `No se pudo guardar: ${err.message}`
+  await fetchGroups()
+  savingKey.value = null
+}
+
+async function saveMinorAge(e) {
+  const age = Number(e.target.value)
+  const { error: err } = await supabase.from('events').update({ minor_age: age }).eq('id', event.value.id)
+  if (err) error.value = `No se pudo guardar: ${err.message}`
+  else event.value.minor_age = age
+}
+
 // --- Corregir respuestas -------------------------------------------------------
 
 // Evento con «fecha de cierre» ya vencida: el servidor bloquea el cambio del
@@ -620,6 +652,21 @@ async function saveAdding(group, row) {
             Cupo: <strong class="text-obsidian">{{ activeAllowed }}{{ event.guest_limit != null ? ` / ${event.guest_limit}` : '' }}</strong>
             {{ event.guest_limit == null ? 'invitados (sin tope)' : 'invitados' }}
             <span v-if="declinedCount > 0"> · {{ declinedCount }} liberados por cancelaciones</span>
+          </p>
+          <p v-if="event" class="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-obsidian/60">
+            <Baby :size="15" class="shrink-0" />
+            <label for="minor-age">Menores de</label>
+            <select
+              id="minor-age"
+              :value="minorAge"
+              @change="saveMinorAge"
+              class="rounded-full bg-limestone px-2 py-0.5 font-bold text-obsidian"
+            >
+              <option v-for="n in 17" :key="n" :value="n">{{ n }}</option>
+            </select>
+            <span>{{ minorAge === 1 ? 'año' : 'años' }}:</span>
+            <strong class="text-obsidian">{{ confirmedMinors }} {{ confirmedMinors === 1 ? 'confirmado' : 'confirmados' }}</strong>
+            <span class="text-obsidian/45">· marcalos con el bebé al lado de cada nombre</span>
           </p>
         </div>
         <div v-if="event && !loading && hasFeature(event.plan, 'panel')" class="flex flex-wrap gap-2">
@@ -961,7 +1008,22 @@ async function saveAdding(group, row) {
                       }"
                     ></span>
                     <span v-if="row.name" class="min-w-0">
-                      <span class="block truncate font-bold">{{ row.name }}</span>
+                      <span class="flex min-w-0 items-center gap-1.5">
+                        <span class="truncate font-bold">{{ row.name }}</span>
+                        <button
+                          type="button"
+                          @click="toggleMinor(row)"
+                          :disabled="savingKey === `minor-${row.key}`"
+                          :aria-pressed="row.minor"
+                          :aria-label="row.minor ? `Desmarcar a ${row.name} como menor` : `Marcar a ${row.name} como menor de ${minorAge}`"
+                          :title="row.minor ? 'Desmarcar como menor' : `Marcar como menor de ${minorAge}`"
+                          :class="row.minor ? 'bg-accent-soft px-2 text-accent' : 'w-6 justify-center text-obsidian/30 hover:bg-limestone hover:text-obsidian'"
+                          class="flex h-6 shrink-0 items-center gap-1 rounded-full text-xs font-bold transition-colors disabled:opacity-50"
+                        >
+                          <Baby :size="14" />
+                          <template v-if="row.minor">Menor de {{ minorAge }}</template>
+                        </button>
+                      </span>
                       <span v-if="row.info" class="block text-xs leading-snug break-words text-obsidian/55">{{ row.info }}</span>
                     </span>
                     <span v-else class="text-sm text-obsidian/55">
