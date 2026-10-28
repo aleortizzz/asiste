@@ -64,7 +64,12 @@ Deno.serve(async (req) => {
   await Promise.all(
     subs.map(async (s) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
+        // urgency 'high': si no, Android la retiene con el celular en reposo (Doze) hasta que lo usás.
+        // TTL: si el dispositivo está apagado, el servicio de push la guarda hasta 1 día.
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, {
+          urgency: 'high',
+          TTL: 24 * 60 * 60,
+        })
       } catch (err) {
         // 404/410: el navegador dio de baja la suscripción (se desinstaló, se borraron los datos…).
         const status = (err as { statusCode?: number }).statusCode
@@ -75,5 +80,5 @@ Deno.serve(async (req) => {
   )
 
   console.log('Aviso de registro', user.email, subs.length)
-  return ok()
+  return ok('ok urgente')
 })
