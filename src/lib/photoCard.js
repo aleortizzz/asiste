@@ -1,7 +1,9 @@
 import QRCode from 'qrcode'
 import { lighten, darken } from './color'
 
-// Cartel «¡Sacá tus fotos!» para las mesas (A5 vertical, 148 × 210 mm).
+// Cartel «¡Sacá tus fotos!» para las mesas. El diseño está pensado en A5
+// vertical (148 × 210 mm) y se adapta a otras medidas (10 × 15 para un
+// portarretrato, A4, etc.). Opcionalmente lleva el número de mesa grande.
 //
 // Se dibuja en un <canvas> en vez de armarlo con jsPDF directo: así podemos
 // usar fuentes manuscritas de Google Fonts, la foto del evento recortada y
@@ -170,11 +172,11 @@ function drawArrow(ctx, x1, x2, y, color) {
   ctx.restore()
 }
 
-// Franjas diagonales en una esquina, recortadas al borde del cartel.
-function drawCornerStripes(ctx, corner, color) {
+// Franjas diagonales en una esquina, recortadas al borde del papel (w × h).
+function drawCornerStripes(ctx, corner, color, w, h) {
   ctx.save()
   ctx.beginPath()
-  ctx.rect(0, 0, CARD_W, CARD_H)
+  ctx.rect(0, 0, w, h)
   ctx.clip()
   ctx.strokeStyle = color
   ctx.lineWidth = 2.6
@@ -185,8 +187,8 @@ function drawCornerStripes(ctx, corner, color) {
       ctx.moveTo(-2, d + 2)
       ctx.lineTo(d + 2, -2)
     } else {
-      ctx.moveTo(CARD_W + 2, CARD_H - d - 2)
-      ctx.lineTo(CARD_W - d - 2, CARD_H + 2)
+      ctx.moveTo(w + 2, h - d - 2)
+      ctx.lineTo(w - d - 2, h + 2)
     }
     ctx.stroke()
   }
@@ -194,7 +196,8 @@ function drawCornerStripes(ctx, corner, color) {
 }
 
 // Foto con marco blanco tipo polaroid, girada, con un corazoncito abajo.
-function drawPolaroid(ctx, img, cx, cy, color) {
+// Mide 50 × 58 mm por `size`.
+function drawPolaroid(ctx, img, cx, cy, color, size = 1) {
   const w = 50
   const h = 58
   const pad = 3.2
@@ -202,6 +205,7 @@ function drawPolaroid(ctx, img, cx, cy, color) {
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate((-5 * Math.PI) / 180)
+  ctx.scale(size, size)
   ctx.shadowColor = 'rgba(40, 30, 50, 0.22)'
   ctx.shadowBlur = 3
   ctx.shadowOffsetY = 0.8
@@ -229,18 +233,48 @@ function text(ctx, str, x, y, { font, size, color, weight = '', align = 'center'
   ctx.fillText(str, x, y)
 }
 
-// Texto que achica la letra hasta que entra en `maxWidth`.
-function fitText(ctx, str, x, y, maxWidth, opts) {
+// Tamaño de letra (desde opts.size para abajo) con el que `str` entra en `maxWidth`.
+// Deja ctx.font puesto con ese tamaño.
+function fitSize(ctx, str, maxWidth, opts) {
   let size = opts.size
   ctx.font = `${opts.weight ?? ''} ${size}px "${opts.font}", cursive`.trim()
   while (ctx.measureText(str).width > maxWidth && size > 3) {
     size -= 0.25
     ctx.font = `${opts.weight ?? ''} ${size}px "${opts.font}", cursive`.trim()
   }
-  text(ctx, str, x, y, { ...opts, size })
+  return size
+}
+
+// Texto que achica la letra hasta que entra en `maxWidth`.
+function fitText(ctx, str, x, y, maxWidth, opts) {
+  text(ctx, str, x, y, { ...opts, size: fitSize(ctx, str, maxWidth, opts) })
 }
 
 const EVENT_WORD = { cumpleanos: 'del cumple', casamiento: 'de la boda', empresarial: 'del evento' }
+
+// La foto y el QR se cachean: al armar un cartel por mesa se dibujan muchas
+// veces con los mismos datos.
+const photoCache = new Map()
+function loadPhoto(photoUrl) {
+  if (!photoCache.has(photoUrl)) {
+    // Parámetro extra: si el navegador ya tenía la foto en caché de un <img>
+    // común (sin CORS), esa copia no sirve para el canvas; así la pide de nuevo.
+    // Sin foto el cartel se arma igual, centrado.
+    photoCache.set(photoUrl, loadImage(`${photoUrl}${photoUrl.includes('?') ? '&' : '?'}card=1`).catch(() => null))
+  }
+  return photoCache.get(photoUrl)
+}
+
+const qrCache = new Map()
+function loadQr(url) {
+  if (!qrCache.has(url)) {
+    qrCache.set(
+      url,
+      QRCode.toDataURL(url, { width: 900, margin: 0, errorCorrectionLevel: 'M', color: { dark: '#1f1a24', light: '#ffffff' } }).then(loadImage),
+    )
+  }
+  return qrCache.get(url)
+}
 
 /**
  * Dibuja el cartel y devuelve el canvas.
@@ -249,43 +283,88 @@ const EVENT_WORD = { cumpleanos: 'del cumple', casamiento: 'de la boda', empresa
  * @param {string} o.color      color principal de la invitación
  * @param {string} [o.photoUrl] foto para la polaroid (opcional)
  * @param {string} [o.eventType] 'cumpleanos' | 'casamiento' | 'empresarial'
+ * @param {number|string} [o.tableNumber] si viene, el cartel es «Mesa N» (o «Mesa Principal») con el QR abajo
+ * @param {number} [o.width]    ancho del papel en mm (por defecto A5)
+ * @param {number} [o.height]   alto del papel en mm
  * @param {number} [o.pxPerMm]  resolución (11.8 ≈ 300 dpi, para imprimir)
  */
-export async function renderPhotoCard({ url, color, photoUrl, eventType, pxPerMm = 11.8 }) {
+export async function renderPhotoCard({
+  url,
+  color,
+  photoUrl,
+  eventType,
+  tableNumber = null,
+  width = CARD_W,
+  height = CARD_H,
+  pxPerMm = 11.8,
+}) {
   await loadFonts()
   const accent = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#7c4dab'
-  const tint = lighten(accent, 0.82)
-  const soft = lighten(accent, 0.55)
-  const deep = darken(accent, 0.15)
-
-  let photo = null
-  if (photoUrl) {
-    try {
-      // Parámetro extra: si el navegador ya tenía la foto en caché de un <img>
-      // común (sin CORS), esa copia no sirve para el canvas; así la pide de nuevo.
-      photo = await loadImage(`${photoUrl}${photoUrl.includes('?') ? '&' : '?'}card=1`)
-    } catch {
-      photo = null // sin foto el cartel se arma igual, centrado
-    }
+  const theme = {
+    accent,
+    tint: lighten(accent, 0.82),
+    soft: lighten(accent, 0.55),
+    deep: darken(accent, 0.15),
   }
-  const qr = await loadImage(
-    await QRCode.toDataURL(url, { width: 900, margin: 0, errorCorrectionLevel: 'M', color: { dark: '#1f1a24', light: '#ffffff' } }),
-  )
+
+  const photo = photoUrl ? await loadPhoto(photoUrl) : null
+  const qr = await loadQr(url)
 
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(CARD_W * pxPerMm)
-  canvas.height = Math.round(CARD_H * pxPerMm)
+  canvas.width = Math.round(width * pxPerMm)
+  canvas.height = Math.round(height * pxPerMm)
   const ctx = canvas.getContext('2d')
-  ctx.scale(pxPerMm, pxPerMm)
 
-  // Papel y esquinas.
+  // El diseño está pensado en A5 (CARD_W × CARD_H). En otras medidas se escala
+  // para que entre entero, y el papel (fondo y franjas) llena lo que sobra.
+  const s = Math.min(width / CARD_W, height / CARD_H)
+  const paperW = width / s
+  const paperH = height / s
+  ctx.scale(pxPerMm * s, pxPerMm * s)
+
   ctx.fillStyle = PAPER
-  ctx.fillRect(0, 0, CARD_W, CARD_H)
-  drawCornerStripes(ctx, 'tl', tint)
-  drawCornerStripes(ctx, 'br', tint)
+  ctx.fillRect(0, 0, paperW, paperH)
+  drawCornerStripes(ctx, 'tl', theme.tint, paperW, paperH)
+  drawCornerStripes(ctx, 'br', theme.tint, paperW, paperH)
+  ctx.translate((paperW - CARD_W) / 2, (paperH - CARD_H) / 2)
 
   const subtitle2 = `tus fotos ${EVENT_WORD[eventType] ?? 'del evento'}`
+  if (tableNumber != null) drawTableCard(ctx, { photo, qr, tableNumber, subtitle2, ...theme })
+  else drawPhotoCard(ctx, { photo, qr, subtitle2, ...theme })
 
+  // Para avisar en el panel si la foto elegida no se pudo usar.
+  canvas.dataset.photo = photo ? 'ok' : photoUrl ? 'failed' : 'none'
+  return canvas
+}
+
+// QR en un recuadro blanco con borde del color de la invitación.
+function drawQrFrame(ctx, qr, qx, qy, frame, accent) {
+  ctx.fillStyle = '#ffffff'
+  ctx.strokeStyle = accent
+  ctx.lineWidth = 1.1
+  ctx.beginPath()
+  ctx.roundRect(qx, qy, frame, frame, 3.5)
+  ctx.fill()
+  ctx.stroke()
+  ctx.imageSmoothingEnabled = false // bordes del QR bien nítidos
+  ctx.drawImage(qr, qx + 4, qy + 4, frame - 8, frame - 8)
+  ctx.imageSmoothingEnabled = true
+  drawSparkLines(ctx, qx - 3, qy + frame / 2, accent, { from: Math.PI * 0.8, to: Math.PI * 1.2, inner: 1.5, outer: 5 })
+}
+
+// Camarita con corazón (va al costado del QR).
+function drawCamera(ctx, x, y, accent) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(0.12)
+  drawIcon(ctx, ICONS.camera, 0, 0, 15, accent, 1.5)
+  drawHeart(ctx, 0, 0.9, 4, accent, { fill: true })
+  ctx.restore()
+  drawSparkLines(ctx, x, y - 8, accent, { from: -Math.PI * 0.75, to: -Math.PI * 0.25, inner: 1.2, outer: 3.6 })
+}
+
+// Cartel «¡Sacá tus fotos!»: foto + título, QR grande, los tres pasos y gracias.
+function drawPhotoCard(ctx, { photo, qr, subtitle2, accent, tint, soft, deep }) {
   // --- Encabezado: polaroid + título, o solo título centrado ---
   if (photo) {
     drawPolaroid(ctx, photo, 42, 52, accent)
@@ -309,30 +388,9 @@ export async function renderPhotoCard({ url, color, photoUrl, eventType, pxPerMm
   // --- QR ---
   const qrTop = photo ? 84 : 70
   const frame = photo ? 54 : 60
-  const qrSize = frame - 8
   const qx = CARD_W / 2 - frame / 2
-  ctx.fillStyle = '#ffffff'
-  ctx.strokeStyle = accent
-  ctx.lineWidth = 1.1
-  ctx.beginPath()
-  ctx.roundRect(qx, qrTop, frame, frame, 3.5)
-  ctx.fill()
-  ctx.stroke()
-  ctx.imageSmoothingEnabled = false // bordes del QR bien nítidos
-  ctx.drawImage(qr, qx + 4, qrTop + 4, qrSize, qrSize)
-  ctx.imageSmoothingEnabled = true
-  drawSparkLines(ctx, qx - 3, qrTop + frame / 2, accent, { from: Math.PI * 0.8, to: Math.PI * 1.2, inner: 1.5, outer: 5 })
-
-  // Camarita con corazón al costado del QR.
-  const camX = qx + frame + 15
-  const camY = qrTop + frame / 2 - 2
-  ctx.save()
-  ctx.translate(camX, camY)
-  ctx.rotate(0.12)
-  drawIcon(ctx, ICONS.camera, 0, 0, 15, accent, 1.5)
-  drawHeart(ctx, 0, 0.9, 4, accent, { fill: true })
-  ctx.restore()
-  drawSparkLines(ctx, camX, camY - 8, accent, { from: -Math.PI * 0.75, to: -Math.PI * 0.25, inner: 1.2, outer: 3.6 })
+  drawQrFrame(ctx, qr, qx, qrTop, frame, accent)
+  drawCamera(ctx, qx + frame + 15, qrTop + frame / 2 - 2, accent)
 
   // --- Pasos ---
   const stepsY = qrTop + frame + 18
@@ -357,15 +415,7 @@ export async function renderPhotoCard({ url, color, photoUrl, eventType, pxPerMm
   // --- Cierre ---
   const thanksY = Math.min(stepsY + 38, CARD_H - 16)
   text(ctx, '¡Gracias!', CARD_W / 2, thanksY, { font: TITLE_FONT, size: 10, color: accent })
-  ctx.strokeStyle = accent
-  ctx.lineWidth = 0.55
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  ctx.moveTo(CARD_W / 2 - 26, thanksY - 2.6)
-  ctx.lineTo(CARD_W / 2 - 19, thanksY - 2.6)
-  ctx.moveTo(CARD_W / 2 + 19, thanksY - 2.6)
-  ctx.lineTo(CARD_W / 2 + 26, thanksY - 2.6)
-  ctx.stroke()
+  drawDivider(ctx, CARD_W / 2, thanksY - 2.6, 19, 26, accent)
   drawHeart(ctx, CARD_W / 2, thanksY + 6, 4, accent)
 
   // Adornos sueltos.
@@ -376,22 +426,193 @@ export async function renderPhotoCard({ url, color, photoUrl, eventType, pxPerMm
   drawHeart(ctx, 134, stepsY + 30, 3.2, accent, { rotate: 0.25 })
   drawStar(ctx, 40, thanksY + 3, 1.8, accent, 0.1)
   drawStar(ctx, 108, thanksY + 3, 1.8, accent, -0.3)
-
-  // Para avisar en el panel si la foto elegida no se pudo usar.
-  canvas.dataset.photo = photo ? 'ok' : photoUrl ? 'failed' : 'none'
-  return canvas
 }
 
-/** PDF A4 apaisado con dos carteles A5 lado a lado y una línea para cortar. */
-export async function photoCardPdf(canvas) {
-  const { jsPDF } = await import('jspdf')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
-  const img = canvas.toDataURL('image/png')
-  doc.addImage(img, 'PNG', 0, 0, CARD_W, CARD_H, 'card', 'FAST')
-  doc.addImage(img, 'PNG', CARD_W + 1, 0, CARD_W, CARD_H, 'card', 'FAST') // mismo alias: se guarda una sola vez
+// Dos rayitas a los costados de `cx`, de `inner` a `outer` mm del centro.
+function drawDivider(ctx, cx, y, inner, outer, color) {
+  ctx.strokeStyle = color
+  ctx.lineWidth = 0.55
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx - outer, y)
+  ctx.lineTo(cx - inner, y)
+  ctx.moveTo(cx + inner, y)
+  ctx.lineTo(cx + outer, y)
+  ctx.stroke()
+}
+
+// Cartel «Mesa N»: el número bien grande (se tiene que leer desde las otras
+// mesas) y abajo el QR para subir fotos, con la polaroid al lado si hay foto.
+function drawTableCard(ctx, { photo, qr, tableNumber, subtitle2, accent }) {
+  const cx = CARD_W / 2
+
+  // --- Número de mesa ---
+  text(ctx, 'Mesa', cx, 30, { font: TITLE_FONT, size: 15, color: INK })
+  // Centrado en el hueco entre «Mesa» y la rayita: un nombre largo («Principal»)
+  // sale con letra más chica y no tiene que quedar pegado abajo.
+  const label = String(tableNumber)
+  const labelOpts = { font: TITLE_FONT, size: 64, color: accent }
+  const size = fitSize(ctx, label, 116, labelOpts)
+  const box = ctx.measureText(label)
+  text(ctx, label, cx, 63 + (box.actualBoundingBoxAscent - box.actualBoundingBoxDescent) / 2, { ...labelOpts, size })
+  drawHeart(ctx, 24, 26, 5, accent, { rotate: -0.25 })
+  drawSparkLines(ctx, 126, 28, accent, { from: -0.8, to: 0.6, inner: 2.2, outer: 4.4 })
+  // Adornos al costado del número, solo si no se pisan con un nombre ancho.
+  if (box.width < 88) {
+    drawStar(ctx, 22, 70, 2.6, accent, 0.2)
+    drawHeart(ctx, 126, 72, 4, accent, { rotate: 0.2 })
+  }
+
+  drawDivider(ctx, cx, 96, 7, 34, accent)
+  drawHeart(ctx, cx, 96, 4, accent, { fill: true })
+
+  // --- Fotos ---
+  // QR grande (en 10 × 15 queda de ~4 cm): se tiene que poder escanear sin
+  // levantar el cartel de la mesa.
+  text(ctx, '¡Sacá tus fotos!', cx, 110, { font: TITLE_FONT, size: 12.5, color: accent })
+  fitText(ctx, `Escaneá el QR y subí ${subtitle2}`, cx, 118, 132, { font: BODY_FONT, weight: 'bold', size: 5.4, color: INK })
+
+  const frame = 68
+  const qrTop = 124
+  if (photo) {
+    drawQrFrame(ctx, qr, 10, qrTop, frame, accent)
+    drawPolaroid(ctx, photo, 113, qrTop + frame / 2, accent, 1.1)
+  } else {
+    const qx = cx - frame / 2
+    drawQrFrame(ctx, qr, qx, qrTop, frame, accent)
+    drawCamera(ctx, qx + frame + 15, qrTop + frame / 2 - 2, accent)
+    drawHeart(ctx, 22, qrTop + frame - 6, 3.4, accent, { rotate: -0.3 })
+  }
+}
+
+// --- Impresión ---------------------------------------------------------------------
+
+const A4 = [210, 297]
+const EPS = 0.01 // para que 2 × 148 entre en 297 aunque haya decimales
+
+// Grilla de carteles de cw × ch desde (x0, y0) en un área de areaW × areaH.
+function gridSlots(x0, y0, areaW, areaH, cw, ch, rotated) {
+  const cols = Math.floor((areaW + EPS) / cw)
+  const rows = Math.floor((areaH + EPS) / ch)
+  const slots = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) slots.push({ x: x0 + c * cw, y: y0 + r * ch, w: cw, h: ch, rotated })
+  }
+  return { slots, cols, rows }
+}
+
+/**
+ * Dónde va cada cartel de `w` × `h` mm en una hoja A4 para que entren la mayor
+ * cantidad posible: prueba la hoja vertical y apaisada, y los carteles derechos
+ * o girados, y en el espacio que sobra mete más carteles girados (así en un A4
+ * entran 3 de 10 × 15 en vez de 2). Si empatan, gana la que deja más margen
+ * para la impresora. Devuelve slots vacío si el cartel es más grande que la hoja.
+ */
+export function packSheet(w, h) {
+  let best = { orientation: 'portrait', pageW: A4[0], pageH: A4[1], slots: [], margin: 0 }
+  for (const [orientation, pageW, pageH] of [
+    ['portrait', A4[0], A4[1]],
+    ['landscape', A4[1], A4[0]],
+  ]) {
+    for (const rotated of [false, true]) {
+      const [cw, ch] = rotated ? [h, w] : [w, h]
+      const main = gridSlots(0, 0, pageW, pageH, cw, ch, rotated)
+      const usedW = main.cols * cw
+      const usedH = main.rows * ch
+      // Lo que sobra abajo (todo el ancho) y a la derecha (el alto de la grilla),
+      // con los carteles girados al revés que la grilla principal.
+      const below = gridSlots(0, usedH, pageW, pageH - usedH, ch, cw, !rotated).slots
+      const right = gridSlots(usedW, 0, pageW - usedW, usedH, ch, cw, !rotated).slots
+      const slots = [...main.slots, ...below, ...right]
+      if (!slots.length) continue
+
+      // Centramos todo el bloque en la hoja.
+      const minX = Math.min(...slots.map((s) => s.x))
+      const minY = Math.min(...slots.map((s) => s.y))
+      const blockW = Math.max(...slots.map((s) => s.x + s.w)) - minX
+      const blockH = Math.max(...slots.map((s) => s.y + s.h)) - minY
+      const dx = (pageW - blockW) / 2 - minX
+      const dy = (pageH - blockH) / 2 - minY
+      const margin = Math.min(pageW - blockW, pageH - blockH) / 2
+      const candidate = { orientation, pageW, pageH, margin, slots: slots.map((s) => ({ ...s, x: s.x + dx, y: s.y + dy })) }
+      if (slots.length > best.slots.length || (slots.length === best.slots.length && margin > best.margin + EPS)) best = candidate
+    }
+  }
+  return best
+}
+
+// Copia del canvas girada 90° (para los carteles que van acostados en la hoja).
+function rotateCanvas(canvas) {
+  const out = document.createElement('canvas')
+  out.width = canvas.height
+  out.height = canvas.width
+  const ctx = out.getContext('2d')
+  ctx.translate(out.width, 0)
+  ctx.rotate(Math.PI / 2)
+  ctx.drawImage(canvas, 0, 0)
+  return out
+}
+
+function cutLine(doc, { x, y, w, h }) {
   doc.setDrawColor(190)
   doc.setLineWidth(0.2)
   doc.setLineDashPattern([2, 2], 0)
-  doc.line(CARD_W + 0.5, 0, CARD_W + 0.5, CARD_H)
+  doc.rect(x, y, w, h)
+}
+
+/**
+ * PDF con los carteles. `render(i)` devuelve el canvas del cartel i (se piden
+ * de a uno para no tener todos en memoria); si devuelve el mismo canvas, la
+ * imagen se guarda una sola vez.
+ * @param {'sheet' | 'a4' | 'exact'} o.layout
+ *   sheet: hojas A4 con la mayor cantidad de carteles posible, para recortar.
+ *   a4:    un cartel por hoja A4, centrado, con línea para recortar.
+ *   exact: una página del tamaño del cartel (para imprentas y casas de fotos).
+ */
+export async function photoCardPdf({ width, height, count, render, onProgress, layout = 'sheet' }) {
+  const { jsPDF } = await import('jspdf')
+  let page
+  if (layout === 'sheet') page = packSheet(width, height)
+  else if (layout === 'a4') {
+    const [pageW, pageH] = width > height ? [A4[1], A4[0]] : A4
+    page = {
+      orientation: width > height ? 'landscape' : 'portrait',
+      pageW,
+      pageH,
+      slots: [{ x: (pageW - width) / 2, y: (pageH - height) / 2, w: width, h: height, rotated: false }],
+    }
+  }
+  // Tamaño exacto, o un cartel más grande que el A4: una página del tamaño del cartel.
+  const exact = !page || page.slots.length === 0 || width > page.pageW || height > page.pageH
+  if (exact) {
+    page = {
+      orientation: width > height ? 'landscape' : 'portrait',
+      format: [width, height],
+      slots: [{ x: 0, y: 0, w: width, h: height, rotated: false }],
+    }
+  }
+  const format = page.format ?? 'a4'
+  const doc = new jsPDF({ unit: 'mm', format, orientation: page.orientation })
+
+  let lastCanvas = null
+  let images = {}
+  let alias = 0
+  for (let i = 0; i < count; i++) {
+    const slotIndex = i % page.slots.length
+    if (slotIndex === 0 && i > 0) doc.addPage(format, page.orientation)
+    const slot = page.slots[slotIndex]
+    const canvas = await render(i)
+    if (canvas !== lastCanvas) {
+      lastCanvas = canvas
+      images = {}
+      alias++
+    }
+    const key = slot.rotated ? 'r' : 'n'
+    // JPEG: con muchas mesas el PDF en PNG pesa demasiado; a 300 dpi no se nota.
+    images[key] ??= (slot.rotated ? rotateCanvas(canvas) : canvas).toDataURL('image/jpeg', 0.92)
+    doc.addImage(images[key], 'JPEG', slot.x, slot.y, slot.w, slot.h, `card-${alias}-${key}`, 'FAST')
+    if (!exact) cutLine(doc, slot)
+    onProgress?.(i + 1)
+  }
   return doc
 }
