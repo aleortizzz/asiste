@@ -171,9 +171,6 @@ function onTableClick(i) {
 function onPoolPhotoClick(url) {
   if (selectedTable.value !== null) setTablePhoto(selectedTable.value, url)
 }
-watch(tableLabels, (labels) => {
-  if (selectedTable.value !== null && selectedTable.value >= labels.length) selectedTable.value = null
-})
 // La vista previa muestra la mesa que estás tocando (o la primera).
 const previewIndex = computed(() => (photoPerTable.value && selectedTable.value !== null ? selectedTable.value : 0))
 
@@ -218,6 +215,10 @@ const tableLabels = computed(() => {
   const to = Math.max(from, Math.floor(Number(tableTo.value) || from))
   const numbers = Array.from({ length: to - from + 1 }, (_, i) => from + i)
   return [...namedTables.value, ...numbers].slice(0, MAX_TABLES)
+})
+// Si achica la lista y la mesa elegida ya no está, la soltamos.
+watch(tableLabels, (labels) => {
+  if (selectedTable.value !== null && selectedTable.value >= labels.length) selectedTable.value = null
 })
 
 // Si ya cargó las mesas, arrancamos con esa cantidad.
