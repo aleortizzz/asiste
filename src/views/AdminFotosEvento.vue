@@ -115,13 +115,67 @@ const photoPerTable = computed(() => cardPhoto.value === 'all' && numbered.value
 const cardPhotoUrl = computed(() =>
   cardPhoto.value === undefined || cardPhoto.value === 'all' ? cardPhotoPool.value[0] ?? null : cardPhoto.value,
 )
-// Foto del cartel número i: con «una distinta por mesa» se reparten en orden y,
-// si hay más mesas que fotos, vuelven a empezar.
-const photoFor = (i) => (photoPerTable.value ? cardPhotoPool.value[i % cardPhotoPool.value.length] : cardPhotoUrl.value)
-const isCardPhoto = (url) => (photoPerTable.value ? true : cardPhotoUrl.value === url)
-// Qué mesas llevan la foto j (para mostrarlo abajo de cada miniatura).
-const tablesForPhoto = (j) =>
-  tableLabels.value.filter((_, i) => i % cardPhotoPool.value.length === j).join(', ')
+// --- Una foto distinta por mesa ---
+// De entrada se reparten en orden (si hay más mesas que fotos, vuelven a
+// empezar). Lo que el usuario cambia queda en `tablePhotoPicks`, por mesa
+// (por su nombre o número, así sobrevive si cambia el «hasta»).
+const tablePhotoPicks = ref({})
+const tablePhoto = (i) => {
+  const pool = cardPhotoPool.value
+  const pick = tablePhotoPicks.value[tableLabels.value[i]]
+  return pool.includes(pick) ? pick : pool[i % pool.length]
+}
+const photoFor = (i) => (photoPerTable.value ? tablePhoto(i) : cardPhotoUrl.value)
+const photoUses = (url) => tableLabels.value.filter((_, i) => tablePhoto(i) === url).length
+
+function setTablePhoto(i, url) {
+  tablePhotoPicks.value = { ...tablePhotoPicks.value, [tableLabels.value[i]]: url }
+}
+function swapTablePhotos(a, b) {
+  const [pa, pb] = [tablePhoto(a), tablePhoto(b)]
+  setTablePhoto(a, pb)
+  setTablePhoto(b, pa)
+}
+
+// Arrastrar (compu) o tocar (celu): mesa sobre mesa intercambia las fotos; una
+// foto de «tus fotos» sobre una mesa se la pone. Tocando: primero la mesa,
+// después la otra mesa o la foto.
+const selectedTable = ref(null)
+const dragging = ref(null) // { table: i } | { photo: url }
+const dropTarget = ref(null)
+
+function onDragStart(e, source) {
+  dragging.value = source
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', '') // Firefox no arrastra sin esto
+}
+function onDragEnd() {
+  dragging.value = null
+  dropTarget.value = null
+}
+function onDropOnTable(i) {
+  const src = dragging.value
+  if (src?.photo) setTablePhoto(i, src.photo)
+  else if (src && src.table !== i) swapTablePhotos(src.table, i)
+  selectedTable.value = i
+  onDragEnd()
+}
+function onTableClick(i) {
+  if (selectedTable.value === null || selectedTable.value === i) {
+    selectedTable.value = selectedTable.value === i ? null : i
+  } else {
+    swapTablePhotos(selectedTable.value, i)
+    selectedTable.value = null
+  }
+}
+function onPoolPhotoClick(url) {
+  if (selectedTable.value !== null) setTablePhoto(selectedTable.value, url)
+}
+watch(tableLabels, (labels) => {
+  if (selectedTable.value !== null && selectedTable.value >= labels.length) selectedTable.value = null
+})
+// La vista previa muestra la mesa que estás tocando (o la primera).
+const previewIndex = computed(() => (photoPerTable.value && selectedTable.value !== null ? selectedTable.value : 0))
 
 // Tamaño del papel. Los de portarretrato son los más comunes en Argentina.
 const CARD_SIZES = [
@@ -259,11 +313,11 @@ watch(
   () =>
     event.value && [
       guestUrl.value,
-      photoFor(0),
+      photoFor(previewIndex.value),
       event.value.primary_color,
       cardDims.value.w,
       cardDims.value.h,
-      tableLabels.value[0],
+      tableLabels.value[previewIndex.value],
     ],
   async (deps) => {
     if (!deps) return
@@ -605,32 +659,105 @@ onUnmounted(() => {
             </div>
 
             <p class="admin-label mt-5">Foto del cartel</p>
-            <div class="flex flex-wrap gap-2">
+            <div v-if="numbered && cardPhotoPool.length > 1" class="mb-3 inline-flex rounded-full bg-chalk p-1 text-sm font-bold">
               <button
-                v-if="numbered && cardPhotoPool.length > 1"
                 type="button"
                 @click="cardPhoto = 'all'"
-                :class="photoPerTable ? 'bg-obsidian text-chalk' : 'bg-chalk text-obsidian/55 hover:text-obsidian'"
-                class="grid h-14 w-[5.5rem] place-items-center rounded-[0.9rem] px-1 text-center text-[0.65rem] leading-tight font-bold transition"
+                :class="photoPerTable ? 'bg-obsidian text-chalk' : 'text-obsidian/55 hover:text-obsidian'"
+                class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition"
               >
-                <span class="flex flex-col items-center gap-0.5"><Images :size="16" /> Una distinta por mesa</span>
+                <Images :size="15" /> Una distinta por mesa
               </button>
               <button
-                v-for="(url, j) in cardPhotoPool"
+                type="button"
+                @click="cardPhoto = cardPhotoUrl ?? cardPhotoPool[0]"
+                :class="!photoPerTable ? 'bg-obsidian text-chalk' : 'text-obsidian/55 hover:text-obsidian'"
+                class="rounded-full px-3.5 py-1.5 transition"
+              >
+                La misma en todas
+              </button>
+            </div>
+
+            <!-- Una distinta por mesa: cada mesa con su foto; se intercambian arrastrando o tocando. -->
+            <template v-if="photoPerTable">
+              <p class="admin-help">
+                Arrastrá una mesa sobre otra para intercambiar las fotos, o una de «Tus fotos» sobre una mesa.
+                Desde el celular: tocá una mesa y después otra mesa o una foto.
+              </p>
+              <div class="grid grid-cols-[repeat(auto-fill,minmax(4.75rem,1fr))] gap-2">
+                <button
+                  v-for="(label, i) in tableLabels"
+                  :key="label"
+                  type="button"
+                  draggable="true"
+                  @dragstart="onDragStart($event, { table: i })"
+                  @dragend="onDragEnd"
+                  @dragover.prevent="dropTarget = i"
+                  @dragleave="dropTarget === i && (dropTarget = null)"
+                  @drop.prevent="onDropOnTable(i)"
+                  @click="onTableClick(i)"
+                  :title="`Mesa ${label}`"
+                  :class="[
+                    selectedTable === i || dropTarget === i ? 'ring-3 ring-accent' : 'hover:bg-pumice',
+                    dragging?.table === i ? 'opacity-40' : '',
+                  ]"
+                  class="flex cursor-grab flex-col rounded-[0.9rem] bg-chalk p-1 transition active:cursor-grabbing"
+                >
+                  <img :src="tablePhoto(i)" alt="" draggable="false" class="pointer-events-none aspect-square w-full rounded-[0.6rem] object-cover" />
+                  <span class="pointer-events-none mt-1 truncate px-0.5 text-center text-xs font-bold">
+                    {{ typeof label === 'number' ? `Mesa ${label}` : label }}
+                  </span>
+                </button>
+              </div>
+
+              <p class="mt-4 mb-1.5 text-xs font-bold">
+                Tus fotos
+                <span class="font-medium text-obsidian/55">
+                  {{ selectedTable !== null ? `· tocá una para ponérsela a la mesa ${tableLabels[selectedTable]}` : '· arrastralas a una mesa' }}
+                </span>
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="url in cardPhotoPool"
+                  :key="url"
+                  type="button"
+                  draggable="true"
+                  @dragstart="onDragStart($event, { photo: url })"
+                  @dragend="onDragEnd"
+                  @click="onPoolPhotoClick(url)"
+                  :class="selectedTable !== null ? 'hover:ring-3 hover:ring-accent' : ''"
+                  class="relative h-12 w-12 cursor-grab overflow-hidden rounded-[0.75rem] bg-pumice transition active:cursor-grabbing"
+                >
+                  <img :src="url" alt="" draggable="false" class="pointer-events-none h-full w-full object-cover" :class="{ 'opacity-40': !photoUses(url) }" />
+                  <span
+                    v-if="photoUses(url) !== 1"
+                    class="pointer-events-none absolute inset-x-0 bottom-0 bg-obsidian/70 text-center text-[0.6rem] font-bold text-chalk"
+                  >
+                    {{ photoUses(url) ? `en ${photoUses(url)} mesas` : 'sin usar' }}
+                  </span>
+                </button>
+              </div>
+              <button
+                v-if="Object.keys(tablePhotoPicks).length"
+                type="button"
+                @click="tablePhotoPicks = {}"
+                class="mt-3 text-xs font-bold text-obsidian/55 underline hover:text-obsidian"
+              >
+                Volver al orden automático
+              </button>
+            </template>
+
+            <!-- La misma foto en todos los carteles. -->
+            <div v-else class="flex flex-wrap gap-2">
+              <button
+                v-for="url in cardPhotoPool"
                 :key="url"
                 type="button"
                 @click="cardPhoto = url"
-                :title="photoPerTable ? `Mesa ${tablesForPhoto(j)}` : undefined"
-                :class="isCardPhoto(url) ? 'ring-3 ring-accent' : 'opacity-80 hover:opacity-100'"
-                class="relative h-14 w-14 overflow-hidden rounded-[0.9rem] bg-pumice transition"
+                :class="cardPhotoUrl === url ? 'ring-3 ring-accent' : 'opacity-80 hover:opacity-100'"
+                class="h-14 w-14 overflow-hidden rounded-[0.9rem] bg-pumice transition"
               >
                 <img :src="url" alt="" loading="lazy" class="h-full w-full object-cover" />
-                <span
-                  v-if="photoPerTable && tablesForPhoto(j)"
-                  class="absolute inset-x-0 bottom-0 truncate bg-obsidian/70 px-1 text-[0.6rem] font-bold text-chalk"
-                >
-                  {{ tablesForPhoto(j) }}
-                </span>
               </button>
               <button
                 type="button"
@@ -641,12 +768,6 @@ onUnmounted(() => {
                 <span class="flex flex-col items-center gap-0.5"><ImageOff :size="16" /> Sin foto</span>
               </button>
             </div>
-            <p v-if="photoPerTable" class="admin-help mt-2">
-              Cada mesa lleva una foto, en orden (abajo de cada foto dice qué mesa le toca).
-              <template v-if="tableLabels.length > cardPhotoPool.length">
-                Como hay más mesas que fotos, después de la última vuelven a empezar.
-              </template>
-            </p>
             <p v-if="cardPhotoFailed" class="mt-2 text-xs font-bold text-nogo">No se pudo cargar esa foto, el cartel sale sin foto. Probá con otra.</p>
             <p v-if="!cardPhotoChoices.length" class="admin-help mt-2">
               Las fotos salen de las que subiste en «Creá tu invitación».
