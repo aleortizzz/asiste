@@ -1,5 +1,10 @@
-name: Deploy a Hostinger
+name: Deploy a Cloudflare Pages
 
+# Pages publica la versión entera de una vez (index.html y assets juntos), así
+# que ya no hace falta subir assets/ primero como con el FTP de Hostinger.
+# La vista previa de los links (antes og.php) ahora son las funciones de
+# functions/, que leen SUPABASE_URL y SUPABASE_KEY de las variables del
+# proyecto de Pages.
 on:
   push:
     branches: [main]
@@ -29,53 +34,8 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
 
-      # Config para public/og.php (vista previa de links en WhatsApp): la URL
-      # y la anon key de Supabase, las mismas que ya van dentro del JS.
-      - name: Config de la vista previa de links
-        run: |
-          printf "<?php\nconst OG_SUPABASE_URL = '%s';\nconst OG_SUPABASE_KEY = '%s';\n" \
-            "$VITE_SUPABASE_URL" "$VITE_SUPABASE_ANON_KEY" > dist/og-config.php
+      - name: Deploy
+        run: npx --yes wrangler@4 pages deploy dist --project-name=asiste --branch=main --commit-dirty=true
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Instalar lftp
-        run: sudo apt-get update -qq && sudo apt-get install -y lftp
-
-      # El FTP de Hostinger corta la conexion de control seguido. Config
-      # conservadora: una sola conexion, PASV forzado (sin EPSV), timeouts
-      # altos y debug 3 para ver el error real si vuelve a fallar.
-      - name: Deploy por FTP a Hostinger (lftp)
-        uses: nick-fields/retry@v3
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        with:
-          timeout_minutes: 15
-          max_attempts: 2
-          retry_wait_seconds: 45
-          command: |
-            lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" <<'LFTP'
-            set ftp:ssl-force true
-            set ftp:ssl-protect-data true
-            set ssl:verify-certificate no
-            set ftp:passive-mode true
-            set ftp:prefer-epsv false
-            set net:timeout 45
-            set net:max-retries 4
-            set net:reconnect-interval-base 10
-            set net:connection-limit 1
-            set mirror:parallel-transfer-count 1
-            set ftp:use-mdtm false
-            debug 3
-            # Primero assets/ (JS y CSS con nombre nuevo) y después el resto:
-            # así el index.html nuevo nunca apunta a un archivo que todavía
-            # no subió (el CDN guardaba esa respuesta rota por horas).
-            # --ignore-time: en assets/ cada nombre es único por build, así
-            # que si ya existe con el mismo tamaño es el mismo archivo y no se
-            # vuelve a subir (re-subirlo lo dejaba un instante sin archivo).
-            mirror -R --verbose --ignore-time ./dist/assets/ /assets
-            mirror -R --verbose --exclude-glob .git/ ./dist/ /
-            bye
-            LFTP
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

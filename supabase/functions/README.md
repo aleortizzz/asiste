@@ -18,7 +18,7 @@ La lógica de los pagos está en la base: `migrations/20261015_pagos.sql` (corre
      Para probar, la de **prueba** (`TEST-…` o la de un vendedor de prueba); para cobrar de verdad, la de **producción** (`APP_USR-…`).
    - `MP_WEBHOOK_SECRET` (opcional, recomendado): en la app de MP → Webhooks → configurar la URL
      `https://<proyecto>.supabase.co/functions/v1/mp-webhook`, evento **Pagos**, y copiar la «clave secreta».
-   - `SITE_URL` (opcional): por defecto `https://asiste.tizdigital.com`. Para probar en local: `http://localhost:5173`.
+   - `SITE_URL` (opcional): por defecto `https://asiste.atemporalweb.com`. Para probar en local: `http://localhost:5173`.
 
 Los cambios a una función se suben repitiendo el paso 2 (editar y *Deploy*).
 

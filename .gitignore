@@ -34,3 +34,6 @@ set-secret.mjs
 branding/exploracion/
 branding/opciones/
 __pycache__/
+
+# CLI de Supabase
+supabase/.temp/

@@ -8,7 +8,7 @@
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   MP_ACCESS_TOKEN  la clave privada de MP (TEST-… para probar, APP_USR-… real)
-//   SITE_URL         opcional, por defecto https://asiste.tizdigital.com
+//   SITE_URL         opcional, por defecto https://asiste.atemporalweb.com
 // SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY ya vienen solos.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
   const accessToken = Deno.env.get('MP_ACCESS_TOKEN')
   if (!accessToken) return json({ error: 'Falta configurar Mercado Pago.' }, 500)
-  const siteUrl = (Deno.env.get('SITE_URL') ?? 'https://asiste.tizdigital.com').replace(/\/+$/, '')
+  const siteUrl = (Deno.env.get('SITE_URL') ?? 'https://asiste.atemporalweb.com').replace(/\/+$/, '')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 
   // Cliente con la sesión del que llama: RLS hace que solo vea su evento.

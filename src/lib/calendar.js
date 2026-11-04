@@ -96,7 +96,7 @@ export function downloadIcs(invite) {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:${Date.now()}-${Math.random().toString(36).slice(2)}@asiste.tizdigital.com`,
+    `UID:${Date.now()}-${Math.random().toString(36).slice(2)}@asiste.atemporalweb.com`,
     `DTSTAMP:${stamp(new Date())}`,
     ...when,
     `SUMMARY:${icsText(title)}`,

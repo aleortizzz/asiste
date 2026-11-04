@@ -201,3 +201,32 @@ Otros:
 - [ ] Revisar de punta a punta en celular (la mayoría abre los links desde ahí).
 - [ ] Cuando alguien cambia a «No asiste», hoy conserva su `table_id` (no ocupa lugar ni aparece, pero si vuelve a confirmar reaparece en esa mesa). Decidir si se libera la mesa automáticamente.
 - [ ] (Opcional) Limpiar las carpetas `asiste` sueltas que quedaron de los intentos con la cuenta FTP genérica.
+
+## Mudanza a Cloudflare Pages y dominio atemporalweb.com (2026-11-04)
+
+- Hosting: Cloudflare Pages, proyecto `asiste` (`asiste-2yg.pages.dev`), dominio
+  `asiste.atemporalweb.com`. Deploy en cada push a main (`deploy.yml`, wrangler).
+  El plan de Hostinger vence el 03/01/2027 y no se renueva.
+- `asiste.tizdigital.com/*` redirige con la misma ruta al dominio nuevo: los
+  links de invitaciones ya compartidos siguen andando.
+- La vista previa de links (antes `og.php`, `og-lib.php`, `og-image.php` y el
+  `.htaccess`) ahora es:
+  - `functions/i/[slug].js` y `functions/fotos/[id].js` + `og/vista-previa.js`:
+    a los robots (por User-Agent) les agregan las etiquetas og al index.html; a
+    las personas les sirven la app. Variables del proyecto de Pages:
+    `SUPABASE_URL` y `SUPABASE_KEY` (anon).
+  - `functions/og-image.php.js`: misma URL que el PHP (las vistas previas ya
+    guardadas por WhatsApp siguen valiendo). Pide la imagen a la Edge Function
+    `og-image` de Supabase y la guarda en la caché de Cloudflare.
+  - `supabase/functions/og-image`: recorte 1200×630 y tarjeta del logo de la
+    Ejecutiva con ImageScript (las funciones gratis de Cloudflare tienen 10 ms
+    de CPU, no alcanza para achicar fotos). Sin Verify JWT.
+  - Probado contra el PHP: mismas etiquetas og y mismas URLs de imagen.
+- Supabase: Site URL y Redirect URLs con el dominio nuevo, mails de confirmar y
+  recuperar con el logo del dominio nuevo, secret `SITE_URL` (vuelta de Mercado
+  Pago) en `https://asiste.atemporalweb.com`.
+- Backup: deploy key `BACKUP_SSH_KEY` en vez del token personal, que vence.
+- Pendiente: agregar `https://asiste.atemporalweb.com` en «Orígenes autorizados
+  de JavaScript» del cliente OAuth de Google (proyecto «Asiste» de Google Cloud).
+- Las cuentas de recepción siguen usando `@recepcion.tizdigital.com`: es solo un
+  formato de usuario, no un dominio que tenga que existir.

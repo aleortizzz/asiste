@@ -3,7 +3,7 @@
 export const WHATSAPP = '5491153855217'
 export const WHATSAPP_DISPLAY = '11 5385-5217'
 export const COMPANY = 'TizDigital'
-export const SITE = 'asiste.tizdigital.com'
+export const SITE = 'asiste.atemporalweb.com'
 
 // Link de WhatsApp con el mensaje ya escrito.
 export const waLink = (text = 'Hola! Quiero saber más sobre Asiste.') =>

@@ -4,7 +4,7 @@
 //
 // Dos caminos:
 //  1. Con VITE_GOOGLE_CLIENT_ID (el normal): el botón oficial de Google
-//     («Sign in with Google»). Google abre su ventanita desde asiste.tizdigital.com
+//     («Sign in with Google»). Google abre su ventanita desde asiste.atemporalweb.com
 //     y muestra «Asiste» y este dominio. Nos da un token y se lo pasamos a
 //     Supabase (signInWithIdToken). Sin pasar por xxxx.supabase.co, que en la
 //     pantalla de Google daba desconfianza.

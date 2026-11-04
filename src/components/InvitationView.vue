@@ -42,7 +42,7 @@ const isTrial = computed(() => props.invite?.plan === 'gratis')
 <template>
   <a
     v-if="isTrial"
-    href="https://asiste.tizdigital.com"
+    href="https://asiste.atemporalweb.com"
     target="_blank"
     rel="noopener"
     class="fixed inset-x-0 top-0 z-[300] block bg-[#4e1f6e] px-4 py-2 text-center text-xs font-bold tracking-wide text-white"
